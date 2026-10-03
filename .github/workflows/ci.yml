@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'improvements/**']
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: yala_nsafr
+          POSTGRES_USER: yala_user
+          POSTGRES_PASSWORD: yala_pass
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U yala_user"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: yala_nsafr
+      DB_USER: yala_user
+      DB_PASS: yala_pass
+      JWT_SECRET: ci-only-secret-ci-only-secret-ci-only-secret-0123456789
+      PAYMENT_MOCK: 'false'
+      KASHIER_MERCHANT_ID: MID-CI
+      KASHIER_API_KEY: ci-api-key
+      KASHIER_SECRET_KEY: ci-secret
+      KASHIER_TRANSFER_API_KEY: ci-transfer-key
+      SMS_PROVIDER: stub
+      APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      # The suite runs against the schema the migrations produce, exactly as production would
+      - run: npm run migration:run
+      - name: Migrations match the entities
+        run: npm run typeorm -- schema:log | tee schema.log && grep -q "Your schema is up to date" schema.log
+      - run: npm run test:e2e -- --runInBand
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Fails on errors; existing lints and deprecations are reported without failing
+      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - run: flutter test

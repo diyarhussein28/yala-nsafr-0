@@ -34,7 +34,13 @@ export default registerAs('database', (): TypeOrmModuleOptions => ({
     AppNotification, ReferralReward, RefreshToken, Block, Subscription, SosAlert,
     SubscriptionPayment,
   ],
-  synchronize: process.env.NODE_ENV === 'development',
-  logging: process.env.NODE_ENV === 'development',
+  // Schema changes ship as migrations (src/database/migrations). synchronize stays on for
+  // local development convenience only — it must never run against production data.
+  synchronize: process.env.NODE_ENV === 'development' && process.env.DB_SYNCHRONIZE !== 'false',
+  migrations: [__dirname + '/../database/migrations/*.{ts,js}'],
+  // Applied automatically at boot unless disabled, so a deploy can never start against
+  // a schema older than its code
+  migrationsRun: process.env.NODE_ENV === 'production' && process.env.DB_MIGRATIONS_RUN !== 'false',
+  logging: process.env.NODE_ENV === 'development' ? ['error', 'warn', 'migration'] : ['error', 'migration'],
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 }));

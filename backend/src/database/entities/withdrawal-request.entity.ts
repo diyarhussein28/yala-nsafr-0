@@ -1,5 +1,6 @@
 import {
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
@@ -20,6 +21,7 @@ export enum PayoutMethod {
   BANK = 'bank',
 }
 
+@Index(['driverId', 'status'])
 @Entity('withdrawal_requests')
 export class WithdrawalRequest {
   @PrimaryGeneratedColumn('uuid')

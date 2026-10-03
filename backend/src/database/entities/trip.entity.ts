@@ -19,6 +19,9 @@ export enum TripStatus {
   CANCELLED = 'cancelled',
 }
 
+// A driver's own trips, and the scheduler's sweeps by status and departure
+@Index(['driverId', 'departureTime'])
+@Index(['status', 'departureTime'])
 @Entity('trips')
 export class Trip {
   @PrimaryGeneratedColumn('uuid')

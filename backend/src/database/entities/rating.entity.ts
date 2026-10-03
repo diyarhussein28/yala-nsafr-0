@@ -14,6 +14,8 @@ export enum RaterRole {
   PASSENGER = 'passenger',
 }
 
+@Index(['rateeId', 'isRevealed'])
+@Index(['bookingId'])
 @Entity('ratings')
 @Index(['tripId', 'raterId'], { unique: true })
 export class Rating {

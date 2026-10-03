@@ -1,5 +1,6 @@
 import {
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
@@ -41,6 +42,9 @@ export enum PaymentMethod {
   FAWRY = 'fawry',
 }
 
+// Trip passenger lists, seat/participant checks and a passenger's own bookings
+@Index(['tripId', 'status'])
+@Index(['passengerId', 'createdAt'])
 @Entity('bookings')
 export class Booking {
   @PrimaryGeneratedColumn('uuid')

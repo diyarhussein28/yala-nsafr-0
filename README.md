@@ -2,15 +2,16 @@
 
 Intercity carpooling for Egypt. Drivers post trips they are already making, passengers
 book a seat, and the platform holds the fare in escrow until the trip completes — taking
-a 7% commission and paying the driver out to a mobile wallet or bank account.
+a 10% commission (admin-configurable) and paying the driver out to a mobile wallet or bank
+account.
 
 | | |
 |---|---|
 | **Backend** | NestJS 11 · PostgreSQL + PostGIS · Redis · TypeORM |
 | **Mobile** | Flutter (Dart SDK ≥ 3.3), Riverpod, GoRouter — Arabic-first, RTL |
-| **Payments** | Kashier (authorize → capture escrow, plus payouts) |
+| **Payments** | Kashier only — trip escrow (authorize → capture), driver payouts, driver subscriptions |
 | **Push** | Firebase Cloud Messaging |
-| **Tests** | 111 end-to-end tests against a real Postgres instance |
+| **Tests** | 211 end-to-end tests against a real Postgres instance, run in CI |
 
 The marketing site lives separately at
 [and222row/yala-nsafr-website](https://github.com/and222row/yala-nsafr-website).
@@ -30,15 +31,19 @@ partially refund, no refund → capture in full). Cash trips skip escrow entirel
 tracked for commission only.
 
 **Drivers** — verification, earnings broken down per trip, withdrawals to Vodafone Cash /
-InstaPay / bank, and subscription-gated trip posting.
+InstaPay / bank, and subscription-gated trip posting. Subscriptions are prepaid periods
+(default 200 EGP / 30 days, set in `platform_config`; 0 disables the paywall) paid through
+Kashier — Stripe was removed because it does not onboard merchants in Egypt.
 
-**Trust & safety** — two-sided ratings revealed after both parties submit (or after 7
-days), disputes with admin mediation, user blocking, and an escalating ban for drivers who
-repeatedly cancel (3 strikes → 7-day posting ban, 5 → 30 days, 10 → suspension).
+**Trust & safety** — blind two-sided ratings revealed after both parties submit (or after 7
+days), disputes with admin mediation, user blocking, gender tied to the national ID for
+women-only trips, and an escalating ban for drivers who cancel late or never start a trip
+(3 strikes → 7-day posting ban, 5 → 30 days, 10 → suspension).
 
 **Automation** — scheduled jobs send pre-departure reminders, auto-cancel abandoned trips,
-auto-reject bookings a driver never answers, reveal expired ratings, and reconcile payouts
-against Kashier.
+auto-reject bookings a driver never answers, release seats held by unpaid checkouts, reveal
+expired ratings, remind drivers before their subscription lapses, and reconcile captures and
+payouts against Kashier.
 
 ---
 
@@ -77,14 +82,24 @@ Fill in `.env` — at minimum `JWT_SECRET` and the `KASHIER_*` values. Leave
 Set `PAYMENT_MOCK=true` to work without Kashier credentials at all.
 
 ```bash
+npm run migration:run   # creates the schema
 npm run start:dev
 ```
 
-The API serves on `http://localhost:3000/api/v1`.
+The API serves on `http://localhost:3000/api/v1`; the admin panel on `http://localhost:3000/admin`.
 
-> **Schema is created by TypeORM `synchronize`, which is enabled only when
-> `NODE_ENV=development`.** There are no migrations yet, so a production deploy will not
-> create or alter tables. See [Known gaps](#known-gaps).
+**Schema changes ship as migrations** (`src/database/migrations`). After changing an entity:
+
+```bash
+npm run migration:generate -- src/database/migrations/DescriptiveName
+```
+
+Never edit a migration that has been applied anywhere. In production, pending migrations run
+automatically at boot (`DB_MIGRATIONS_RUN=false` turns that off). `synchronize` is only used
+with `NODE_ENV=development`.
+
+**Production refuses to start** with a default/short `JWT_SECRET`, `PAYMENT_MOCK=true`,
+`SMS_PROVIDER=stub`, or missing Kashier keys / `APP_URL`.
 
 ### 3. Mobile app
 
@@ -104,6 +119,14 @@ adb -s DEVICE_ID reverse tcp:3000 tcp:3000
 ```bash
 flutter run -d DEVICE_ID
 ```
+
+For any build that runs against a real server, pass the API address at build time:
+
+```bash
+flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com/api/v1
+```
+
+The project needs Flutter 3.32 or newer.
 
 Testing driver and passenger side by side is easiest with two devices in two terminals
 (`flutter run -d all` works too, but interleaves the logs).
@@ -185,12 +208,12 @@ job, which re-checks recent payouts directly against Kashier.
 cd backend && npm run test:e2e
 ```
 
-These run against the **real development database** rather than mocks, with Kashier calls
+These run against a **real Postgres database** rather than mocks, with Kashier calls
 stubbed. Two consequences worth knowing:
 
-- Jest sets `NODE_ENV=test`, which disables `synchronize` — so the schema must already
-  exist. Start the dev server once after adding an entity field, or apply the column by
-  hand, before running the suite.
+- Jest sets `NODE_ENV=test`, which disables `synchronize` — run `npm run migration:run`
+  first. CI (`.github/workflows/ci.yml`) does exactly that on a fresh database, and also
+  fails if the entities and migrations have drifted apart.
 - Tests that invoke scheduled jobs sweep the whole table. They shield rows they do not
   own and restore them afterwards, so a real trip or withdrawal is not cancelled by a test
   run. Keep that in mind when adding coverage for a cron.
@@ -213,9 +236,11 @@ mobile/           Flutter app (lib/core, lib/features, lib/shared)
 
 ## Known gaps
 
-- **No migrations.** `backend/src/database/migrations/` is empty and unwired, and
-  `synchronize` only runs in development — so nothing creates the schema in production.
-  This must be resolved before any deploy.
+- **Uploaded ID documents are served publicly** from `/uploads` under unguessable names.
+  They should move to private object storage with signed URLs before launch.
+- **Cash-trip commission is tracked, not collected.** The driver's earnings summary now shows
+  `cashCommissionOwed`, but it is not yet netted against payouts — a business decision.
+- **Late-cancellation driver compensation** is announced to the driver but not credited.
 - **Payout webhook signature is unverified against a real delivery.** It follows the
   documented algorithm, but Kashier publishes no test vector for it. If payout webhooks
   start being rejected, the error log prints both the received header and the computed

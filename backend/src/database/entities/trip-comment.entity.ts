@@ -1,5 +1,6 @@
 import {
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
@@ -8,6 +9,7 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 
+@Index(['tripId', 'createdAt'])
 @Entity('trip_comments')
 export class TripComment {
   @PrimaryGeneratedColumn('uuid')

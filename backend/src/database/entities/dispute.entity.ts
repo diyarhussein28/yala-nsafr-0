@@ -1,5 +1,6 @@
 import {
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
@@ -35,6 +36,9 @@ export enum DisputeReason {
   OTHER = 'other',
 }
 
+// One dispute per booking — previously only a read-then-insert check enforced this
+@Index(['bookingId'], { unique: true })
+@Index(['status', 'slaDeadline'])
 @Entity('disputes')
 export class Dispute {
   @PrimaryGeneratedColumn('uuid')

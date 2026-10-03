@@ -56,6 +56,7 @@ export class User {
   status: UserStatus;
 
   // ID verification
+  @Index()
   @Column({ name: 'national_id_number', nullable: true, length: 14 })
   nationalIdNumber: string;
 

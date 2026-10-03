@@ -1,17 +1,14 @@
-# yala_nsafr
+# Yala Nsafr — Mobile app
 
-A new Flutter project.
+Flutter (3.32+), Riverpod, GoRouter. Arabic-first, RTL. See the
+[repository README](../README.md) for the full setup.
 
-## Getting Started
+```bash
+flutter pub get
+flutter run                                    # debug, talks to http://localhost:3000
+adb reverse tcp:3000 tcp:3000                  # on a physical Android device
+flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com/api/v1
+```
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+All card payments (trip fares and driver subscriptions) go through Kashier's hosted
+checkout in a WebView; there is no native payment SDK.

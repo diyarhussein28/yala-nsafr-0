@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   OneToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Booking } from './booking.entity';
 
@@ -53,6 +54,8 @@ export class Payment {
   @Column({ name: 'kashier_transaction_id', nullable: true, type: 'varchar' })
   kashierTransactionId: string | null;
 
+  // Every Kashier webhook and redirect looks the payment up by this
+  @Index()
   @Column({ name: 'gateway_order_id', nullable: true })
   gatewayOrderId: string;
 
