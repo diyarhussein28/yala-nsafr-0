@@ -385,7 +385,9 @@
 </div>
 
 <script>
-const API = 'http://localhost:3000/api/v1';
+// Same origin as the server that serves this panel — a hardcoded localhost URL only
+// ever worked on the developer's own machine.
+const API = window.location.origin + '/api/v1';
 
 function app() {
   return {
@@ -462,6 +464,7 @@ function app() {
         const res = await this.api('POST', '/auth/otp/verify', { phoneNumber: this.phone, code: this.otpCode });
         this.token = res.accessToken;
         localStorage.setItem('ya_admin_token', this.token);
+        localStorage.setItem('ya_admin_refresh', res.refreshToken);
         await this.fetchMe();
         this.authenticated = true;
         this.fetchAnalytics();
@@ -474,9 +477,39 @@ function app() {
     },
 
     logout() {
+      const refreshToken = localStorage.getItem('ya_admin_refresh');
+      if (refreshToken) {
+        fetch(API + '/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        }).catch(() => {});
+      }
       this.token = null; this.me = null;
       this.authenticated = false;
       localStorage.removeItem('ya_admin_token');
+      localStorage.removeItem('ya_admin_refresh');
+    },
+
+    // Access tokens are short-lived; renew once with the refresh token before giving up
+    async refreshSession() {
+      const refreshToken = localStorage.getItem('ya_admin_refresh');
+      if (!refreshToken) return false;
+      try {
+        const res = await fetch(API + '/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+        if (!res.ok) return false;
+        const data = await res.json();
+        this.token = data.accessToken;
+        localStorage.setItem('ya_admin_token', data.accessToken);
+        localStorage.setItem('ya_admin_refresh', data.refreshToken);
+        return true;
+      } catch (e) {
+        return false;
+      }
     },
 
     go(p) {
@@ -602,7 +635,7 @@ function app() {
       this._timer = setTimeout(() => { this.toast = { msg: '', ok: true }; }, 4000);
     },
 
-    async api(method, path, body) {
+    async api(method, path, body, retried) {
       const headers = { 'Content-Type': 'application/json' };
       if (this.token) headers['Authorization'] = 'Bearer ' + this.token;
       const res = await fetch(API + path, {
@@ -610,6 +643,9 @@ function app() {
         headers: headers,
         body: body != null ? JSON.stringify(body) : undefined,
       });
+      if (res.status === 401 && !retried && !path.startsWith('/auth/') && await this.refreshSession()) {
+        return this.api(method, path, body, true);
+      }
       let data;
       try { data = await res.json(); } catch(e) { data = {}; }
       if (!res.ok) {

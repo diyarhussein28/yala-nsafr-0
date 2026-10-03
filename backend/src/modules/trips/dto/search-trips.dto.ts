@@ -1,20 +1,23 @@
-import { IsString, IsDateString, IsOptional, IsBoolean, IsNumber, Min } from 'class-validator';
+import { IsString, IsDateString, IsOptional, IsBoolean, IsNumber, Min, Max, MaxLength, IsInt } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 export class SearchTripsDto {
   @IsString()
+  @MaxLength(100)
   originCity: string;
 
   @IsString()
+  @MaxLength(100)
   destinationCity: string;
 
   @IsDateString()
   departureDate: string;
 
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Type(() => Number)
   @Min(1)
+  @Max(8)
   seats?: number;
 
   @IsOptional()
@@ -39,12 +42,15 @@ export class SearchTripsDto {
   maxPrice?: number;
 
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Type(() => Number)
+  @Min(1)
   page?: number = 1;
 
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Type(() => Number)
+  @Min(1)
+  @Max(50)
   limit?: number = 20;
 }

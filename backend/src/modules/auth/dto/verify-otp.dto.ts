@@ -1,11 +1,13 @@
-import { IsString, Matches, Length } from 'class-validator';
+import { IsString, Matches } from 'class-validator';
 
 export class VerifyOtpDto {
+  // Same format the send endpoint accepts, so a number can't be verified in a form it
+  // could never have been sent to
   @IsString()
-  @Matches(/^\+?[0-9]{10,15}$/, { message: 'Invalid phone number' })
+  @Matches(/^\+[1-9]\d{6,14}$/, { message: 'Phone number must be in E.164 format (e.g. +201234567890)' })
   phoneNumber: string;
 
   @IsString()
-  @Length(6, 6, { message: 'OTP must be 6 digits' })
+  @Matches(/^\d{6}$/, { message: 'OTP must be 6 digits' })
   code: string;
 }

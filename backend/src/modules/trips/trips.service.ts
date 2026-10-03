@@ -19,6 +19,11 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { BlocksService } from '../blocks/blocks.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { KashierService } from '../payments/kashier.service';
+import { toPublicUser } from '../../common/serializers/public-user';
+import { cairoDayBounds, formatCairoDate } from '../../common/time/cairo';
+import { creditPassengerCompletion, REFERRAL_REWARD_EGP, restorePromoCredit } from '../bookings/booking-side-effects';
+import { applyDriverCancellationStrike, LATE_DRIVER_CANCEL_HOURS } from './driver-strikes';
+import { UpdateTripDto } from './dto/update-trip.dto';
 
 // Matches the app's date picker. See assertDepartureTimeInRange — this needs to drop
 // inside Kashier's authorization hold window before online payments can be relied on.
@@ -56,7 +61,7 @@ export class TripsService {
     }
 
     if (driver.tripPostingBannedUntil && driver.tripPostingBannedUntil > new Date()) {
-      const until = driver.tripPostingBannedUntil.toLocaleDateString('ar-EG');
+      const until = formatCairoDate(driver.tripPostingBannedUntil);
       throw new ForbiddenException(`تم تعليق حقك في نشر الرحلات حتى ${until} بسبب الإلغاء المتكرر`);
     }
 
@@ -66,6 +71,10 @@ export class TripsService {
     }
 
     this.assertDepartureTimeInRange(dto.departureTime);
+
+    if (dto.originCity.trim().toLowerCase() === dto.destinationCity.trim().toLowerCase()) {
+      throw new BadRequestException('مدينة الانطلاق والوصول يجب أن تكونا مختلفتين');
+    }
 
     const trip = this.tripRepo.create({
       ...dto,
@@ -108,11 +117,12 @@ export class TripsService {
   }
 
   async search(dto: SearchTripsDto, currentUser: User) {
-    const date = new Date(dto.departureDate);
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    // The day the passenger picked, in Cairo — not in the server's timezone
+    const { start: startOfDay, end: endOfDay } = cairoDayBounds(dto.departureDate);
+    // Today's trips that have already left are still SCHEDULED until the driver starts
+    // them or the scheduler cancels them, and must not be offered for booking
+    const now = new Date();
+    const from = startOfDay > now ? startOfDay : now;
 
     // Block filtering: exclude trips from drivers I blocked, and drivers who blocked me
     const [blockedByMe, usersWhoBlockedMe] = await Promise.all([
@@ -126,7 +136,7 @@ export class TripsService {
       .leftJoinAndSelect('trip.driver', 'driver')
       .where('LOWER(trip.originCity) = LOWER(:origin)', { origin: dto.originCity })
       .andWhere('LOWER(trip.destinationCity) = LOWER(:destination)', { destination: dto.destinationCity })
-      .andWhere('trip.departureTime BETWEEN :start AND :end', { start: startOfDay, end: endOfDay })
+      .andWhere('trip.departureTime >= :start AND trip.departureTime < :end', { start: from, end: endOfDay })
       .andWhere('trip.status = :status', { status: TripStatus.SCHEDULED })
       .andWhere('trip.availableSeats >= :seats', { seats: dto.seats ?? 1 });
 
@@ -222,6 +232,7 @@ export class TripsService {
         booking.cancelledAt = new Date();
         booking.cancellationReason = 'تم إلغاء الرحلة من قِبل السائق';
         await manager.save(Booking, booking);
+        await restorePromoCredit(manager, booking);
         passengerIds.push(booking.passengerId);
       }
 
@@ -229,6 +240,20 @@ export class TripsService {
       trip.cancelledAt = new Date();
       trip.cancellationReason = reason ?? '';
       const saved = await manager.save(Trip, trip);
+
+      // Cancelling on passengers who were counting on the ride, close to departure, is
+      // what the strike policy exists for — it used to apply only to auto-cancellations.
+      const hadConfirmedPassengers = bookings.some((b) => b.confirmedAt != null);
+      const hoursUntilDeparture = (trip.departureTime.getTime() - Date.now()) / 3_600_000;
+      if (hadConfirmedPassengers) {
+        await manager.increment(User, { id: trip.driverId }, 'cancelledTripsAsDriver', 1);
+        if (hoursUntilDeparture < LATE_DRIVER_CANCEL_HOURS) {
+          const { notice } = await applyDriverCancellationStrike(manager, trip.driverId);
+          if (notice) {
+            setImmediate(() => void this.notifications.sendToUser(trip.driverId, notice));
+          }
+        }
+      }
 
       // Notify all affected passengers
       if (passengerIds.length > 0) {
@@ -321,23 +346,57 @@ export class TripsService {
     return trip;
   }
 
-  async updateTrip(tripId: string, driver: User, dto: Partial<Trip>): Promise<Trip> {
-    const trip = await this.findById(tripId);
+  async updateTrip(tripId: string, driver: User, dto: UpdateTripDto): Promise<Trip> {
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip) throw new NotFoundException('Trip not found');
     if (trip.driverId !== driver.id) throw new ForbiddenException('Not your trip');
     if (trip.status !== TripStatus.SCHEDULED) {
       throw new BadRequestException('Only scheduled trips can be edited');
     }
-    if (dto.totalSeats !== undefined && dto.totalSeats < (trip.totalSeats - trip.availableSeats)) {
+    const bookedSeats = trip.totalSeats - trip.availableSeats;
+    if (dto.totalSeats !== undefined && dto.totalSeats < bookedSeats) {
       throw new BadRequestException('Cannot reduce seats below already-booked count');
     }
-    if (dto.departureTime !== undefined) {
-      this.assertDepartureTimeInRange(dto.departureTime);
+    // Turning a trip women-only after men have booked would leave them on a trip they
+    // are no longer allowed on; the driver has to cancel those bookings first.
+    if (dto.womenOnly === true && !trip.womenOnly && bookedSeats > 0) {
+      throw new BadRequestException('لا يمكن تحويل الرحلة لرحلة نسائية بعد وجود حجوزات عليها');
     }
-    Object.assign(trip, dto);
+    const previousDeparture = trip.departureTime;
+    const { departureTime, ...rest } = dto;
+    Object.assign(trip, rest);
+    if (departureTime !== undefined) {
+      this.assertDepartureTimeInRange(departureTime);
+      trip.departureTime = new Date(departureTime);
+    }
     if (dto.totalSeats !== undefined) {
-      trip.availableSeats = dto.totalSeats - (trip.totalSeats - trip.availableSeats);
+      trip.availableSeats = dto.totalSeats - bookedSeats;
     }
-    return this.tripRepo.save(trip);
+    const saved = await this.tripRepo.save(trip);
+
+    // Passengers planned their day around the old time. Moving it silently meant they
+    // only found out at the pickup point.
+    if (departureTime !== undefined && previousDeparture.getTime() !== saved.departureTime.getTime()) {
+      setImmediate(async () => {
+        const affected = await this.bookingRepo.find({
+          where: {
+            tripId,
+            status: In([BookingStatus.CONFIRMED, BookingStatus.PENDING_DRIVER_APPROVAL]),
+          },
+          select: { passengerId: true },
+        });
+        const ids = [...new Set(affected.map((b) => b.passengerId))];
+        if (ids.length > 0) {
+          void this.notifications.sendToUsers(ids, {
+            title: 'تغيّر موعد رحلتك ⏰',
+            body: `غيّر السائق موعد رحلة ${saved.originCity} → ${saved.destinationCity}. راجع التفاصيل، ويمكنك الإلغاء إن لم يناسبك الموعد الجديد.`,
+            data: { tripId, screen: 'trip_detail' },
+          });
+        }
+      });
+    }
+
+    return saved;
   }
 
   async markComplete(tripId: string, driver: User): Promise<Trip> {
@@ -347,17 +406,33 @@ export class TripsService {
       throw new ForbiddenException('You can only complete your own trips');
     }
 
-    if (trip.status !== TripStatus.ACTIVE && trip.status !== TripStatus.SCHEDULED) {
-      throw new BadRequestException('Trip cannot be marked as complete in its current state');
+    // Only a started trip can be completed. Completing straight from SCHEDULED let a
+    // driver "finish" a trip before it ever ran — even days ahead of departure — and
+    // capture every passenger's held fare on the spot. The app only offers this action
+    // on a started trip anyway.
+    if (trip.status !== TripStatus.ACTIVE) {
+      throw new BadRequestException('ابدأ الرحلة أولاً قبل إنهائها');
     }
 
     const paymentsToCaptureIds: string[] = [];
     const completedPassengerIds: string[] = [];
+    let rewardedReferrers: string[] = [];
 
     const saved = await this.dataSource.transaction(async (manager) => {
+      // Conditional transition, so two simultaneous "end trip" taps cannot both run the
+      // completion — which double-counted the driver's trips and raced the captures.
+      const transition = await manager
+        .createQueryBuilder()
+        .update(Trip)
+        .set({ status: TripStatus.COMPLETED, completedAt: new Date() })
+        .where('id = :id AND status = :active', { id: tripId, active: TripStatus.ACTIVE })
+        .execute();
+      if (!transition.affected) {
+        throw new BadRequestException('Trip cannot be marked as complete in its current state');
+      }
       trip.status = TripStatus.COMPLETED;
       trip.completedAt = new Date();
-      const result = await manager.save(trip);
+      const result = trip;
 
       // Load active bookings (CONFIRMED or IN_PROGRESS) with payments before bulk update
       const confirmedBookings = await manager.find(Booking, {
@@ -399,8 +474,20 @@ export class TripsService {
         .where('id = :driverId', { driverId: driver.id })
         .execute();
 
+      rewardedReferrers = await creditPassengerCompletion(manager, completedPassengerIds);
+
       return result;
     });
+
+    for (const referrerId of rewardedReferrers) {
+      setImmediate(() => {
+        void this.notifications.sendToUser(referrerId, {
+          title: 'مكافأة الدعوة',
+          body: `رفيقك أكمل أول رحلة — حصلت على ${REFERRAL_REWARD_EGP} جنيه في رصيدك!`,
+          data: { screen: 'my_bookings' },
+        });
+      });
+    }
 
     // After the transaction: capture at Kashier, then record it. A payment left PENDING
     // here is simply not yet collected — reconcileCapturedPayments repairs the case
@@ -521,25 +608,32 @@ export class TripsService {
       [driver.id, bookingIds],
     );
     const ratedSet = new Set(ratedRows.map((r) => r.booking_id));
-    return bookings.map((b) => Object.assign(b, { hasRated: ratedSet.has(b.id) }));
+    // The driver sees who is riding with them, not the passengers' private records
+    return bookings.map((b) => ({
+      ...b,
+      passenger: toPublicUser(b.passenger),
+      hasRated: ratedSet.has(b.id),
+    })) as unknown as (Booking & { hasRated: boolean })[];
   }
 
-  async getComments(tripId: string): Promise<TripComment[]> {
+  // Public endpoint: it returned each commenter's full user record — phone number,
+  // national ID and all — to anyone, signed in or not.
+  async getComments(tripId: string) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) throw new NotFoundException('Trip not found');
-    return this.commentRepo.find({
+    const comments = await this.commentRepo.find({
       where: { tripId },
       relations: { user: true },
       order: { createdAt: 'ASC' },
     });
+    return comments.map((c) => ({ ...c, user: toPublicUser(c.user) }));
   }
 
-  async addComment(tripId: string, user: User, body: string): Promise<TripComment> {
+  async addComment(tripId: string, user: User, body: string) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) throw new NotFoundException('Trip not found');
-    const comment = this.commentRepo.create({ tripId, userId: user.id, body });
+    const comment = this.commentRepo.create({ tripId, userId: user.id, body: body.trim() });
     const saved = await this.commentRepo.save(comment);
-    saved.user = user;
 
     const senderName = user.fullName || user.phoneNumber;
     const preview = body.length > 60 ? body.substring(0, 60) + '...' : body;
@@ -569,7 +663,7 @@ export class TripsService {
       });
     }
 
-    return saved;
+    return { ...saved, user: toPublicUser(user) };
   }
 
   async getCoPassengers(tripId: string, user: User) {

@@ -47,7 +47,8 @@ export class SubscriptionsService {
 
     const subscription = await this.subRepo.findOne({ where: { userId } });
     const hasActiveSub =
-      subscription?.status === SubscriptionStatus.ACTIVE &&
+      (subscription?.status === SubscriptionStatus.ACTIVE ||
+        subscription?.status === SubscriptionStatus.TRIALING) &&
       subscription.currentPeriodEnd &&
       subscription.currentPeriodEnd > new Date();
 
@@ -123,7 +124,7 @@ export class SubscriptionsService {
         const sub = await this.subRepo.findOne({ where: { stripeCustomerId: customerId } });
         if (sub) {
           sub.stripeSubscriptionId = stripeSub.id;
-          sub.status = stripeSub.status as SubscriptionStatus;
+          sub.status = this.mapStripeStatus(stripeSub.status);
           const periodEnd = (stripeSub as any).current_period_end ?? stripeSub.items?.data?.[0]?.current_period_end;
           sub.currentPeriodEnd = periodEnd ? new Date(periodEnd * 1000) : null;
           await this.subRepo.save(sub);
@@ -141,6 +142,27 @@ export class SubscriptionsService {
         }
         break;
       }
+    }
+  }
+
+  /**
+   * Stripe has more subscription states than our enum. Writing e.g. "incomplete" straight
+   * into the enum column failed the save, the webhook answered 500, and Stripe retried
+   * the same event for days without the subscription ever being recorded.
+   */
+  private mapStripeStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
+    switch (status) {
+      case 'active':
+        return SubscriptionStatus.ACTIVE;
+      case 'trialing':
+        return SubscriptionStatus.TRIALING;
+      case 'past_due':
+      case 'unpaid':
+      case 'incomplete':
+      case 'paused':
+        return SubscriptionStatus.PAST_DUE;
+      default:
+        return SubscriptionStatus.CANCELLED;
     }
   }
 

@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { validateEnv } from './config/validate-env';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import { AuthModule } from './modules/auth/auth.module';
@@ -29,8 +32,15 @@ import { HealthController } from './health.controller';
       isGlobal: true,
       load: [databaseConfig, jwtConfig],
       envFilePath: '.env',
+      validate: validateEnv,
     }),
     ScheduleModule.forRoot(),
+    // A general per-client ceiling against scraping and brute force. Endpoints with a
+    // cost per call (sending an OTP SMS) get tighter limits of their own.
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: 'default', ttl: 60_000, limit: 120 }],
+      skipIf: () => process.env.NODE_ENV === 'test',
+    }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => config.get('database')!,
@@ -54,5 +64,6 @@ import { HealthController } from './health.controller';
     SosModule,
   ],
   controllers: [HealthController],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

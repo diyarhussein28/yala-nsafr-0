@@ -7,6 +7,7 @@ import {
   Min,
   Max,
   IsEnum,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { LuggageSize, ChatPreference } from './create-trip.dto';
@@ -24,9 +25,10 @@ export class UpdateTripDto {
   totalSeats?: number;
 
   @IsOptional()
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Type(() => Number)
   @Min(1)
+  @Max(10000)
   pricePerSeat?: number;
 
   @IsOptional()
@@ -55,5 +57,6 @@ export class UpdateTripDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   notes?: string;
 }

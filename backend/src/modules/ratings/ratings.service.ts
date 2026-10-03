@@ -5,13 +5,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, LessThanOrEqual } from 'typeorm';
+import { Repository, DataSource, EntityManager, LessThanOrEqual } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Rating, RaterRole } from '../../database/entities/rating.entity';
 import { Booking, BookingStatus } from '../../database/entities/booking.entity';
 import { User } from '../../database/entities/user.entity';
 import { SubmitRatingDto } from './dto/submit-rating.dto';
+import { PlatformConfig, CONFIG_KEYS } from '../../database/entities/platform-config.entity';
+import { toPublicUser } from '../../common/serializers/public-user';
 
+// Fallbacks for a fresh database — platform_config (admin-editable) takes precedence.
 // Ratings are revealed after 7 days if the other party hasn't submitted
 const REVEAL_AFTER_DAYS = 7;
 
@@ -39,10 +42,9 @@ export class RatingsService {
 
     if (!booking) throw new NotFoundException('Booking not found');
 
-    if (
-      booking.status !== BookingStatus.TRIP_COMPLETED &&
-      booking.status !== BookingStatus.CONFIRMED
-    ) {
+    // CONFIRMED used to be accepted too, which let either side rate a trip that had not
+    // happened yet.
+    if (booking.status !== BookingStatus.TRIP_COMPLETED) {
       throw new BadRequestException('Can only rate after a completed trip');
     }
 
@@ -59,10 +61,19 @@ export class RatingsService {
     });
     if (existing) throw new BadRequestException('You have already rated this trip');
 
-    const revealAfter = new Date();
-    revealAfter.setDate(revealAfter.getDate() + REVEAL_AFTER_DAYS);
+    const revealDays = await this.getConfigNum(CONFIG_KEYS.RATING_REVEAL_DAYS, REVEAL_AFTER_DAYS);
+    const revealAfter = new Date(Date.now() + revealDays * 24 * 3_600_000);
 
     await this.dataSource.transaction(async (manager) => {
+      // Blind rating: a rating stays hidden until the other side has rated too, or the
+      // reveal window runs out. Every rating used to be saved already revealed, so the
+      // second person could see the first one's score before giving theirs — exactly
+      // the retaliation the blind system is meant to prevent.
+      const otherRating = await manager.findOne(Rating, {
+        where: { bookingId: dto.bookingId, raterId: rateeId },
+      });
+      const bothRated = !!otherRating;
+
       const rating = manager.create(Rating, {
         tripId: booking.tripId,
         bookingId: dto.bookingId,
@@ -71,20 +82,16 @@ export class RatingsService {
         raterRole,
         score: dto.score,
         comment: dto.comment,
-        isRevealed: true,
+        isRevealed: bothRated,
         revealAfter,
       });
       await manager.save(Rating, rating);
 
-      // Recalculate ratee's average immediately
-      await this.recalculateRating(manager, rateeId);
-
-      // If the other party already rated us, reveal their rating too and update our average
-      const otherRating = await manager.findOne(Rating, {
-        where: { bookingId: dto.bookingId, raterId: rateeId },
-      });
-      if (otherRating && !otherRating.isRevealed) {
-        await manager.update(Rating, { id: otherRating.id }, { isRevealed: true });
+      if (bothRated) {
+        if (!otherRating.isRevealed) {
+          await manager.update(Rating, { id: otherRating.id }, { isRevealed: true });
+        }
+        await this.recalculateRating(manager, rateeId);
         await this.recalculateRating(manager, rater.id);
       }
     });
@@ -92,7 +99,13 @@ export class RatingsService {
     return { message: 'شكراً! تم إرسال التقييم بنجاح.' };
   }
 
-  private async recalculateRating(manager: any, userId: string): Promise<void> {
+  private async getConfigNum(key: string, fallback: number): Promise<number> {
+    const row = await this.dataSource.manager.findOne(PlatformConfig, { where: { key } });
+    const value = row ? parseFloat(row.value) : NaN;
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  private async recalculateRating(manager: EntityManager, userId: string): Promise<void> {
     const result = await manager
       .createQueryBuilder(Rating, 'r')
       .select('AVG(r.score)', 'avg')
@@ -108,19 +121,26 @@ export class RatingsService {
       ratingCount: count,
     });
 
-    // Trust & safety: flag if average is too low
-    if (count >= MIN_RATINGS_FOR_FLAG && average < LOW_RATING_THRESHOLD) {
+    // Trust & safety: flag if average is too low. Thresholds come from platform_config so
+    // the values an admin edits are the ones applied.
+    const [threshold, minRatings] = await Promise.all([
+      this.getConfigNum(CONFIG_KEYS.LOW_RATING_THRESHOLD, LOW_RATING_THRESHOLD),
+      this.getConfigNum(CONFIG_KEYS.MIN_RATINGS_FOR_FLAG, MIN_RATINGS_FOR_FLAG),
+    ]);
+    if (count >= minRatings && average < threshold) {
       await manager.update(User, userId, { trustFlagged: true });
     }
   }
 
-  async getRevealedRatingsForUser(userId: string): Promise<Rating[]> {
-    return this.ratingRepo.find({
+  async getRevealedRatingsForUser(userId: string) {
+    const ratings = await this.ratingRepo.find({
       where: { rateeId: userId, isRevealed: true },
       relations: { rater: true },
       order: { createdAt: 'DESC' },
       take: 50,
     });
+    // Raters are other people: only their public profile goes out
+    return ratings.map((r) => ({ ...r, rater: toPublicUser(r.rater) }));
   }
 
   // Reveal ratings whose 7-day window has expired and recalculate affected users

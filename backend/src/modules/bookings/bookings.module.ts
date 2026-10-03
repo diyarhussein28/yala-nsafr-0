@@ -8,9 +8,10 @@ import { Trip } from '../../database/entities/trip.entity';
 import { Dispute } from '../../database/entities/dispute.entity';
 import { PlatformConfig } from '../../database/entities/platform-config.entity';
 import { PaymentsModule } from '../payments/payments.module';
+import { BlocksModule } from '../blocks/blocks.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Booking, Payment, Trip, Dispute, PlatformConfig]), PaymentsModule],
+  imports: [TypeOrmModule.forFeature([Booking, Payment, Trip, Dispute, PlatformConfig]), PaymentsModule, BlocksModule],
   controllers: [BookingsController],
   providers: [BookingsService],
   exports: [BookingsService],

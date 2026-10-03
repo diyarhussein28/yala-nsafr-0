@@ -48,7 +48,7 @@ export class TripsController {
     @CurrentUser() user: User,
     @Body() dto: UpdateTripDto,
   ) {
-    return this.tripsService.updateTrip(id, user, dto as any);
+    return this.tripsService.updateTrip(id, user, dto);
   }
 
   @Patch(':id/start')

@@ -8,6 +8,8 @@ import { Booking, BookingStatus } from '../../database/entities/booking.entity';
 import { Trip } from '../../database/entities/trip.entity';
 import { WithdrawalRequest, WithdrawalStatus } from '../../database/entities/withdrawal-request.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PaymentSettlementService } from './payment-settlement.service';
+import { restorePromoCredit } from '../bookings/booking-side-effects';
 
 @Controller('kashier')
 export class KashierController {
@@ -16,6 +18,7 @@ export class KashierController {
   constructor(
     private readonly kashierService: KashierService,
     private readonly notifications: NotificationsService,
+    private readonly settlement: PaymentSettlementService,
     @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(Booking) private readonly bookingRepo: Repository<Booking>,
     @InjectRepository(Trip) private readonly tripRepo: Repository<Trip>,
@@ -34,11 +37,7 @@ export class KashierController {
       try {
         const payment = await this.paymentRepo.findOne({ where: { gatewayOrderId: merchantOrderId } });
         if (payment) {
-          // Store Kashier's internal orderId so getOrderStatus can use it later
           const kashierInternalId = query['orderId'];
-          if (kashierInternalId && kashierInternalId !== merchantOrderId) {
-            payment.gatewayTransactionId = kashierInternalId;
-          }
           // This endpoint is public and unauthenticated — it has to be, because Kashier
           // redirects the customer's browser here. The query string is therefore
           // attacker-controlled: anyone could request it with status=SUCCESS for someone
@@ -51,6 +50,20 @@ export class KashierController {
               `payment-done claimed ${status} for ${merchantOrderId} but Kashier reports ` +
                 `${verified ?? 'unknown'} — ignoring`,
             );
+          }
+
+          // Kashier's order id is where capture, void and refund are sent later. The query
+          // string is attacker-controlled, so it used to be possible to repoint anyone's
+          // payment at a different order just by requesting this URL. Now it is only
+          // taken for a verified-paid payment that has no gateway id yet, and the signed
+          // webhook overwrites it with Kashier's own value when it arrives.
+          if (
+            reallyPaid &&
+            kashierInternalId &&
+            kashierInternalId !== merchantOrderId &&
+            !payment.gatewayTransactionId
+          ) {
+            payment.gatewayTransactionId = kashierInternalId;
           }
 
           if (reallyPaid) {
@@ -73,8 +86,6 @@ export class KashierController {
               // Still save the kashierTransactionId even if status isn't right yet
               await this.paymentRepo.save(payment);
             }
-          } else {
-            await this.paymentRepo.save(payment);
           }
         }
       } catch (e) {
@@ -152,8 +163,21 @@ h2{color:#16a34a;font-size:2rem;margin-bottom:12px}p{color:#555;font-size:1.1rem
     if (transactionId) payment.kashierTransactionId = transactionId;
     payment.gatewayResponse = body as any;
 
-    const nextStatus = this.paymentStatusFor(event, status);
+    let nextStatus = this.paymentStatusFor(event, status);
     const succeeded = status === 'SUCCESS';
+
+    // Webhooks can arrive out of order. A delayed `authorize` landing after the capture
+    // (or after a void/refund) would drag the payment back to PENDING — and the capture
+    // reconciliation would then try to capture it a second time.
+    const settledStatuses = [
+      PaymentStatus.CAPTURED,
+      PaymentStatus.RELEASED,
+      PaymentStatus.REFUNDED,
+      PaymentStatus.PARTIALLY_REFUNDED,
+    ];
+    if (nextStatus === PaymentStatus.PENDING && settledStatuses.includes(payment.status)) {
+      nextStatus = null;
+    }
 
     // Only a failed charge invalidates the booking. A failed refund or void concerns a
     // booking that was already paid for.
@@ -186,6 +210,40 @@ h2{color:#16a34a;font-size:2rem;margin-bottom:12px}p{color:#555;font-size:1.1rem
     if (nextStatus === PaymentStatus.REFUNDED) payment.refundedAt = new Date();
     await this.paymentRepo.save(payment);
 
+    // The passenger paid after we had already given up on the booking — checkout left
+    // open past the payment window, or a failed session that still went through. Nobody
+    // will ever capture this money, so hand it straight back instead of leaving a hold
+    // (or a charge) on a booking that no longer exists.
+    const bookingIsDead = [
+      BookingStatus.CANCELLED_BY_PASSENGER,
+      BookingStatus.CANCELLED_BY_DRIVER,
+      BookingStatus.REFUNDED,
+    ].includes(booking.status);
+    if (succeeded && (event === 'authorize' || event === 'pay') && bookingIsDead) {
+      const orderId = payment.gatewayTransactionId ?? payment.gatewayOrderId;
+      this.logger.warn(`Late ${event} for cancelled booking ${booking.id} — returning funds`);
+      setImmediate(() =>
+        void this.settlement.settle(
+          event === 'authorize'
+            ? {
+                paymentId: payment.id,
+                orderId,
+                targetTransactionId: payment.kashierTransactionId ?? undefined,
+                action: 'void',
+              }
+            : {
+                paymentId: payment.id,
+                orderId,
+                targetTransactionId: payment.kashierTransactionId ?? undefined,
+                action: 'refund',
+                refundAmount: Number(payment.amount),
+                fullRefund: true,
+              },
+          `late payment on cancelled booking ${booking.id}`,
+        ),
+      );
+    }
+
     if (succeeded && (event === 'authorize' || event === 'pay')) {
       if (booking.status === BookingStatus.PENDING_PAYMENT) {
         booking.status = BookingStatus.PENDING_DRIVER_APPROVAL;
@@ -214,6 +272,7 @@ h2{color:#16a34a;font-size:2rem;margin-bottom:12px}p{color:#555;font-size:1.1rem
           .set({ availableSeats: () => `available_seats + ${booking.seatsCount}` })
           .where('id = :id', { id: booking.tripId })
           .execute();
+        await restorePromoCredit(this.bookingRepo.manager, booking);
 
         this.logger.log(`Booking ${booking.id} payment failed — seats restored`);
       }

@@ -32,4 +32,48 @@ export class UpdateConfigDto {
   @Type(() => Number)
   @IsPositive()
   ratingRevealDays?: number;
+
+  // Cancellation policy — seeded at startup but previously not editable through the API,
+  // so the admin screen could show these values without being able to change them.
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  @Max(720)
+  freeCancelHours?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  @Max(720)
+  lateCancelHours?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  @Max(1)
+  lateCancelFeePct?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  @Max(1)
+  driverCompensationPct?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(1)
+  @Max(5)
+  lowRatingThreshold?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(1)
+  @Max(1000)
+  minRatingsForFlag?: number;
 }

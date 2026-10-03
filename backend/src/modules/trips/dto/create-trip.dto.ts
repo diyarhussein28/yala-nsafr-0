@@ -8,6 +8,7 @@ import {
   Max,
   IsEnum,
   MinLength,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -26,38 +27,50 @@ export enum ChatPreference {
 export class CreateTripDto {
   @IsString()
   @MinLength(2)
+  @MaxLength(100)
   originCity: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   originAddress?: string;
 
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
+  @Min(-90)
+  @Max(90)
   originLat?: number;
 
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
+  @Min(-180)
+  @Max(180)
   originLng?: number;
 
   @IsString()
   @MinLength(2)
+  @MaxLength(100)
   destinationCity: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   destinationAddress?: string;
 
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
+  @Min(-90)
+  @Max(90)
   destinationLat?: number;
 
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
+  @Min(-180)
+  @Max(180)
   destinationLng?: number;
 
   @IsDateString()
@@ -69,9 +82,10 @@ export class CreateTripDto {
   @Max(8)
   totalSeats: number;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Type(() => Number)
   @Min(1)
+  @Max(10000)
   pricePerSeat: number;
 
   @IsOptional()
@@ -100,5 +114,6 @@ export class CreateTripDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   notes?: string;
 }

@@ -5,6 +5,7 @@ import { User, UserRole, UserStatus } from '../../database/entities/user.entity'
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { SubmitIdVerificationDto } from './dto/submit-id-verification.dto';
 import { SubmitDriverVerificationDto } from './dto/submit-driver-verification.dto';
+import { parseEgyptianNationalId } from '../../common/validation/egyptian-national-id';
 
 const REFERRAL_WELCOME_CREDIT = 20;
 
@@ -46,11 +47,25 @@ export class UsersService {
   }
 
   async updateProfile(user: User, dto: UpdateProfileDto): Promise<User> {
-    Object.assign(user, dto);
-    if (user.status === UserStatus.PENDING_VERIFICATION && dto.fullName) {
-      user.status = UserStatus.ACTIVE;
+    // Gender decides who may book women-only trips, so it can be set once and is then
+    // locked — after ID verification it must match the national ID. It used to be freely
+    // editable, so anyone could switch to "female" and book a women-only trip.
+    if (dto.gender !== undefined && user.gender && dto.gender !== user.gender) {
+      throw new BadRequestException('لا يمكن تغيير الجنس بعد تحديده. تواصل مع الدعم إن كان هناك خطأ.');
     }
-    return this.userRepo.save(user);
+
+    const changes: Partial<User> = { ...dto };
+    if (user.status === UserStatus.PENDING_VERIFICATION && dto.fullName) {
+      changes.status = UserStatus.ACTIVE;
+    }
+
+    // Only the changed columns are written. Saving the whole entity loaded at the start
+    // of the request could write stale values back over concurrent changes — an admin
+    // ban, a promo deduction, a rating recount.
+    if (Object.keys(changes).length > 0) {
+      await this.userRepo.update(user.id, changes);
+    }
+    return this.findById(user.id);
   }
 
   async applyReferralCode(user: User, code: string): Promise<{ message: string; promoBalance: number }> {
@@ -78,18 +93,43 @@ export class UsersService {
   }
 
   async submitIdVerification(user: User, dto: SubmitIdVerificationDto): Promise<{ message: string }> {
-    user.nationalIdNumber = dto.nationalIdNumber;
-    if (dto.nationalIdPhotoUrl) user.nationalIdPhotoUrl = dto.nationalIdPhotoUrl;
-    await this.userRepo.save(user);
+    const parsed = parseEgyptianNationalId(dto.nationalIdNumber);
+    if (!parsed) {
+      throw new BadRequestException('الرقم القومي غير صحيح');
+    }
+    if (user.gender && user.gender !== parsed.gender) {
+      throw new BadRequestException('الرقم القومي لا يطابق الجنس المسجّل في ملفك');
+    }
+
+    const taken = await this.userRepo.findOne({
+      where: { nationalIdNumber: dto.nationalIdNumber },
+      select: { id: true },
+    });
+    if (taken && taken.id !== user.id) {
+      throw new BadRequestException('هذا الرقم القومي مسجّل بحساب آخر');
+    }
+
+    // A new submission is new evidence: it goes back to the admin queue. Keeping the old
+    // approval let a verified user swap in a different ID number and photo while still
+    // showing as verified.
+    await this.userRepo.update(user.id, {
+      nationalIdNumber: dto.nationalIdNumber,
+      ...(dto.nationalIdPhotoUrl ? { nationalIdPhotoUrl: dto.nationalIdPhotoUrl } : {}),
+      gender: parsed.gender,
+      idVerified: false,
+      idVerifiedAt: null as unknown as Date,
+    });
     return { message: 'ID verification submitted. An admin will review it shortly.' };
   }
 
   async submitDriverVerification(user: User, dto: SubmitDriverVerificationDto): Promise<{ message: string }> {
-    Object.assign(user, dto);
-    if (user.role !== UserRole.ADMIN) {
-      user.role = UserRole.BOTH;
-    }
-    await this.userRepo.save(user);
+    // Same reasoning as the ID: changed licence or vehicle details must be re-reviewed,
+    // otherwise a verified driver could switch to an unchecked car and plate.
+    await this.userRepo.update(user.id, {
+      ...dto,
+      driverVerified: false,
+      ...(user.role !== UserRole.ADMIN ? { role: UserRole.BOTH } : {}),
+    });
     return { message: 'Driver verification submitted. An admin will review it shortly.' };
   }
 

@@ -10,6 +10,7 @@ import { TripMessage } from '../../database/entities/trip-message.entity';
 import { Trip } from '../../database/entities/trip.entity';
 import { Booking, PARTICIPANT_BOOKING_STATUSES } from '../../database/entities/booking.entity';
 import { User } from '../../database/entities/user.entity';
+import { toPublicUser } from '../../common/serializers/public-user';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -36,30 +37,36 @@ export class MessagesService {
     return trip;
   }
 
-  async getMessages(
-    tripId: string,
-    userId: string,
-    after?: string,
-  ): Promise<TripMessage[]> {
+  async getMessages(tripId: string, userId: string, after?: string) {
     await this.assertAccess(tripId, userId);
 
     const qb = this.msgRepo
       .createQueryBuilder('msg')
       .leftJoinAndSelect('msg.sender', 'sender')
-      .where('msg.tripId = :tripId', { tripId })
-      .orderBy('msg.createdAt', 'ASC')
-      .take(100);
+      .where('msg.tripId = :tripId', { tripId });
 
+    let messages: TripMessage[];
     if (after) {
       const afterDate = new Date(after);
       if (isNaN(afterDate.getTime())) throw new BadRequestException('Invalid after timestamp');
-      qb.andWhere('msg.createdAt > :after', { after: afterDate });
+      messages = await qb
+        .andWhere('msg.createdAt > :after', { after: afterDate })
+        .orderBy('msg.createdAt', 'ASC')
+        .take(100)
+        .getMany();
+    } else {
+      // The newest 100, shown oldest-first. Taking the first 100 in ascending order meant
+      // that once a chat passed 100 messages, opening it showed only the oldest ones.
+      messages = (
+        await qb.orderBy('msg.createdAt', 'DESC').take(100).getMany()
+      ).reverse();
     }
 
-    return qb.getMany();
+    // Senders are other people — never hand out their private records
+    return messages.map((m) => ({ ...m, sender: toPublicUser(m.sender) }));
   }
 
-  async sendMessage(tripId: string, user: User, body: string): Promise<TripMessage> {
+  async sendMessage(tripId: string, user: User, body: string) {
     if (!body || body.trim().length === 0) {
       throw new BadRequestException('Message body is required');
     }
@@ -71,7 +78,6 @@ export class MessagesService {
 
     const msg = this.msgRepo.create({ tripId, senderId: user.id, body: body.trim() });
     const saved = await this.msgRepo.save(msg);
-    saved.sender = user;
 
     setImmediate(async () => {
       const bookings = await this.bookingRepo.find({
@@ -93,6 +99,6 @@ export class MessagesService {
       }
     });
 
-    return saved;
+    return { ...saved, sender: toPublicUser(user) };
   }
 }

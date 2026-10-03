@@ -6,14 +6,13 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, LessThan } from 'typeorm';
+import { Repository, DataSource, EntityManager, In, LessThan } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Booking, BookingStatus, PaymentMethod } from '../../database/entities/booking.entity';
 import { Payment, PaymentStatus } from '../../database/entities/payment.entity';
 import { Trip, TripStatus } from '../../database/entities/trip.entity';
-import { User, Gender } from '../../database/entities/user.entity';
-import { ReferralReward } from '../../database/entities/referral-reward.entity';
+import { User, Gender, UserRole, UserStatus } from '../../database/entities/user.entity';
 import {
   Dispute,
   DisputeStatus,
@@ -28,9 +27,31 @@ import {
   PaymentSettlementService,
   PaymentSettlement,
 } from '../payments/payment-settlement.service';
+import { BlocksService } from '../blocks/blocks.service';
+import { toBookedDriver, toPublicUser } from '../../common/serializers/public-user';
+import {
+  creditPassengerCompletion,
+  REFERRAL_REWARD_EGP,
+  restorePromoCredit,
+} from './booking-side-effects';
 
 // Auto-confirm 2 hours after departure time if no dispute
 const AUTO_CONFIRM_HOURS = 2;
+
+// How long a card booking may sit in PENDING_PAYMENT before its seats are released.
+// Without an expiry, anyone could open checkout for every seat on a trip and never pay,
+// and the trip would show as full until it was auto-cancelled.
+export const PENDING_PAYMENT_TTL_MINUTES = 30;
+
+// Bookings a passenger still holds on a trip. A second booking on top of one of these is
+// refused — the app never offers it, and allowing it over the API let one passenger
+// stack holds on the same trip.
+const ACTIVE_BOOKING_STATUSES = [
+  BookingStatus.PENDING_PAYMENT,
+  BookingStatus.PENDING_DRIVER_APPROVAL,
+  BookingStatus.CONFIRMED,
+  BookingStatus.IN_PROGRESS,
+];
 
 @Injectable()
 export class BookingsService {
@@ -50,6 +71,7 @@ export class BookingsService {
     private readonly notifications: NotificationsService,
     private readonly kashier: KashierService,
     private readonly settlement: PaymentSettlementService,
+    private readonly blocks: BlocksService,
   ) {}
 
   private async getConfigNum(key: string, fallback: number): Promise<number> {
@@ -148,17 +170,29 @@ export class BookingsService {
   }
 
   async create(passenger: User, dto: CreateBookingDto): Promise<Booking & { paymentUrl?: string }> {
-    // Check if passenger is temporarily restricted from booking
+    const isCashBooking = !dto.paymentMethod || dto.paymentMethod === PaymentMethod.CASH;
+
     const freshPassenger = await this.dataSource.manager.findOne(User, {
       where: { id: passenger.id },
-      select: { id: true, cashBookingRestrictedUntil: true },
+      select: { id: true, status: true, fullName: true, cashBookingRestrictedUntil: true },
     });
+
+    // A suspended or banned account, or one that never finished profile setup, must not
+    // be able to reserve seats — only trip posting used to check this.
+    if (!freshPassenger || freshPassenger.status !== UserStatus.ACTIVE || !freshPassenger.fullName) {
+      throw new ForbiddenException('أكمل ملفك الشخصي أو تواصل مع الدعم قبل الحجز');
+    }
+
+    // The restriction is on *cash* bookings: a passenger who cancels cash trips late can
+    // still book with a card, where the cancellation policy actually costs them. It used
+    // to block every booking while its message claimed only cash was affected.
     if (
-      freshPassenger?.cashBookingRestrictedUntil &&
+      isCashBooking &&
+      freshPassenger.cashBookingRestrictedUntil &&
       freshPassenger.cashBookingRestrictedUntil > new Date()
     ) {
       throw new BadRequestException(
-        'أنت ممنوع مؤقتاً من حجز رحلات الكاش بسبب الإلغاء المتكرر',
+        'أنت ممنوع مؤقتاً من حجز رحلات الكاش بسبب الإلغاء المتكرر — يمكنك الحجز بالبطاقة',
       );
     }
 
@@ -182,8 +216,32 @@ export class BookingsService {
       if (trip.status !== TripStatus.SCHEDULED) {
         throw new BadRequestException('Trip is no longer available for booking');
       }
+      // A trip stays SCHEDULED until the driver starts it or the scheduler cancels it,
+      // which can be up to 45 minutes after departure — it must not take bookings then.
+      if (new Date(trip.departureTime).getTime() <= Date.now()) {
+        throw new BadRequestException('هذه الرحلة انطلق موعدها ولم تعد متاحة للحجز');
+      }
       if (trip.driverId === passenger.id) {
         throw new BadRequestException('You cannot book your own trip');
+      }
+      const existingBooking = await manager.findOne(Booking, {
+        where: {
+          tripId: trip.id,
+          passengerId: passenger.id,
+          status: In(ACTIVE_BOOKING_STATUSES),
+        },
+        select: { id: true },
+      });
+      if (existingBooking) {
+        throw new BadRequestException('لديك حجز قائم بالفعل على هذه الرحلة');
+      }
+      // Search hides blocked drivers, but a direct booking call did not check at all
+      const [blockedByDriver, blockedByPassenger] = await Promise.all([
+        this.blocks.isBlocked(trip.driverId, passenger.id),
+        this.blocks.isBlocked(passenger.id, trip.driverId),
+      ]);
+      if (blockedByDriver || blockedByPassenger) {
+        throw new ForbiddenException('لا يمكنك الحجز على هذه الرحلة');
       }
       if (trip.availableSeats < dto.seatsCount) {
         throw new BadRequestException(`Only ${trip.availableSeats} seat(s) remaining`);
@@ -361,6 +419,7 @@ export class BookingsService {
       booking.status = BookingStatus.CANCELLED_BY_DRIVER;
       booking.cancelledAt = new Date();
       const result = await manager.save(Booking, booking);
+      await restorePromoCredit(manager, booking);
 
       // Restore seats
       await manager
@@ -436,11 +495,24 @@ export class BookingsService {
     });
 
     for (const booking of expired) {
-      await this.dataSource.transaction(async (manager) => {
-        booking.status = BookingStatus.CANCELLED_BY_DRIVER;
-        booking.cancelledAt = new Date();
-        booking.cancellationReason = 'انتهت مهلة موافقة السائق';
-        await manager.save(Booking, booking);
+      const rejected = await this.dataSource.transaction(async (manager) => {
+        // Conditional on the status still being pending: the driver may have approved
+        // this booking after the list above was read. Saving the stale entity used to
+        // overwrite that approval with a rejection and void a paid passenger's hold.
+        const result = await manager
+          .createQueryBuilder()
+          .update(Booking)
+          .set({
+            status: BookingStatus.CANCELLED_BY_DRIVER,
+            cancelledAt: new Date(),
+            cancellationReason: 'انتهت مهلة موافقة السائق',
+          })
+          .where('id = :id AND status = :pending', {
+            id: booking.id,
+            pending: BookingStatus.PENDING_DRIVER_APPROVAL,
+          })
+          .execute();
+        if (!result.affected) return false;
 
         await manager
           .createQueryBuilder()
@@ -448,7 +520,10 @@ export class BookingsService {
           .set({ availableSeats: () => `available_seats + ${booking.seatsCount}` })
           .where('id = :id', { id: booking.tripId })
           .execute();
+        await restorePromoCredit(manager, booking);
+        return true;
       });
+      if (!rejected) continue;
 
       // The driver never responded, so the passenger must not stay out of pocket
       await this.returnFundsForRejectedBooking(booking.id);
@@ -461,6 +536,105 @@ export class BookingsService {
         });
       });
     }
+  }
+
+  /**
+   * Releases seats held by card bookings whose checkout was never completed. Before
+   * giving up, Kashier is asked whether the payment actually went through (the webhook
+   * may simply have been lost) — a paid booking is moved on to the driver instead.
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async expireAbandonedPayments(): Promise<void> {
+    const cutoff = new Date(Date.now() - PENDING_PAYMENT_TTL_MINUTES * 60 * 1000);
+    const stale = await this.bookingRepo.find({
+      where: { status: BookingStatus.PENDING_PAYMENT, createdAt: LessThan(cutoff) },
+      relations: { payment: true, trip: true },
+    });
+
+    for (const booking of stale) {
+      try {
+        const kashierStatus =
+          (await this.kashier.getPaymentStatus(booking.payment?.gatewaySessionId)) ??
+          (await this.kashier.getOrderStatus(booking.payment?.gatewayOrderId));
+        if (
+          kashierStatus === 'AUTHORIZED' ||
+          kashierStatus === 'CAPTURED' ||
+          kashierStatus === 'SUCCESS'
+        ) {
+          await this.markPaidAndNotifyDriver(booking);
+          continue;
+        }
+
+        const expired = await this.dataSource.transaction(async (manager) => {
+          const result = await manager
+            .createQueryBuilder()
+            .update(Booking)
+            .set({
+              status: BookingStatus.CANCELLED_BY_PASSENGER,
+              cancelledAt: new Date(),
+              cancellationReason: 'انتهت مهلة إتمام الدفع',
+            })
+            .where('id = :id AND status = :pending', {
+              id: booking.id,
+              pending: BookingStatus.PENDING_PAYMENT,
+            })
+            .execute();
+          if (!result.affected) return false;
+
+          await manager
+            .createQueryBuilder()
+            .update(Trip)
+            .set({ availableSeats: () => `available_seats + ${booking.seatsCount}` })
+            .where('id = :id', { id: booking.tripId })
+            .execute();
+          if (booking.payment && booking.payment.status === PaymentStatus.PENDING) {
+            await manager.update(Payment, booking.payment.id, { status: PaymentStatus.FAILED });
+          }
+          await restorePromoCredit(manager, booking);
+          return true;
+        });
+
+        if (expired) {
+          this.logger.log(`Expired unpaid booking ${booking.id} — seats released`);
+          setImmediate(() => {
+            void this.notifications.sendToUser(booking.passengerId, {
+              title: 'انتهت مهلة الدفع',
+              body: 'لم يكتمل الدفع في الوقت المحدد فتم إلغاء الحجز. يمكنك الحجز مرة أخرى إن كانت المقاعد متاحة.',
+              data: { bookingId: booking.id, tripId: booking.tripId, screen: 'my_bookings' },
+            });
+          });
+        }
+      } catch (err) {
+        this.logger.error(`Failed to expire unpaid booking ${booking.id}: ${String(err)}`);
+      }
+    }
+  }
+
+  /** PENDING_PAYMENT → PENDING_DRIVER_APPROVAL once payment is confirmed, guarded on status. */
+  private async markPaidAndNotifyDriver(booking: Booking): Promise<boolean> {
+    const result = await this.bookingRepo
+      .createQueryBuilder()
+      .update(Booking)
+      .set({ status: BookingStatus.PENDING_DRIVER_APPROVAL })
+      .where('id = :id AND status = :pending', {
+        id: booking.id,
+        pending: BookingStatus.PENDING_PAYMENT,
+      })
+      .execute();
+    if (!result.affected) return false;
+
+    if (booking.payment) {
+      await this.paymentRepo.update(booking.payment.id, { status: PaymentStatus.PENDING });
+    }
+    this.logger.log(`Booking ${booking.id} confirmed paid → pending_driver_approval`);
+    if (booking.trip?.driverId) {
+      setImmediate(() => void this.notifications.sendToUser(booking.trip.driverId, {
+        title: 'طلب حجز جديد 🎉',
+        body: `راكب دفع ${booking.totalAmount} ج وينتظر موافقتك`,
+        data: { screen: 'driver_bookings', tripId: booking.tripId },
+      }));
+    }
+    return true;
   }
 
   async confirmCompletion(bookingId: string, user: User): Promise<Booking> {
@@ -495,7 +669,7 @@ export class BookingsService {
     });
   }
 
-  private async releaseEscrow(manager: any, booking: Booking): Promise<void> {
+  private async releaseEscrow(manager: EntityManager, booking: Booking): Promise<void> {
     booking.status = BookingStatus.TRIP_COMPLETED;
     booking.completedAt = new Date();
     await manager.save(Booking, booking);
@@ -521,44 +695,15 @@ export class BookingsService {
       .where('id = (SELECT driver_id FROM trips WHERE id = :tripId)', { tripId: booking.tripId })
       .execute();
 
-    await manager
-      .createQueryBuilder()
-      .update('users')
-      .set({ completedTripsAsPassenger: () => 'completed_trips_as_passenger + 1' })
-      .where('id = :id', { id: booking.passengerId })
-      .execute();
-
-    // Referral reward: credit the referrer on the passenger's first completed trip
-    const passenger = await manager.findOne(User, {
-      where: { id: booking.passengerId },
-      select: { id: true, referredByUserId: true },
-    });
-    if (passenger?.referredByUserId) {
-      const existingReward = await manager.findOne(ReferralReward, {
-        where: { referredUserId: booking.passengerId },
+    const rewardedReferrers = await creditPassengerCompletion(manager, [booking.passengerId]);
+    for (const referrerId of rewardedReferrers) {
+      setImmediate(() => {
+        void this.notifications.sendToUser(referrerId, {
+          title: 'مكافأة الدعوة',
+          body: `رفيقك أكمل أول رحلة — حصلت على ${REFERRAL_REWARD_EGP} جنيه في رصيدك!`,
+          data: { screen: 'my_bookings' },
+        });
       });
-      if (!existingReward) {
-        const REFERRAL_REWARD_EGP = 30;
-        const reward = manager.create(ReferralReward, {
-          referrerId: passenger.referredByUserId,
-          referredUserId: booking.passengerId,
-          amount: REFERRAL_REWARD_EGP,
-        });
-        await manager.save(ReferralReward, reward);
-        await manager
-          .createQueryBuilder()
-          .update(User)
-          .set({ promoBalance: () => `promo_balance + ${REFERRAL_REWARD_EGP}` })
-          .where('id = :id', { id: passenger.referredByUserId })
-          .execute();
-        setImmediate(() => {
-          void this.notifications.sendToUser(passenger.referredByUserId!, {
-            title: 'مكافأة الدعوة',
-            body: `رفيقك أكمل أول رحلة — حصلت على ${REFERRAL_REWARD_EGP} جنيه في رصيدك!`,
-            data: { screen: 'my_bookings' },
-          });
-        });
-      }
     }
   }
 
@@ -750,36 +895,57 @@ export class BookingsService {
       [passengerId, bookingIds],
     );
     const ratedSet = new Set(ratedRows.map((r) => r.booking_id));
-    return bookings.map((b) => Object.assign(b, { hasRated: ratedSet.has(b.id) }));
+    return bookings.map((b) => ({
+      ...b,
+      trip: b.trip ? { ...b.trip, driver: toBookedDriver(b.trip.driver) } : b.trip,
+      hasRated: ratedSet.has(b.id),
+    })) as unknown as (Booking & { hasRated: boolean })[];
   }
 
-  async findById(id: string): Promise<Booking> {
+  /**
+   * One booking, for its passenger, the trip's driver or an admin. This endpoint used to
+   * answer any signed-in user for any booking id, with both parties' full user records
+   * attached — phone numbers, national ID numbers and photos included.
+   */
+  async findById(id: string, viewer: User) {
     const booking = await this.bookingRepo.findOne({
       where: { id },
       relations: { trip: { driver: true }, passenger: true, payment: true },
     });
     if (!booking) throw new NotFoundException('Booking not found');
 
+    const isPassenger = booking.passengerId === viewer.id;
+    const isDriver = booking.trip?.driverId === viewer.id;
+    if (!isPassenger && !isDriver && viewer.role !== UserRole.ADMIN) {
+      // Same answer as a missing booking, so ids cannot be probed for existence
+      throw new NotFoundException('Booking not found');
+    }
+
     // Webhook recovery: if still pending_payment, check Kashier directly
     if (booking.status === BookingStatus.PENDING_PAYMENT && booking.payment?.gatewaySessionId) {
       const kashierStatus = await this.kashier.getPaymentStatus(booking.payment.gatewaySessionId);
       if (kashierStatus === 'AUTHORIZED' || kashierStatus === 'CAPTURED') {
-        booking.status = BookingStatus.PENDING_DRIVER_APPROVAL;
-        booking.payment.status = PaymentStatus.PENDING;
-        await this.bookingRepo.save(booking);
-        this.logger.log(`findById recovery: booking ${id} updated to pending_driver_approval`);
-
-        if (booking.trip?.driverId) {
-          setImmediate(() => void this.notifications.sendToUser(booking.trip.driverId, {
-            title: 'طلب حجز جديد 🎉',
-            body: `راكب دفع ${booking.totalAmount} ج وينتظر موافقتك`,
-            data: { screen: 'driver_bookings', tripId: booking.tripId },
-          }));
+        if (await this.markPaidAndNotifyDriver(booking)) {
+          booking.status = BookingStatus.PENDING_DRIVER_APPROVAL;
+          booking.payment.status = PaymentStatus.PENDING;
         }
       }
     }
 
-    return booking;
+    if (viewer.role === UserRole.ADMIN && !isPassenger && !isDriver) return booking;
+
+    // The raw gateway payload is internal bookkeeping, not something either party needs
+    const payment = booking.payment
+      ? (({ gatewayResponse: _omit, ...rest }) => rest)(booking.payment)
+      : booking.payment;
+    return {
+      ...booking,
+      payment,
+      passenger: toPublicUser(booking.passenger),
+      trip: booking.trip
+        ? { ...booking.trip, driver: toBookedDriver(booking.trip.driver) }
+        : booking.trip,
+    };
   }
 
   // Called from the in-app WebView after it intercepts Kashier's payment redirect.
@@ -804,41 +970,37 @@ export class BookingsService {
       throw new ForbiddenException('Not your booking');
     }
 
-    if (booking.payment) {
-      booking.payment.gatewayTransactionId = kashierOrderId;
-      if (booking.status === BookingStatus.PENDING_PAYMENT) {
-        const kashierStatus = await this.kashier.getPaymentStatus(
-          booking.payment.gatewaySessionId,
-        );
-        const paid =
-          kashierStatus === 'AUTHORIZED' ||
-          kashierStatus === 'CAPTURED' ||
-          kashierStatus === 'SUCCESS';
-        if (!paid) {
-          this.logger.warn(
-            `healFromRedirect refused for booking ${bookingId}: Kashier reports ` +
-              `${kashierStatus ?? 'unknown'} for session ${booking.payment.gatewaySessionId ?? 'none'}`,
-          );
-          await this.bookingRepo.manager.save(Payment, booking.payment);
-          return { healed: false };
-        }
-        booking.payment.status = PaymentStatus.PENDING;
-        await this.bookingRepo.manager.save(Payment, booking.payment);
-        booking.status = BookingStatus.PENDING_DRIVER_APPROVAL;
-        await this.bookingRepo.save(booking);
-        this.logger.log(`healFromRedirect: booking ${bookingId} → pending_driver_approval, kashierOrderId=${kashierOrderId}`);
-        if (booking.trip?.driverId) {
-          setImmediate(() => void this.notifications.sendToUser(booking.trip.driverId, {
-            title: 'طلب حجز جديد 🎉',
-            body: `راكب دفع ${booking.totalAmount} ج وينتظر موافقتك`,
-            data: { screen: 'driver_bookings', tripId: booking.tripId },
-          }));
-        }
-        return { healed: true };
-      }
-      await this.bookingRepo.manager.save(Payment, booking.payment);
+    if (!booking.payment || booking.status !== BookingStatus.PENDING_PAYMENT) {
+      return { healed: false };
     }
-    return { healed: false };
+
+    const kashierStatus = await this.kashier.getPaymentStatus(booking.payment.gatewaySessionId);
+    const paid =
+      kashierStatus === 'AUTHORIZED' ||
+      kashierStatus === 'CAPTURED' ||
+      kashierStatus === 'SUCCESS';
+    if (!paid) {
+      this.logger.warn(
+        `healFromRedirect refused for booking ${bookingId}: Kashier reports ` +
+          `${kashierStatus ?? 'unknown'} for session ${booking.payment.gatewaySessionId ?? 'none'}`,
+      );
+      return { healed: false };
+    }
+
+    // The order id comes from the client and is what later capture, void and refund calls
+    // are addressed to. It used to be stored unconditionally — even for unpaid bookings —
+    // so a caller could point their payment at someone else's order. It is now only a
+    // fallback for a payment with no gateway id yet; the signed webhook, which carries
+    // Kashier's own value, overwrites it when it arrives.
+    if (kashierOrderId && !booking.payment.gatewayTransactionId) {
+      await this.paymentRepo.update(booking.payment.id, { gatewayTransactionId: kashierOrderId });
+    }
+
+    const healed = await this.markPaidAndNotifyDriver(booking);
+    if (healed) {
+      this.logger.log(`healFromRedirect: booking ${bookingId} → pending_driver_approval`);
+    }
+    return { healed };
   }
 
   async openDispute(user: User, dto: OpenDisputeDto): Promise<Dispute> {
@@ -930,7 +1092,7 @@ export class BookingsService {
   }
 
   // Dev-only: simulate Kashier authorization webhook for a PENDING_PAYMENT booking
-  async mockConfirmPayment(bookingId: string): Promise<void> {
+  async mockConfirmPayment(bookingId: string, passengerId?: string): Promise<void> {
     if (!this.kashier.isMock) return;
 
     const payment = await this.dataSource.manager.findOne(Payment, {
@@ -940,6 +1102,7 @@ export class BookingsService {
 
     const booking = await this.bookingRepo.findOne({ where: { id: bookingId } });
     if (!booking || booking.status !== BookingStatus.PENDING_PAYMENT) return;
+    if (passengerId && booking.passengerId !== passengerId) return;
 
     payment.status = PaymentStatus.PENDING;
     await this.dataSource.manager.save(Payment, payment);

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Body, Request, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, Request, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { LocationService } from './location.service';
 import { PostLocationDto } from './dto/post-location.dto';
@@ -11,7 +11,7 @@ export class LocationController {
   /** Driver posts their current position */
   @Post()
   record(
-    @Param('tripId') tripId: string,
+    @Param('tripId', ParseUUIDPipe) tripId: string,
     @Body() dto: PostLocationDto,
     @Request() req: any,
   ) {
@@ -20,7 +20,7 @@ export class LocationController {
 
   /** Driver or confirmed passenger fetches the latest position */
   @Get('latest')
-  latest(@Param('tripId') tripId: string, @Request() req: any) {
+  latest(@Param('tripId', ParseUUIDPipe) tripId: string, @Request() req: any) {
     return this.locationService.getLatestLocation(tripId, req.user.id);
   }
 }

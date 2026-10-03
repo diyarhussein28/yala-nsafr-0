@@ -1,11 +1,11 @@
-import { IsUUID, IsNumber, IsOptional, IsString, Min, Max } from 'class-validator';
+import { IsUUID, IsNumber, IsOptional, IsString, Min, Max, MaxLength, IsInt } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class SubmitRatingDto {
   @IsUUID()
   bookingId: string;
 
-  @IsNumber()
+  @IsInt()
   @Type(() => Number)
   @Min(1)
   @Max(5)
@@ -13,5 +13,6 @@ export class SubmitRatingDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   comment?: string;
 }

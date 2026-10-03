@@ -1,4 +1,4 @@
-import { IsOptional, IsNumber, IsString, IsEnum } from 'class-validator';
+import { IsOptional, IsNumber, IsString, IsEnum, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { UserStatus, UserRole } from '../../../database/entities/user.entity';
 import { TripStatus } from '../../../database/entities/trip.entity';
@@ -32,6 +32,7 @@ export class ListUsersQueryDto {
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
+  @Min(1)
   page?: number = 1;
 
   @IsOptional()
@@ -52,6 +53,7 @@ export class ListDisputesQueryDto {
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
+  @Min(1)
   page?: number = 1;
 
   @IsOptional()
@@ -72,6 +74,7 @@ export class ListTripsQueryDto {
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
+  @Min(1)
   page?: number = 1;
 
   @IsOptional()

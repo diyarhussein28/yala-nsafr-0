@@ -17,6 +17,7 @@ import {
 import { User } from '../../database/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { KashierService } from '../payments/kashier.service';
+import { startOfCairoMonth } from '../../common/time/cairo';
 
 const MIN_WITHDRAWAL = 200;
 
@@ -48,11 +49,14 @@ export class EarningsService {
       .andWhere('b.status = :status', { status: BookingStatus.TRIP_COMPLETED })
       .getMany();
 
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Month boundaries in Cairo time, not the server's
+    const startOfMonth = startOfCairoMonth();
 
     let thisMonthOnline = 0, thisMonthCash = 0;
     let allTimeOnline = 0,   allTimeCash = 0;
+    // Commission on cash trips: the driver collected the whole fare, so this is money
+    // they owe the platform. It was tracked per booking but never shown anywhere.
+    let cashCommissionOwed = 0;
 
     for (const b of bookings) {
       const isCash = b.paymentMethod === PaymentMethod.CASH;
@@ -69,6 +73,7 @@ export class EarningsService {
         const kept = Math.max(0, +(total - Number(b.payment?.refundAmount ?? 0)).toFixed(2));
         allTimeCash += kept;
         if (isThisMonth) thisMonthCash += kept;
+        if (!b.payment?.refundAmount) cashCommissionOwed += Number(b.commissionAmount ?? 0);
       } else if (b.payment?.status === PaymentStatus.CAPTURED) {
         // Only credit online payouts once the money is actually captured. A completed
         // trip whose capture failed or whose authorization lapsed collected nothing,
@@ -115,6 +120,9 @@ export class EarningsService {
       pendingBalance:    round(allTimeOnline - totalWithdrawn - pendingWithdrawal),
       totalWithdrawn:    round(totalWithdrawn),
       pendingWithdrawal: round(pendingWithdrawal),
+      // Informational for now — whether it is netted against payouts is a business
+      // decision that has not been made yet.
+      cashCommissionOwed: round(cashCommissionOwed),
       minWithdrawal:     MIN_WITHDRAWAL,
     };
   }
@@ -353,6 +361,20 @@ export class EarningsService {
       throw new BadRequestException('Request already settled');
     }
 
+    // Rejecting returns the amount to the driver's balance. If Kashier has already
+    // accepted a transfer for it, that transfer may still be delivered — the driver would
+    // be paid twice. Such a withdrawal is settled by the payout webhook or reconciliation,
+    // or rejected once Kashier itself reports the transfer as failed.
+    if (action === 'reject' && req.kashierTransferId && !this.kashier.isMock) {
+      const transferStatus = await this.kashier.getTransferStatus(req.kashierTransferId);
+      if (transferStatus !== 'FAILED') {
+        throw new BadRequestException(
+          `لا يمكن رفض هذا الطلب: تحويل Kashier ${req.kashierTransferId} ما زال قيد التنفيذ ` +
+            `(${transferStatus ?? 'حالة غير معروفة'}). انتظر نتيجة التحويل.`,
+        );
+      }
+    }
+
     req.status = action === 'pay' ? WithdrawalStatus.PAID : WithdrawalStatus.REJECTED;
     req.adminNote = adminNote ?? '';
     if (action === 'pay') req.paidAt = new Date();
@@ -375,8 +397,7 @@ export class EarningsService {
   }
 
   async getAdminCommissionSummary() {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfMonth = startOfCairoMonth();
 
     const [allTime, thisMonth] = await Promise.all([
       this.bookingRepo

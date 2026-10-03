@@ -5,9 +5,12 @@ import { Repository, DataSource, LessThan, Between, IsNull, In } from 'typeorm';
 import { Trip, TripStatus } from '../../database/entities/trip.entity';
 import { Booking, BookingStatus } from '../../database/entities/booking.entity';
 import { Payment, PaymentStatus } from '../../database/entities/payment.entity';
-import { User, UserStatus } from '../../database/entities/user.entity';
+import { User } from '../../database/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { KashierService } from '../payments/kashier.service';
+import { applyDriverCancellationStrike } from '../trips/driver-strikes';
+import { restorePromoCredit } from '../bookings/booking-side-effects';
+import { formatCairoTime } from '../../common/time/cairo';
 
 @Injectable()
 export class SchedulerService {
@@ -164,6 +167,7 @@ export class SchedulerService {
         booking.cancelledAt = new Date();
         booking.cancellationReason = 'تم إلغاء الرحلة تلقائياً لعدم البدء في الموعد المحدد';
         await manager.save(Booking, booking);
+        await restorePromoCredit(manager, booking);
         passengerIds.push(booking.passengerId);
       }
 
@@ -174,43 +178,9 @@ export class SchedulerService {
 
       // Increment driver's cancelled-trips counter + apply repeat-offender policy
       await manager.increment(User, { id: fresh.driverId }, 'cancelledTripsAsDriver', 1);
-      await manager.increment(User, { id: fresh.driverId }, 'cancellationStrikes', 1);
-
-      const driverAfter = await manager.findOne(User, {
-        where: { id: fresh.driverId },
-        select: { id: true, cancellationStrikes: true },
-      });
-      const strikes = driverAfter?.cancellationStrikes ?? 0;
-
-      if (strikes >= 10) {
-        await manager.update(User, { id: fresh.driverId }, { status: UserStatus.SUSPENDED });
-        setImmediate(() =>
-          void this.notifications.sendToUser(fresh.driverId, {
-            title: '🚫 تم تعليق حسابك',
-            body: 'تم تعليق حسابك بشكل دائم بسبب الإلغاء المتكرر. تواصل مع الدعم.',
-            data: { screen: 'my_trips' },
-          }),
-        );
-      } else if (strikes >= 5) {
-        const bannedUntil = new Date(Date.now() + 30 * 24 * 3_600_000);
-        await manager.update(User, { id: fresh.driverId }, { tripPostingBannedUntil: bannedUntil });
-        setImmediate(() =>
-          void this.notifications.sendToUser(fresh.driverId, {
-            title: '⚠️ تم تعليق نشر الرحلات 30 يوماً',
-            body: `بسبب الإلغاء المتكرر، لن تتمكن من نشر رحلات لمدة 30 يوماً.`,
-            data: { screen: 'my_trips' },
-          }),
-        );
-      } else if (strikes >= 3) {
-        const bannedUntil = new Date(Date.now() + 7 * 24 * 3_600_000);
-        await manager.update(User, { id: fresh.driverId }, { tripPostingBannedUntil: bannedUntil });
-        setImmediate(() =>
-          void this.notifications.sendToUser(fresh.driverId, {
-            title: '⚠️ تم تعليق نشر الرحلات 7 أيام',
-            body: `هذه إنذار ${strikes} — تم تعليق حقك في نشر رحلات لمدة 7 أيام.`,
-            data: { screen: 'my_trips' },
-          }),
-        );
+      const { notice } = await applyDriverCancellationStrike(manager, fresh.driverId);
+      if (notice) {
+        setImmediate(() => void this.notifications.sendToUser(fresh.driverId, notice));
       }
 
       this.logger.log(`Auto-cancelled trip ${trip.id} (driver ${trip.driverId})`);
@@ -288,7 +258,8 @@ export class SchedulerService {
     return [...new Set(bookings.map((b) => b.passengerId))];
   }
 
+  // Cairo time — the host's own clock is usually UTC, which printed departures 2–3h off
   private _fmtTime(date: Date): string {
-    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    return formatCairoTime(date);
   }
 }

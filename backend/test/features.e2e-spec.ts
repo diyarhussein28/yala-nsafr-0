@@ -2049,28 +2049,74 @@ describe('Features E2E', () => {
       return { trip, booking };
     }
 
-    it('passenger submits rating → updates driver ratingAverage', async () => {
+    // Blind rating: a single side's rating stays hidden and does not move the ratee's
+    // average until the other side has rated too (or the reveal window lapses).
+    it('a one-sided rating stays hidden and leaves the ratee average untouched', async () => {
       const { trip, booking } = await makeCompletedBookingForRating();
+      try {
+        const driverBefore = await userRepo.findOneBy({ id: driverUser.id });
+        const countBefore = driverBefore!.ratingCount;
 
-      const driverBefore = await userRepo.findOneBy({ id: driverUser.id });
-      const countBefore = driverBefore!.ratingCount;
+        await ratingsService.submit(passengerUser, {
+          bookingId: booking.id,
+          score: 5,
+          comment: 'رحلة رائعة',
+        });
 
-      await ratingsService.submit(passengerUser, {
-        bookingId: booking.id,
-        score: 5,
-        comment: 'رحلة رائعة',
-      });
+        const stored = await ratingRepo.findOneBy({ bookingId: booking.id, raterId: passengerUser.id });
+        expect(stored?.isRevealed).toBe(false);
+        expect(stored?.revealAfter.getTime()).toBeGreaterThan(Date.now());
 
-      const driverAfter = await userRepo.findOneBy({ id: driverUser.id });
-      expect(driverAfter!.ratingCount).toBe(countBefore + 1);
-      expect(Number(driverAfter!.ratingAverage)).toBeGreaterThan(0);
+        const driverAfter = await userRepo.findOneBy({ id: driverUser.id });
+        expect(driverAfter!.ratingCount).toBe(countBefore);
 
-      await ratingRepo.delete({ bookingId: booking.id });
-      await bookingRepo.delete(booking.id);
-      await tripRepo.delete(trip.id);
+        const visible = await ratingsService.getRevealedRatingsForUser(driverUser.id);
+        expect(visible.find((r) => r.bookingId === booking.id)).toBeUndefined();
+      } finally {
+        await ratingRepo.delete({ bookingId: booking.id });
+        await bookingRepo.delete(booking.id);
+        await tripRepo.delete(trip.id);
+        await userRepo.update(driverUser.id, { ratingAverage: 0, ratingCount: 0 });
+      }
+    });
 
-      // Reset driver rating
-      await userRepo.update(driverUser.id, { ratingAverage: 0, ratingCount: 0 });
+    it('once both sides rate, both ratings are revealed and both averages update', async () => {
+      const { trip, booking } = await makeCompletedBookingForRating();
+      try {
+        await ratingsService.submit(passengerUser, { bookingId: booking.id, score: 5 });
+        await ratingsService.submit(driverUser, { bookingId: booking.id, score: 4 });
+
+        const rows = await ratingRepo.findBy({ bookingId: booking.id });
+        expect(rows).toHaveLength(2);
+        expect(rows.every((r) => r.isRevealed)).toBe(true);
+
+        const driverAfter = await userRepo.findOneBy({ id: driverUser.id });
+        const passengerAfter = await userRepo.findOneBy({ id: passengerUser.id });
+        expect(driverAfter!.ratingCount).toBe(1);
+        expect(Number(driverAfter!.ratingAverage)).toBe(5);
+        expect(passengerAfter!.ratingCount).toBe(1);
+        expect(Number(passengerAfter!.ratingAverage)).toBe(4);
+      } finally {
+        await ratingRepo.delete({ bookingId: booking.id });
+        await bookingRepo.delete(booking.id);
+        await tripRepo.delete(trip.id);
+        await userRepo.update(driverUser.id, { ratingAverage: 0, ratingCount: 0 });
+        await userRepo.update(passengerUser.id, { ratingAverage: 0, ratingCount: 0 });
+      }
+    });
+
+    it('a trip that has not completed cannot be rated', async () => {
+      const { trip, booking } = await makeCompletedBookingForRating();
+      try {
+        await bookingRepo.update(booking.id, { status: BookingStatus.CONFIRMED });
+        await expect(
+          ratingsService.submit(passengerUser, { bookingId: booking.id, score: 5 }),
+        ).rejects.toThrow('completed trip');
+      } finally {
+        await ratingRepo.delete({ bookingId: booking.id });
+        await bookingRepo.delete(booking.id);
+        await tripRepo.delete(trip.id);
+      }
     });
 
     it('duplicate rating is rejected', async () => {
@@ -2089,23 +2135,28 @@ describe('Features E2E', () => {
       await userRepo.update(driverUser.id, { ratingAverage: 0, ratingCount: 0 });
     });
 
-    it('getRevealedRatingsForUser includes rater info', async () => {
+    it('getRevealedRatingsForUser includes the rater public profile only', async () => {
       const { trip, booking } = await makeCompletedBookingForRating();
+      try {
+        await ratingsService.submit(passengerUser, { bookingId: booking.id, score: 5 });
+        await ratingsService.submit(driverUser, { bookingId: booking.id, score: 5 });
 
-      await ratingsService.submit(passengerUser, { bookingId: booking.id, score: 5 });
+        const ratings = await ratingsService.getRevealedRatingsForUser(driverUser.id);
+        const found = ratings.find((r) => r.bookingId === booking.id);
 
-      const ratings = await ratingsService.getRevealedRatingsForUser(driverUser.id);
-      const found = ratings.find((r) => r.bookingId === booking.id);
-
-      expect(found).toBeDefined();
-      expect(found?.rater).toBeDefined();
-      expect(found?.rater?.id).toBe(passengerUser.id);
-
-      await ratingRepo.delete({ bookingId: booking.id });
-      await bookingRepo.delete(booking.id);
-      await tripRepo.delete(trip.id);
-
-      await userRepo.update(driverUser.id, { ratingAverage: 0, ratingCount: 0 });
+        expect(found).toBeDefined();
+        expect(found?.rater?.id).toBe(passengerUser.id);
+        // Private fields of the rater must never be exposed to whoever views the ratings
+        expect(found?.rater).not.toHaveProperty('phoneNumber');
+        expect(found?.rater).not.toHaveProperty('nationalIdNumber');
+        expect(found?.rater).not.toHaveProperty('fcmToken');
+      } finally {
+        await ratingRepo.delete({ bookingId: booking.id });
+        await bookingRepo.delete(booking.id);
+        await tripRepo.delete(trip.id);
+        await userRepo.update(driverUser.id, { ratingAverage: 0, ratingCount: 0 });
+        await userRepo.update(passengerUser.id, { ratingAverage: 0, ratingCount: 0 });
+      }
     });
 
     // revealExpiredRatings is an hourly cron that had no coverage. Unlike the other

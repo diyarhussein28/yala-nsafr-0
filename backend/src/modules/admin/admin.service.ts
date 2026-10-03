@@ -7,13 +7,15 @@ import {
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, ILike, In, LessThan } from 'typeorm';
+import { Repository, DataSource, ILike, In, LessThan, FindOptionsWhere } from 'typeorm';
+import { isUUID } from 'class-validator';
 import { User, UserStatus } from '../../database/entities/user.entity';
 import { Trip, TripStatus } from '../../database/entities/trip.entity';
 import { Booking, BookingStatus, PaymentMethod } from '../../database/entities/booking.entity';
 import { Payment, PaymentStatus } from '../../database/entities/payment.entity';
 import { Dispute, DisputeStatus, DisputeReason } from '../../database/entities/dispute.entity';
 import { PlatformConfig, CONFIG_KEYS } from '../../database/entities/platform-config.entity';
+import { RefreshToken } from '../../database/entities/refresh-token.entity';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { ResolveDisputeDto } from './dto/resolve-dispute.dto';
 import { NotifyPartyDto } from './dto/notify-party.dto';
@@ -42,6 +44,8 @@ export class AdminService implements OnModuleInit {
     private readonly disputeRepo: Repository<Dispute>,
     @InjectRepository(PlatformConfig)
     private readonly configRepo: Repository<PlatformConfig>,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokenRepo: Repository<RefreshToken>,
     private readonly dataSource: DataSource,
     private readonly notifications: NotificationsService,
     private readonly settlement: PaymentSettlementService,
@@ -94,6 +98,23 @@ export class AdminService implements OnModuleInit {
     }
     if (dto.ratingRevealDays !== undefined) {
       updates.push({ key: CONFIG_KEYS.RATING_REVEAL_DAYS, value: String(dto.ratingRevealDays) });
+    }
+    const policy: Array<[number | undefined, string]> = [
+      [dto.freeCancelHours, CONFIG_KEYS.FREE_CANCEL_HOURS],
+      [dto.lateCancelHours, CONFIG_KEYS.LATE_CANCEL_HOURS],
+      [dto.lateCancelFeePct, CONFIG_KEYS.LATE_CANCEL_FEE_PCT],
+      [dto.driverCompensationPct, CONFIG_KEYS.DRIVER_COMPENSATION_PCT],
+      [dto.lowRatingThreshold, CONFIG_KEYS.LOW_RATING_THRESHOLD],
+      [dto.minRatingsForFlag, CONFIG_KEYS.MIN_RATINGS_FOR_FLAG],
+    ];
+    for (const [value, key] of policy) {
+      if (value !== undefined) updates.push({ key, value: String(value) });
+    }
+
+    const free = dto.freeCancelHours ?? Number(await this.getConfigValue(CONFIG_KEYS.FREE_CANCEL_HOURS));
+    const late = dto.lateCancelHours ?? Number(await this.getConfigValue(CONFIG_KEYS.LATE_CANCEL_HOURS));
+    if (Number.isFinite(free) && Number.isFinite(late) && late > free) {
+      throw new BadRequestException('late_cancel_hours must not exceed free_cancel_hours');
     }
 
     for (const { key, value } of updates) {
@@ -155,7 +176,17 @@ export class AdminService implements OnModuleInit {
     if (user.status === UserStatus.PENDING_VERIFICATION) {
       user.status = UserStatus.ACTIVE;
     }
-    return this.userRepo.save(user);
+    const saved = await this.userRepo.save(user);
+    this.notifyUser(userId, 'تم توثيق هويتك ✅', 'راجعت الإدارة بطاقتك الشخصية وتم توثيق حسابك.', 'profile');
+    return saved;
+  }
+
+  // Verification decisions were applied silently — the user had no way to learn they had
+  // been approved, or that they needed to resubmit.
+  private notifyUser(userId: string, title: string, body: string, screen: string) {
+    setImmediate(() => {
+      void this.notifications.sendToUser(userId, { title, body, data: { screen } });
+    });
   }
 
   async approveDriverVerification(userId: string, adminId: string): Promise<User> {
@@ -167,28 +198,52 @@ export class AdminService implements OnModuleInit {
       throw new BadRequestException('ID must be verified before driver verification is approved');
     }
     user.driverVerified = true;
-    return this.userRepo.save(user);
+    const saved = await this.userRepo.save(user);
+    this.notifyUser(userId, 'تم توثيقك كسائق 🚗', 'يمكنك الآن نشر رحلاتك على يلا نسافر.', 'profile');
+    return saved;
   }
 
   async rejectIdVerification(userId: string): Promise<User> {
     const user = await this.getUserDetail(userId);
-    user.nationalIdNumber = '';
-    user.nationalIdPhotoUrl = '';
-    return this.userRepo.save(user);
+    // null rather than '' — an empty string still counted as "submitted" in the pending
+    // queue and kept the user listed as awaiting review.
+    user.nationalIdNumber = null as unknown as string;
+    user.nationalIdPhotoUrl = null as unknown as string;
+    user.idVerified = false;
+    const saved = await this.userRepo.save(user);
+    this.notifyUser(
+      userId,
+      'لم يتم قبول توثيق الهوية',
+      'تعذّر التحقق من بطاقتك. يرجى إعادة رفع صورة واضحة والرقم القومي الصحيح.',
+      'id_verification',
+    );
+    return saved;
   }
 
   async rejectDriverVerification(userId: string): Promise<User> {
     const user = await this.getUserDetail(userId);
     user.driverVerified = false;
-    user.drivingLicenceNumber = '';
-    user.vehiclePlate = '';
-    return this.userRepo.save(user);
+    user.drivingLicenceNumber = null as unknown as string;
+    user.vehiclePlate = null as unknown as string;
+    const saved = await this.userRepo.save(user);
+    this.notifyUser(
+      userId,
+      'لم يتم قبول توثيق السائق',
+      'تعذّر التحقق من بيانات الرخصة أو السيارة. يرجى مراجعتها وإعادة الإرسال.',
+      'driver_verification',
+    );
+    return saved;
   }
 
   async updateUserStatus(userId: string, dto: UpdateUserStatusDto): Promise<User> {
     const user = await this.getUserDetail(userId);
     user.status = dto.status;
-    return this.userRepo.save(user);
+    const saved = await this.userRepo.save(user);
+    // A ban or suspension ends every session; otherwise the app keeps refreshing tokens
+    if (dto.status === UserStatus.BANNED || dto.status === UserStatus.SUSPENDED) {
+      await this.refreshTokenRepo.delete({ userId });
+    }
+    return saved;
   }
 
   // ── Trips ──────────────────────────────────────────────────────────────────
@@ -451,6 +506,7 @@ export class AdminService implements OnModuleInit {
       // Optional: block a user as part of the decision
       if (dto.blockUserId && dto.blockStatus) {
         await manager.update(User, dto.blockUserId, { status: dto.blockStatus });
+        await manager.delete(RefreshToken, { userId: dto.blockUserId });
       }
 
       const outcomeLabel: Record<string, string> = {
@@ -538,13 +594,34 @@ export class AdminService implements OnModuleInit {
           const autoRefundReasons = [DisputeReason.NO_SHOW_DRIVER, DisputeReason.UNSAFE_DRIVING];
           const autoReleaseReasons = [DisputeReason.NO_SHOW_PASSENGER];
 
+          // The automatic ruling exists for an accused party who never answered. One who
+          // did respond — possibly with evidence — used to lose by default anyway once
+          // the deadline passed, because responding never moved the dispute out of OPEN.
+          // Their case goes to an admin instead.
+          const otherPartyResponded =
+            !!dispute.otherPartyResponse || (dispute.otherPartyEvidenceUrls?.length ?? 0) > 0;
+
           const isCash =
             booking.paymentMethod === PaymentMethod.CASH || !!booking.payment?.isCash;
 
           let resolution: DisputeStatus;
           let outcomeText: string;
 
-          if (autoRefundReasons.includes(dispute.reason as DisputeReason)) {
+          if (otherPartyResponded) {
+            dispute.status = DisputeStatus.UNDER_REVIEW;
+            await manager.save(Dispute, dispute);
+            setImmediate(() => {
+              void this.notifications.sendToUsers(
+                [booking.trip.driverId, booking.passengerId],
+                {
+                  title: 'نزاعك قيد المراجعة',
+                  body: 'تم تحويل النزاع إلى الإدارة لمراجعة رد الطرفين والبت فيه.',
+                  data: { disputeId: dispute.id, screen: 'dispute_detail' },
+                },
+              );
+            });
+            return;
+          } else if (autoRefundReasons.includes(dispute.reason as DisputeReason)) {
             resolution = DisputeStatus.RESOLVED_REFUND;
             outcomeText = 'تم استرداد المبلغ تلقائياً لعدم رد الطرف الآخر في الوقت المحدد.';
             booking.status = BookingStatus.REFUNDED;
@@ -682,7 +759,9 @@ export class AdminService implements OnModuleInit {
       .addSelect('COUNT(*)', 'tripCount')
       .where('t.status = :status', { status: TripStatus.COMPLETED })
       .groupBy('t.origin_city, t.destination_city')
-      .orderBy('tripCount', 'DESC')
+      // Ordering by the alias needs it quoted: Postgres folds an unquoted tripCount to
+      // tripcount, which is not a column, and the whole analytics request failed.
+      .orderBy('"tripCount"', 'DESC')
       .limit(5)
       .getRawMany();
 
@@ -715,21 +794,26 @@ export class AdminService implements OnModuleInit {
 
   // ── Search ─────────────────────────────────────────────────────────────────
   async search(q: string) {
+    const term = q.trim();
+    if (!term) return { users: [], trips: [] };
+
+    // Comparing a uuid column to a non-uuid string is a Postgres error, not "no match",
+    // so the id conditions are only added when the query is a uuid. Without this, every
+    // search by name or phone number failed with a 500.
+    const byId = isUUID(term);
+    const pattern = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    const userWhere: FindOptionsWhere<User>[] = [
+      { phoneNumber: ILike(pattern) },
+      { fullName: ILike(pattern) },
+      { nationalIdNumber: ILike(pattern) },
+    ];
+    if (byId) userWhere.unshift({ id: term });
+
     const [users, trips] = await Promise.all([
-      this.userRepo.find({
-        where: [
-          { id: q },
-          { phoneNumber: ILike(`%${q}%`) },
-          { fullName: ILike(`%${q}%`) },
-          { nationalIdNumber: ILike(`%${q}%`) },
-        ],
-        take: 10,
-      }),
-      this.tripRepo.find({
-        where: [{ id: q }],
-        relations: { driver: true },
-        take: 10,
-      }),
+      this.userRepo.find({ where: userWhere, take: 10 }),
+      byId
+        ? this.tripRepo.find({ where: [{ id: term }, { driverId: term }], relations: { driver: true }, take: 10 })
+        : Promise.resolve([] as Trip[]),
     ]);
 
     return { users, trips };

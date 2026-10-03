@@ -1,11 +1,12 @@
-import { IsString, IsOptional, Length } from 'class-validator';
+import { IsString, IsOptional, Matches, MaxLength } from 'class-validator';
 
 export class SubmitIdVerificationDto {
   @IsString()
-  @Length(14, 14, { message: 'Egyptian national ID must be exactly 14 digits' })
+  @Matches(/^\d{14}$/, { message: 'Egyptian national ID must be exactly 14 digits' })
   nationalIdNumber: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   nationalIdPhotoUrl?: string;
 }

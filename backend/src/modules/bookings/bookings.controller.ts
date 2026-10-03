@@ -3,7 +3,6 @@ import {
   Post,
   Get,
   Patch,
-  Delete,
   Body,
   Param,
   UseGuards,
@@ -43,8 +42,8 @@ export class BookingsController {
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.bookingsService.findById(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+    return this.bookingsService.findById(id, user);
   }
 
   // Called by the in-app WebView after intercepting Kashier's payment redirect
@@ -100,9 +99,10 @@ export class BookingsController {
     return this.bookingsService.openDispute(user, dto);
   }
 
+  // Only does anything while PAYMENT_MOCK=true, and only for the booking's own passenger
   @Post(':id/mock-confirm')
   @HttpCode(HttpStatus.OK)
-  mockConfirm(@Param('id', ParseUUIDPipe) id: string) {
-    return this.bookingsService.mockConfirmPayment(id);
+  mockConfirm(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+    return this.bookingsService.mockConfirmPayment(id, user.id);
   }
 }

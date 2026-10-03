@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomInt } from 'crypto';
 import { User, UserStatus } from '../../database/entities/user.entity';
 import { RefreshToken } from '../../database/entities/refresh-token.entity';
 import { OtpService } from './otp.service';
@@ -69,8 +69,18 @@ export class AuthService {
       throw new UnauthorizedException('Account is banned');
     }
 
-    await this.refreshTokenRepo.delete(stored.id);
+    // Deleting is the claim: of two concurrent refreshes with the same token only one
+    // removes the row, and only that one is issued a new pair.
+    const claimed = await this.refreshTokenRepo.delete({ id: stored.id });
+    if (!claimed.affected) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
     return this.generateTokens(stored.user);
+  }
+
+  /** Ends every session a user has — used when an admin bans or suspends them. */
+  async revokeAllSessions(userId: string): Promise<void> {
+    await this.refreshTokenRepo.delete({ userId });
   }
 
   async signOut(rawToken: string): Promise<void> {
@@ -104,9 +114,7 @@ export class AuthService {
   private async generateUniqueReferralCode(): Promise<string> {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     for (let i = 0; i < 10; i++) {
-      const code = Array.from({ length: 6 }, () =>
-        chars[Math.floor(Math.random() * chars.length)],
-      ).join('');
+      const code = Array.from({ length: 6 }, () => chars[randomInt(chars.length)]).join('');
       const exists = await this.userRepo.findOne({
         where: { referralCode: code },
         select: { id: true },

@@ -13,6 +13,7 @@ import {
 } from '../../database/entities/dispute.entity';
 import { Booking } from '../../database/entities/booking.entity';
 import { User } from '../../database/entities/user.entity';
+import { toPublicUser } from '../../common/serializers/public-user';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RespondToDisputeDto } from './dto/respond-to-dispute.dto';
 import { AddEvidenceDto } from './dto/add-evidence.dto';
@@ -73,19 +74,21 @@ export class DisputesService {
     const disputeIds = bookings.map((b) => b.disputeId).filter(Boolean);
     if (!disputeIds.length) return [];
 
-    return this.disputeRepo
+    const disputes = await this.disputeRepo
       .createQueryBuilder('d')
       .leftJoinAndSelect('d.openedBy', 'openedBy')
       .whereInIds(disputeIds)
       .orderBy('d.created_at', 'DESC')
       .getMany();
+    // The opener may be the other party — their private record must not leak through
+    return disputes.map((d) => ({ ...d, openedBy: toPublicUser(d.openedBy) }));
   }
 
   async getDisputeDetail(disputeId: string, user: User) {
     const { dispute, booking } = await this.loadWithAccess(disputeId, user);
 
     return {
-      dispute,
+      dispute: { ...dispute, openedBy: toPublicUser(dispute.openedBy) },
       booking: {
         id: booking.id,
         totalAmount: booking.totalAmount,
