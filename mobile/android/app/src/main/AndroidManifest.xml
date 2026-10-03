@@ -9,12 +9,15 @@
             <data android:scheme="http" />
         </intent>
     </queries>
+    <!-- Only the debug/profile manifests declared INTERNET, so a release build could not
+         reach the API at all. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
     <application
-        android:label="yala_nsafr"
+        android:label="يلا نسافر"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

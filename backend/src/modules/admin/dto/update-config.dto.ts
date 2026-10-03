@@ -76,4 +76,19 @@ export class UpdateConfigDto {
   @Min(1)
   @Max(1000)
   minRatingsForFlag?: number;
+
+  // Driver subscription (billed through Kashier). 0 turns the paywall off.
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Type(() => Number)
+  @Min(0)
+  @Max(10000)
+  subscriptionPriceEgp?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(1)
+  @Max(366)
+  subscriptionPeriodDays?: number;
 }

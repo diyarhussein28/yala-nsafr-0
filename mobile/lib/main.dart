@@ -2,7 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 import 'core/services/fcm_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
@@ -10,10 +9,6 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  Stripe.publishableKey =
-      'pk_test_51TzIkJDcLJlc15lfEo1jqWkXokwuCKhXCt5YKIT1H95q3uTyxaxxw9nXDnh5FCurMRXE4MEv2W8PkjzYk8Bb8yVA00erVDiJqm';
-  await Stripe.instance.applySettings();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await FcmService.initialize();

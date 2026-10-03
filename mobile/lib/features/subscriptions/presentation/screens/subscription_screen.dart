@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:dio/dio.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/theme/app_theme.dart';
+import 'subscription_payment_screen.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -31,19 +32,39 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     }
   }
 
+  // Paid through Kashier's hosted checkout inside the app. Stripe, used before, does not
+  // onboard merchants in Egypt.
   Future<void> _subscribe() async {
     setState(() => _subscribing = true);
     try {
-      final res = await ref.read(dioProvider).post(Endpoints.subscriptionCheckout, data: {
-        'successUrl': 'https://yalansafr.app/subscription/success',
-        'cancelUrl': 'https://yalansafr.app/subscription/cancel',
-      });
-      final url = (res.data as Map<String, dynamic>)['url'] as String?;
-      if (url != null) {
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-      }
+      final res = await ref.read(dioProvider).post(Endpoints.subscriptionCheckout);
+      final data = res.data as Map<String, dynamic>;
+      final paymentId = data['paymentId'] as String?;
+      final sessionUrl = data['sessionUrl'] as String?;
+      if (paymentId == null || sessionUrl == null || !mounted) return;
+
+      final paid = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => SubscriptionPaymentScreen(
+            paymentId: paymentId,
+            sessionUrl: sessionUrl,
+          ),
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(paid == true
+            ? 'تم تفعيل اشتراكك ✅'
+            : 'لم يكتمل الدفع. إن تم خصم المبلغ سيُفعَّل الاشتراك تلقائياً خلال دقائق.'),
+      ));
+      setState(() => _loading = true);
+      await _loadStatus();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e is DioException ? ApiException.fromDioError(e).message : '$e'),
+        ));
+      }
     } finally {
       if (mounted) setState(() => _subscribing = false);
     }
@@ -56,7 +77,13 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final canPost = _status?['canPost'] as bool? ?? false;
     final isFreeTrial = _status?['isFreeTrial'] as bool? ?? false;
     final trialDaysLeft = _status?['trialDaysLeft'] as int? ?? 0;
-    final hasSub = (_status?['subscription'] as Map?)?.isNotEmpty ?? false;
+    // isActive comes from the server and accounts for the paid period ending. Checking
+    // that a subscription row merely existed showed "active" as soon as checkout opened.
+    final hasSub = _status?['isActive'] as bool? ?? false;
+    final price = (_status?['priceEgp'] as num?)?.toStringAsFixed(0) ?? '200';
+    final periodDays = (_status?['periodDays'] as num?)?.toInt() ?? 30;
+    final periodLabel = periodDays == 30 ? 'شهر' : '$periodDays يوم';
+    final periodEnd = DateTime.tryParse(_status?['currentPeriodEnd'] as String? ?? '')?.toLocal();
 
     return Scaffold(
       appBar: AppBar(title: const Text('النسخة المدفوعة')),
@@ -81,8 +108,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               child: Text('يلا نسافر Pro', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 4),
-            const Center(
-              child: Text('200 جنيه / شهر', style: TextStyle(fontSize: 16, color: Colors.grey)),
+            Center(
+              child: Text('$price جنيه / $periodLabel', style: const TextStyle(fontSize: 16, color: Colors.grey)),
             ),
             const SizedBox(height: 24),
 
@@ -111,10 +138,17 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                   color: AppColors.primary.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Row(children: [
-                  Icon(Icons.workspace_premium_rounded, color: AppColors.primary),
-                  SizedBox(width: 10),
-                  Text('اشتراكك نشط ✅', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                child: Row(children: [
+                  const Icon(Icons.workspace_premium_rounded, color: AppColors.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      periodEnd != null
+                          ? 'اشتراكك نشط ✅ حتى ${periodEnd.day}/${periodEnd.month}/${periodEnd.year}'
+                          : 'اشتراكك نشط ✅',
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary),
+                    ),
+                  ),
                 ]),
               )
             else
@@ -145,12 +179,17 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
             const SizedBox(height: 32),
 
-            if (!hasSub)
-              FilledButton.icon(
+            // Each period is a one-off payment, so an active subscriber can renew early;
+            // the new period is added on top of the current end date.
+            FilledButton.icon(
                 icon: _subscribing
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.payment_rounded),
-                label: Text(_subscribing ? 'جاري التوجيه...' : 'اشترك الآن — 200 جنيه/شهر'),
+                label: Text(_subscribing
+                    ? 'جاري التوجيه...'
+                    : hasSub
+                        ? 'جدّد الاشتراك — $price جنيه'
+                        : 'اشترك الآن — $price جنيه/$periodLabel'),
                 onPressed: _subscribing ? null : _subscribe,
                 style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
               ),

@@ -13,6 +13,12 @@ export enum SubscriptionStatus {
   TRIALING = 'trialing',
 }
 
+/**
+ * A driver's paid access to trip posting. Billed through Kashier as prepaid periods:
+ * each confirmed SubscriptionPayment extends currentPeriodEnd. (It used to be a Stripe
+ * subscription, but Stripe does not accept merchants based in Egypt, so it could never
+ * have gone live.)
+ */
 @Entity('subscriptions')
 export class Subscription {
   @PrimaryGeneratedColumn('uuid')
@@ -21,21 +27,19 @@ export class Subscription {
   @Column({ name: 'user_id', unique: true })
   userId: string;
 
-  @Column({ name: 'stripe_customer_id', type: 'varchar' })
-  stripeCustomerId: string;
-
-  @Column({ name: 'stripe_subscription_id', type: 'varchar', nullable: true })
-  stripeSubscriptionId: string | null;
-
   @Column({ type: 'enum', enum: SubscriptionStatus, default: SubscriptionStatus.ACTIVE })
   status: SubscriptionStatus;
 
-  @Column({ name: 'current_period_end', type: 'timestamp', nullable: true })
+  @Column({ name: 'current_period_end', type: 'timestamptz', nullable: true })
   currentPeriodEnd: Date | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  // Set once the expiry reminder for the current period has gone out
+  @Column({ name: 'renewal_reminder_sent_at', type: 'timestamptz', nullable: true })
+  renewalReminderSentAt: Date | null;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

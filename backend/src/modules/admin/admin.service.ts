@@ -65,6 +65,8 @@ export class AdminService implements OnModuleInit {
       { key: CONFIG_KEYS.LATE_CANCEL_HOURS, value: '2', description: 'Hours before departure below which no refund is given' },
       { key: CONFIG_KEYS.LATE_CANCEL_FEE_PCT, value: '0.15', description: 'Platform fee % deducted from refund in the late-cancel window (0–1)' },
       { key: CONFIG_KEYS.DRIVER_COMPENSATION_PCT, value: '0.05', description: 'Driver compensation % from late-cancel fee (0–1)' },
+      { key: CONFIG_KEYS.SUBSCRIPTION_PRICE_EGP, value: '200', description: 'Driver subscription price per period in EGP (0 = no subscription required)' },
+      { key: CONFIG_KEYS.SUBSCRIPTION_PERIOD_DAYS, value: '30', description: 'Days of trip posting one subscription payment buys' },
     ];
 
     for (const entry of defaults) {
@@ -106,6 +108,8 @@ export class AdminService implements OnModuleInit {
       [dto.driverCompensationPct, CONFIG_KEYS.DRIVER_COMPENSATION_PCT],
       [dto.lowRatingThreshold, CONFIG_KEYS.LOW_RATING_THRESHOLD],
       [dto.minRatingsForFlag, CONFIG_KEYS.MIN_RATINGS_FOR_FLAG],
+      [dto.subscriptionPriceEgp, CONFIG_KEYS.SUBSCRIPTION_PRICE_EGP],
+      [dto.subscriptionPeriodDays, CONFIG_KEYS.SUBSCRIPTION_PERIOD_DAYS],
     ];
     for (const [value, key] of policy) {
       if (value !== undefined) updates.push({ key, value: String(value) });

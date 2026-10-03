@@ -28,6 +28,8 @@ class Endpoints {
   static String userBlock(String id) => '/users/$id/block';
   static const String subscriptionStatus = '/subscriptions/status';
   static const String subscriptionCheckout = '/subscriptions/checkout';
+  static String subscriptionConfirm(String paymentId) =>
+      '/subscriptions/payments/$paymentId/confirm';
   static String confirmCompletion(String id) => '/bookings/$id/confirm-completion';
   static String cancelBooking(String id) => '/bookings/$id/cancel';
   static String cancelPreview(String id) => '/bookings/$id/cancel-preview';
@@ -64,7 +66,6 @@ class Endpoints {
   static String tripLocation(String id) => '/trips/$id/location';
   static String tripLocationLatest(String id) => '/trips/$id/location/latest';
 
-  static const stripeIntent = '/payments/stripe/intent';
   static String tripSos(String id) => '/trips/$id/sos';
 
   static const applyReferral = '/users/me/referral';

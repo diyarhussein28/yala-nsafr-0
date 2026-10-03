@@ -365,7 +365,8 @@ class _SubscriptionTile extends ConsumerWidget {
         final isFreeTrial = data['isFreeTrial'] as bool? ?? false;
         final trialDaysLeft = data['trialDaysLeft'] as int? ?? 0;
         final sub = data['subscription'] as Map<String, dynamic>?;
-        final isActive = sub != null && sub['status'] == 'active';
+        final isActive = data['isActive'] as bool? ?? (sub != null && sub['status'] == 'active');
+        final price = (data['priceEgp'] as num?)?.toStringAsFixed(0) ?? '200';
 
         Color bgColor;
         Color borderColor;
@@ -384,13 +385,13 @@ class _SubscriptionTile extends ConsumerWidget {
           borderColor = AppColors.primary.withOpacity(0.3);
           icon = Icons.workspace_premium_rounded;
           title = 'مشترك Pro';
-          subtitle = 'اشتراك شهري نشط — 200 ج/شهر';
+          subtitle = 'اشتراك نشط — $price ج/شهر';
         } else {
           bgColor = Colors.orange.shade50;
           borderColor = Colors.orange.shade300;
           icon = Icons.star_border_rounded;
           title = 'اشترك في يلا Pro';
-          subtitle = 'انتهت الفترة المجانية — 200 ج/شهر لنشر الرحلات';
+          subtitle = 'انتهت الفترة المجانية — $price ج/شهر لنشر الرحلات';
         }
 
         return GestureDetector(

@@ -37,4 +37,6 @@ export const CONFIG_KEYS = {
   LATE_CANCEL_HOURS: 'late_cancel_hours',
   LATE_CANCEL_FEE_PCT: 'late_cancel_fee_pct',
   DRIVER_COMPENSATION_PCT: 'driver_compensation_pct',
+  SUBSCRIPTION_PRICE_EGP: 'subscription_price_egp',
+  SUBSCRIPTION_PERIOD_DAYS: 'subscription_period_days',
 } as const;

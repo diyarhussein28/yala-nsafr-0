@@ -7,7 +7,7 @@ import * as express from 'express';
 import helmet from 'helmet';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
   app.setGlobalPrefix('api/v1');

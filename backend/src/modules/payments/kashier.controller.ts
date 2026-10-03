@@ -9,6 +9,7 @@ import { Trip } from '../../database/entities/trip.entity';
 import { WithdrawalRequest, WithdrawalStatus } from '../../database/entities/withdrawal-request.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaymentSettlementService } from './payment-settlement.service';
+import { SubscriptionBillingService } from './subscription-billing.service';
 import { restorePromoCredit } from '../bookings/booking-side-effects';
 
 @Controller('kashier')
@@ -19,6 +20,7 @@ export class KashierController {
     private readonly kashierService: KashierService,
     private readonly notifications: NotificationsService,
     private readonly settlement: PaymentSettlementService,
+    private readonly subscriptionBilling: SubscriptionBillingService,
     @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(Booking) private readonly bookingRepo: Repository<Booking>,
     @InjectRepository(Trip) private readonly tripRepo: Repository<Trip>,
@@ -33,7 +35,13 @@ export class KashierController {
     const status = String(query['status'] ?? '').toUpperCase();
     this.logger.log(`payment-done redirect: ${JSON.stringify(query)}`);
 
-    if (merchantOrderId) {
+    if (SubscriptionBillingService.isSubscriptionOrder(merchantOrderId)) {
+      try {
+        await this.subscriptionBilling.confirmByMerchantOrderId(merchantOrderId);
+      } catch (e) {
+        this.logger.error(`payment-done subscription confirm error: ${String(e)}`);
+      }
+    } else if (merchantOrderId) {
       try {
         const payment = await this.paymentRepo.findOne({ where: { gatewayOrderId: merchantOrderId } });
         if (payment) {
@@ -141,6 +149,17 @@ h2{color:#16a34a;font-size:2rem;margin-bottom:12px}p{color:#555;font-size:1.1rem
           `header=${signature ?? '(none)'} payload=${this.kashierService.buildWebhookSignaturePayload(data) ?? '(no signatureKeys)'}`,
       );
       res.status(401);
+      return;
+    }
+
+    // Driver subscription purchases share this webhook with trip fares
+    if (SubscriptionBillingService.isSubscriptionOrder(merchantOrderId)) {
+      res.status(
+        await this.subscriptionBilling.handleWebhook(merchantOrderId, event, status, {
+          kashierOrderId: kashierOrderId || undefined,
+          transactionId: transactionId || undefined,
+        }),
+      );
       return;
     }
 

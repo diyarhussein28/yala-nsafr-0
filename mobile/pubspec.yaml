@@ -5,8 +5,11 @@ publish_to: 'none'
 
 version: 1.0.0+1
 
+# The dependency set (intl 0.20 via flutter_localizations) needs Flutter 3.32+;
+# the old '>=3.3.0' bound let `flutter pub get` fail with a confusing solver error.
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: '>=3.8.0 <4.0.0'
+  flutter: '>=3.32.0'
 
 dependencies:
   flutter:
@@ -62,8 +65,9 @@ dependencies:
   latlong2: ^0.9.1
   geolocator: ^14.0.0
 
-  # Payments
-  flutter_stripe: ^14.0.0
+  # Payments: all card payments (trip fares and driver subscriptions) go through
+  # Kashier's hosted checkout in a WebView — no native payment SDK. flutter_stripe was
+  # removed: Stripe does not onboard merchants in Egypt.
 
 dev_dependencies:
   flutter_test:

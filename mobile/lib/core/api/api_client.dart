@@ -4,7 +4,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-const _baseUrl = 'http://localhost:3000/api/v1';
+// Set per build: flutter build apk --dart-define=API_BASE_URL=https://api.example.com/api/v1
+// The default is for local development over `adb reverse tcp:3000 tcp:3000`; a release
+// build left on it could only ever talk to the phone itself.
+const _baseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://localhost:3000/api/v1',
+);
 
 const _tokenKey = 'auth_token';
 const _refreshTokenKey = 'refresh_token';

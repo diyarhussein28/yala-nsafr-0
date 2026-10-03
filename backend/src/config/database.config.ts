@@ -19,6 +19,7 @@ import { RefreshToken } from '../database/entities/refresh-token.entity';
 import { Block } from '../database/entities/block.entity';
 import { Subscription } from '../database/entities/subscription.entity';
 import { SosAlert } from '../database/entities/sos-alert.entity';
+import { SubscriptionPayment } from '../database/entities/subscription-payment.entity';
 
 export default registerAs('database', (): TypeOrmModuleOptions => ({
   type: 'postgres',
@@ -31,6 +32,7 @@ export default registerAs('database', (): TypeOrmModuleOptions => ({
     User, Trip, Booking, Payment, Rating, DriverWallet, Dispute, Otp,
     PlatformConfig, TripLocation, TripComment, TripMessage, WithdrawalRequest,
     AppNotification, ReferralReward, RefreshToken, Block, Subscription, SosAlert,
+    SubscriptionPayment,
   ],
   synchronize: process.env.NODE_ENV === 'development',
   logging: process.env.NODE_ENV === 'development',

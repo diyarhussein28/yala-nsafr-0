@@ -135,31 +135,53 @@ export class KashierService {
   async createPaymentSession(
     booking: Booking,
   ): Promise<{ sessionUrl: string; orderId: string; sessionId: string | null }> {
-    const orderId = booking.id;
+    // Requests authorize-only: the amount is held, not taken, and we capture on trip
+    // completion. Also requires Kashier to enable "Authorization Capture" on the
+    // account — without that the session charges outright. An authorized session
+    // reports AUTHORIZED and fires an "authorize" webhook.
+    return this.createCheckoutSession({
+      merchantOrderId: booking.id,
+      amount: Number(booking.totalAmount),
+      manualCapture: true,
+      customer: {
+        name: booking.passenger?.fullName ?? 'Customer',
+        phone: booking.passenger?.phoneNumber ?? '',
+        reference: booking.passengerId,
+      },
+    });
+  }
+
+  /**
+   * A Kashier hosted-checkout session. `manualCapture` places a hold (trip fares, which
+   * are captured when the trip completes); without it the card is charged immediately
+   * (driver subscriptions).
+   */
+  async createCheckoutSession(params: {
+    merchantOrderId: string;
+    amount: number;
+    manualCapture: boolean;
+    customer: { name: string; phone: string; reference: string };
+  }): Promise<{ sessionUrl: string; orderId: string; sessionId: string | null }> {
+    const orderId = params.merchantOrderId;
 
     if (this.isMock) {
-      this.logger.warn(`PAYMENT_MOCK: returning mock session for booking ${orderId}`);
+      this.logger.warn(`PAYMENT_MOCK: returning mock session for order ${orderId}`);
       return { sessionUrl: `mock://confirm/${orderId}`, orderId, sessionId: null };
     }
 
-    const amount = Number(booking.totalAmount).toFixed(2);
     const data = await this.post<Record<string, unknown>>('/v3/payment/sessions', {
-      amount,
+      amount: params.amount.toFixed(2),
       currency: 'EGP',
       merchantOrderId: orderId,
       merchantId: this.merchantId,
-      // Requests authorize-only: the amount is held, not taken, and we capture on trip
-      // completion. Also requires Kashier to enable "Authorization Capture" on the
-      // account — without that the session charges outright. An authorized session
-      // reports AUTHORIZED and fires an "authorize" webhook.
-      manualCapture: true,
+      manualCapture: params.manualCapture,
       display: 'ar',
       merchantRedirect: `${this.appUrl}/api/v1/kashier/payment-done`,
       customer: {
-        name: booking.passenger?.fullName ?? 'Customer',
-        email: `passenger-${booking.passengerId}@yalansafr.app`,
-        phone: booking.passenger?.phoneNumber ?? '',
-        reference: booking.passengerId,
+        name: params.customer.name || 'Customer',
+        email: `customer-${params.customer.reference}@yalansafr.app`,
+        phone: params.customer.phone,
+        reference: params.customer.reference,
       },
     });
 
