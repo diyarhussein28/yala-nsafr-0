@@ -763,9 +763,7 @@ export class AdminService implements OnModuleInit {
       .addSelect('COUNT(*)', 'tripCount')
       .where('t.status = :status', { status: TripStatus.COMPLETED })
       .groupBy('t.origin_city, t.destination_city')
-      // Ordering by the alias needs it quoted: Postgres folds an unquoted tripCount to
-      // tripcount, which is not a column, and the whole analytics request failed.
-      .orderBy('"tripCount"', 'DESC')
+      .orderBy('tripCount', 'DESC')
       .limit(5)
       .getRawMany();
 
