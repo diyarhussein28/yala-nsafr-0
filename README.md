@@ -275,9 +275,8 @@ docs/             release guide
   flow once in the Kashier sandbox with your merchant account before launch.
 - **Push notifications need FCM credentials** (`FCM_*` in `.env`) and, for iOS, an APNs key
   uploaded to Firebase; without them notification sends fail silently in the log.
-- **Server-sent texts are Arabic.** Push notifications and SMS are written in Arabic for
-  every user; the app UI itself is fully bilingual and the user's choice is stored in
-  `preferredLanguage`, ready for localized notifications.
+- **SMS texts are Arabic only.** Push notifications follow the user's language
+  (`preferredLanguage`); the OTP SMS does not.
 
 ---
 
