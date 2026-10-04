@@ -45,6 +45,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm run build
+      - run: npm test -- --ci
       # The suite runs against the schema the migrations produce, exactly as production would
       - run: npm run migration:run
       - name: Migrations match the entities

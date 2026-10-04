@@ -4,11 +4,22 @@ import { Repository, In } from 'typeorm';
 import { User } from '../../database/entities/user.entity';
 import { AppNotification } from '../../database/entities/notification.entity';
 import { FirebaseService } from './firebase.service';
+import { localizeNotificationText } from './notification-i18n';
 
 export interface NotificationPayload {
   title: string;
   body: string;
   data?: Record<string, string>;
+}
+
+/** The payload in the recipient's language (texts are written in Arabic at the call site). */
+function localize(payload: NotificationPayload, language: string | null | undefined): NotificationPayload {
+  if (language !== 'en') return payload;
+  return {
+    ...payload,
+    title: localizeNotificationText(payload.title, language),
+    body: localizeNotificationText(payload.body, language),
+  };
 }
 
 @Injectable()
@@ -26,19 +37,20 @@ export class NotificationsService {
   async sendToUser(userId: string, payload: NotificationPayload): Promise<void> {
     const user = await this.userRepo.findOne({
       where: { id: userId },
-      select: { id: true, fcmToken: true, fullName: true },
+      select: { id: true, fcmToken: true, fullName: true, preferredLanguage: true },
     });
 
     if (!user) return;
+    const localized = localize(payload, user.preferredLanguage);
 
-    setImmediate(() => void this.persist(userId, payload));
+    setImmediate(() => void this.persist(userId, localized));
 
     if (!user.fcmToken) {
       this.logger.debug(`No FCM token for ${user.fullName} — notification skipped`);
       return;
     }
 
-    await this.dispatch(user.fcmToken, payload);
+    await this.dispatch(user.fcmToken, localized);
   }
 
   async sendToUsers(userIds: string[], payload: NotificationPayload): Promise<void> {
@@ -46,10 +58,22 @@ export class NotificationsService {
 
     const users = await this.userRepo.find({
       where: { id: In(userIds) },
-      select: { id: true, fcmToken: true, fullName: true },
+      select: { id: true, fcmToken: true, fullName: true, preferredLanguage: true },
     });
 
-    setImmediate(() => void this.persistMany(userIds, payload));
+    // One multicast per language
+    const byLanguage = new Map<string, User[]>();
+    for (const user of users) {
+      const language = user.preferredLanguage === 'en' ? 'en' : 'ar';
+      byLanguage.set(language, [...(byLanguage.get(language) ?? []), user]);
+    }
+    for (const [language, group] of byLanguage) {
+      await this.multicast(group, localize(payload, language));
+    }
+  }
+
+  private async multicast(users: User[], payload: NotificationPayload): Promise<void> {
+    setImmediate(() => void this.persistMany(users.map((u) => u.id), payload));
 
     const tokens = users.map((u) => u.fcmToken).filter(Boolean) as string[];
     if (tokens.length === 0) return;
