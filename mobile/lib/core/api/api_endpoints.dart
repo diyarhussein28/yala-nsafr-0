@@ -70,6 +70,7 @@ class Endpoints {
   static String adminWithdrawalById(String id) => '/admin/withdrawals/$id';
   static String tripLocation(String id) => '/trips/$id/location';
   static String tripLocationLatest(String id) => '/trips/$id/location/latest';
+  static String tripLocationTrail(String id) => '/trips/$id/location/trail';
 
   static String tripSos(String id) => '/trips/$id/sos';
 

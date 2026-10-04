@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/api/api_client.dart';
@@ -38,11 +39,32 @@ final tripLocationProvider =
   }
 });
 
-/// Driver: periodically posts current GPS position to the backend.
+/// Passenger: the path driven so far.
+final tripTrailProvider =
+    FutureProvider.autoDispose.family<List<TripLocationPoint>, String>((ref, tripId) async {
+  try {
+    final res = await ref.read(dioProvider).get(Endpoints.tripLocationTrail(tripId));
+    return (res.data as List)
+        .map((e) => TripLocationPoint.fromJson(e as Map<String, dynamic>))
+        .toList();
+  } catch (_) {
+    return const [];
+  }
+});
+
+/// Driver: streams the position to the backend for the whole trip.
+///
+/// The previous version posted once a minute from a Timer, which stops as soon as the
+/// phone locks or the app goes to the background — so passengers lost the car mid-trip.
+/// This listens to the platform location stream instead: on Android with a foreground-
+/// service notification, on iOS with background location updates. Positions are sent at
+/// most every 20 seconds, and sharing stops by itself once the server reports the trip
+/// is no longer active.
 class DriverLocationNotifier extends StateNotifier<bool> {
   final Dio _dio;
   final String _tripId;
-  Timer? _timer;
+  StreamSubscription<Position>? _sub;
+  DateTime _lastSent = DateTime.fromMillisecondsSinceEpoch(0);
 
   DriverLocationNotifier(this._dio, this._tripId) : super(false);
 
@@ -51,13 +73,58 @@ class DriverLocationNotifier extends StateNotifier<bool> {
     final granted = await _requestPermission();
     if (!granted) return;
     state = true;
-    await _postNow();
-    _timer = Timer.periodic(const Duration(minutes: 1), (_) => _postNow());
+    _sub = Geolocator.getPositionStream(locationSettings: _settings()).listen(
+      _onPosition,
+      onError: (_) {},
+    );
+  }
+
+  LocationSettings _settings() {
+    if (kIsWeb) return const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 30);
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 30,
+        intervalDuration: const Duration(seconds: 15),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'يلا نسافر — رحلة جارية',
+          notificationText: 'يتم مشاركة موقعك مع ركاب الرحلة',
+          enableWakeLock: true,
+          setOngoing: true,
+        ),
+      );
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 30,
+        activityType: ActivityType.automotiveNavigation,
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+        pauseLocationUpdatesAutomatically: false,
+      );
+    }
+    return const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 30);
+  }
+
+  Future<void> _onPosition(Position pos) async {
+    final now = DateTime.now();
+    if (now.difference(_lastSent) < const Duration(seconds: 20)) return;
+    _lastSent = now;
+    try {
+      await _dio.post(
+        Endpoints.tripLocation(_tripId),
+        data: {'latitude': pos.latitude, 'longitude': pos.longitude},
+      );
+    } on DioException catch (e) {
+      // The trip ended (or was never started): stop sharing
+      if (e.response?.statusCode == 400 || e.response?.statusCode == 403) stop();
+    } catch (_) {}
   }
 
   void stop() {
-    _timer?.cancel();
-    _timer = null;
+    _sub?.cancel();
+    _sub = null;
     if (mounted) state = false;
   }
 
@@ -70,27 +137,15 @@ class DriverLocationNotifier extends StateNotifier<bool> {
         perm != LocationPermission.deniedForever;
   }
 
-  Future<void> _postNow() async {
-    try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.medium),
-      );
-      await _dio.post(
-        Endpoints.tripLocation(_tripId),
-        data: {'latitude': pos.latitude, 'longitude': pos.longitude},
-      );
-    } catch (_) {}
-  }
-
   @override
   void dispose() {
-    _timer?.cancel();
+    _sub?.cancel();
     super.dispose();
   }
 }
 
-final driverLocationProvider = StateNotifierProvider.autoDispose
+// Kept alive while the app runs, so leaving the screen does not stop sharing mid-trip
+final driverLocationProvider = StateNotifierProvider
     .family<DriverLocationNotifier, bool, String>(
   (ref, tripId) => DriverLocationNotifier(ref.read(dioProvider), tripId),
 );

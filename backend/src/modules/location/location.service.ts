@@ -85,6 +85,17 @@ export class LocationService {
     });
   }
 
+  /** The path driven so far, for the passenger map (most recent 300 points, oldest first) */
+  async getTrailForParticipant(tripId: string, userId: string): Promise<TripLocation[]> {
+    await this.assertAccess(tripId, userId);
+    const recent = await this.locationRepo.find({
+      where: { tripId },
+      order: { recordedAt: 'DESC' },
+      take: 300,
+    });
+    return recent.reverse();
+  }
+
   /** Full GPS trail — intended for admin dispute review */
   async getTrail(tripId: string): Promise<TripLocation[]> {
     return this.locationRepo.find({

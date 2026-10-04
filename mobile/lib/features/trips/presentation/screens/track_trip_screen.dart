@@ -10,6 +10,9 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/trips_provider.dart';
+import '../../../../core/constants/egypt_cities.dart';
+import '../../../../core/utils/format.dart';
+import '../../../../shared/widgets/ui.dart';
 
 class TrackTripScreen extends ConsumerWidget {
   final String tripId;
@@ -49,12 +52,6 @@ class _DriverViewState extends ConsumerState<_DriverView> {
   }
 
   @override
-  void dispose() {
-    ref.read(driverLocationProvider(widget.tripId).notifier).stop();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final isPosting = ref.watch(driverLocationProvider(widget.tripId));
 
@@ -85,7 +82,7 @@ class _DriverViewState extends ConsumerState<_DriverView> {
               ),
               const SizedBox(height: 10),
               Text(
-                'يتم إرسال موقعك تلقائياً كل دقيقة\nابقِ التطبيق مفتوحاً أثناء القيادة',
+                'يستمر الإرسال حتى لو أغلقت الشاشة أو انتقلت لتطبيق آخر،\nويتوقف تلقائياً عند إنهاء الرحلة.',
                 style: TextStyle(
                     color: Colors.grey[600], fontSize: 14, height: 1.6),
                 textAlign: TextAlign.center,
@@ -124,6 +121,13 @@ class _DriverViewState extends ConsumerState<_DriverView> {
 
 // ── Passenger map ──────────────────────────────────────────────────────────────
 
+// OpenStreetMap's public tiles are for light use only; for production pass a provider
+// URL with a key, e.g. --dart-define=MAP_TILE_URL=https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=...
+const _tileUrl = String.fromEnvironment(
+  'MAP_TILE_URL',
+  defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+);
+
 class _PassengerMap extends ConsumerStatefulWidget {
   final String tripId;
   const _PassengerMap({required this.tripId});
@@ -135,13 +139,19 @@ class _PassengerMap extends ConsumerStatefulWidget {
 class _PassengerMapState extends ConsumerState<_PassengerMap> {
   final _mapController = MapController();
   Timer? _pollTimer;
+  bool _fitted = false;
+  static const _distance = Distance();
 
   @override
   void initState() {
     super.initState();
-    _pollTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) ref.invalidate(tripLocationProvider(widget.tripId));
-    });
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _refresh());
+  }
+
+  void _refresh() {
+    if (!mounted) return;
+    ref.invalidate(tripLocationProvider(widget.tripId));
+    ref.invalidate(tripTrailProvider(widget.tripId));
   }
 
   @override
@@ -151,10 +161,19 @@ class _PassengerMapState extends ConsumerState<_PassengerMap> {
     super.dispose();
   }
 
-  void _moveTo(LatLng point) {
+  void _fit(LatLng car, LatLng? destination, List<LatLng> path) {
+    if (_fitted) return;
+    _fitted = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
-        _mapController.move(point, 15);
+        if (destination == null && path.length < 2) {
+          _mapController.move(car, 14);
+        } else {
+          _mapController.fitCamera(CameraFit.bounds(
+            bounds: LatLngBounds.fromPoints([car, ?destination, ...path]),
+            padding: const EdgeInsets.fromLTRB(48, 48, 48, 220),
+          ));
+        }
       } catch (_) {}
     });
   }
@@ -162,122 +181,140 @@ class _PassengerMapState extends ConsumerState<_PassengerMap> {
   @override
   Widget build(BuildContext context) {
     final locationAsync = ref.watch(tripLocationProvider(widget.tripId));
+    final trail = ref.watch(tripTrailProvider(widget.tripId)).valueOrNull ?? const [];
+    final trip = ref.watch(tripDetailProvider(widget.tripId)).valueOrNull;
+    final destination = trip == null ? null : egyptCityCenters[trip.destinationCity];
+    final t = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تتبع الرحلة'),
+        title: Text(trip != null ? '${trip.originCity} ← ${trip.destinationCity}' : 'تتبع الرحلة'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'تحديث الآن',
-            onPressed: () =>
-                ref.invalidate(tripLocationProvider(widget.tripId)),
-          ),
+          IconButton(icon: const Icon(Icons.refresh_rounded), tooltip: 'تحديث الآن', onPressed: _refresh),
         ],
       ),
       floatingActionButton: _SosFab(tripId: widget.tripId),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startTop,
       body: locationAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.wifi_off_rounded, size: 56, color: Colors.grey),
-              const SizedBox(height: 12),
-              const Text('تعذر تحميل الموقع',
-                  style: TextStyle(fontSize: 15)),
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: () =>
-                    ref.invalidate(tripLocationProvider(widget.tripId)),
-                child: const Text('إعادة المحاولة'),
-              ),
-            ],
-          ),
+        error: (_, __) => EmptyState(
+          icon: Icons.wifi_off_rounded,
+          title: 'تعذّر تحميل الموقع',
+          actionLabel: 'إعادة المحاولة',
+          onAction: _refresh,
         ),
         data: (location) {
           if (location == null) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.location_searching_rounded,
-                      size: 72, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text(
-                    'في انتظار مشاركة الموقع من السائق',
-                    style: TextStyle(color: Colors.grey, fontSize: 15),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'يتم التحديث تلقائياً كل دقيقة',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                ],
-              ),
+            return const EmptyState(
+              icon: Icons.location_searching_rounded,
+              title: 'في انتظار موقع السائق',
+              message: 'سيظهر موقع السيارة هنا فور بدء السائق مشاركة موقعه. يتم التحديث تلقائياً.',
             );
           }
 
-          final point = LatLng(location.latitude, location.longitude);
-          _moveTo(point);
+          final car = LatLng(location.latitude, location.longitude);
+          final remainingKm = destination == null ? null : _distance.as(LengthUnit.Kilometer, car, destination);
+          // Straight-line distance × 1.3 for roads, at an average intercity 80 km/h
+          final eta = remainingKm == null
+              ? null
+              : DateTime.now().add(Duration(minutes: (remainingKm * 1.3 / 80 * 60).round()));
+          final path = trail.map((p) => LatLng(p.latitude, p.longitude)).toList();
+          _fit(car, destination, path);
+          final primary = Theme.of(context).colorScheme.primary;
 
           return Stack(
             children: [
               FlutterMap(
                 mapController: _mapController,
-                options:
-                    MapOptions(initialCenter: point, initialZoom: 15),
+                options: MapOptions(initialCenter: car, initialZoom: 13),
                 children: [
                   TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.yalansafr.app',
+                    urlTemplate: _tileUrl,
+                    userAgentPackageName: 'com.yalansafr.yala_nsafr',
                   ),
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: point,
-                        width: 52,
-                        height: 52,
-                        child: const Icon(
-                          Icons.directions_car_rounded,
-                          size: 40,
-                          color: AppColors.primary,
-                        ),
+                  PolylineLayer(polylines: [
+                    if (destination != null)
+                      Polyline(
+                        points: [car, destination],
+                        color: Colors.black26,
+                        strokeWidth: 3,
+                        pattern: StrokePattern.dashed(segments: const [10, 8]),
                       ),
-                    ],
-                  ),
+                    if (path.length > 1)
+                      Polyline(points: [...path, car], color: primary, strokeWidth: 5),
+                  ]),
+                  MarkerLayer(markers: [
+                    if (destination != null)
+                      Marker(
+                        point: destination,
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.topCenter,
+                        child: const Icon(Icons.location_on_rounded, size: 44, color: AppColors.error),
+                      ),
+                    Marker(
+                      point: car,
+                      width: 48,
+                      height: 48,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8)],
+                        ),
+                        child: const Icon(Icons.directions_car_rounded, color: Colors.white, size: 24),
+                      ),
+                    ),
+                  ]),
                 ],
               ),
               Positioned(
-                bottom: 90, // above FAB
                 left: 16,
-                right: 80,
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.access_time_rounded,
-                            size: 16, color: Colors.grey),
-                        const SizedBox(width: 8),
-                        Text(
-                          'آخر تحديث: ${_fmt(location.recordedAt)}',
-                          style: const TextStyle(fontSize: 13),
+                right: 16,
+                bottom: 16 + MediaQuery.of(context).padding.bottom,
+                child: AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          const StatusPill(label: 'مباشر', color: AppColors.success, icon: Icons.circle),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text('آخر تحديث ${Fmt.ago(location.recordedAt)}', style: t.bodySmall)),
+                        ],
+                      ),
+                      if (remainingKm != null) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _MapStat(
+                                label: 'المتبقي تقريباً',
+                                value: '${(remainingKm * 1.3).round()} كم',
+                              ),
+                            ),
+                            Expanded(
+                              child: _MapStat(label: 'الوصول المتوقع', value: Fmt.time(eta!)),
+                            ),
+                          ],
                         ),
-                        const Spacer(),
-                        const Icon(Icons.circle,
-                            color: AppColors.primary, size: 8),
-                        const SizedBox(width: 4),
-                        const Text('مباشر',
-                            style: TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold)),
                       ],
-                    ),
+                      if (destination != null) ...[
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.map_rounded),
+                          label: const Text('عرض الطريق في خرائط جوجل'),
+                          onPressed: () => launchUrl(
+                            Uri.parse('https://www.google.com/maps/dir/?api=1'
+                                '&origin=${car.latitude},${car.longitude}'
+                                '&destination=${destination.latitude},${destination.longitude}'
+                                '&travelmode=driving'),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -287,9 +324,24 @@ class _PassengerMapState extends ConsumerState<_PassengerMap> {
       ),
     );
   }
+}
 
-  String _fmt(DateTime dt) =>
-      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+class _MapStat extends StatelessWidget {
+  final String label;
+  final String value;
+  const _MapStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: t.labelSmall),
+        Text(value, style: t.titleLarge),
+      ],
+    );
+  }
 }
 
 // ── SOS FAB ───────────────────────────────────────────────────────────────────

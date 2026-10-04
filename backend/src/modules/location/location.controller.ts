@@ -18,6 +18,12 @@ export class LocationController {
     return this.locationService.recordLocation(tripId, req.user.id, dto);
   }
 
+  /** Driver or confirmed passenger fetches the path driven so far */
+  @Get('trail')
+  trail(@Param('tripId', ParseUUIDPipe) tripId: string, @Request() req: any) {
+    return this.locationService.getTrailForParticipant(tripId, req.user.id);
+  }
+
   /** Driver or confirmed passenger fetches the latest position */
   @Get('latest')
   latest(@Param('tripId', ParseUUIDPipe) tripId: string, @Request() req: any) {
