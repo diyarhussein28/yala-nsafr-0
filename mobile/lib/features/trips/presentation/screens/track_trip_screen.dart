@@ -183,7 +183,11 @@ class _PassengerMapState extends ConsumerState<_PassengerMap> {
     final locationAsync = ref.watch(tripLocationProvider(widget.tripId));
     final trail = ref.watch(tripTrailProvider(widget.tripId)).valueOrNull ?? const [];
     final trip = ref.watch(tripDetailProvider(widget.tripId)).valueOrNull;
-    final destination = trip == null ? null : egyptCityCenters[trip.destinationCity];
+    final destination = trip == null
+        ? null
+        : (trip.destinationLat != null && trip.destinationLng != null
+            ? LatLng(trip.destinationLat!, trip.destinationLng!)
+            : egyptCityCenters[trip.destinationCity]);
     final t = Theme.of(context).textTheme;
 
     return Scaffold(

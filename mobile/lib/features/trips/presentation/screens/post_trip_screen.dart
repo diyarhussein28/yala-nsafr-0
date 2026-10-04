@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
+import '../../../../core/constants/egypt_cities.dart';
+import '../../../../shared/widgets/map_point_picker.dart';
 import '../../../../core/utils/format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -114,6 +117,23 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
   bool _repeat = false;
   final Set<int> _repeatDays = {};
   int _repeatWeeks = 4;
+  // Exact meeting / drop-off points chosen on the map (optional)
+  LatLng? _pickupPoint;
+  LatLng? _dropoffPoint;
+
+  Future<void> _pickPoint({required bool pickup}) async {
+    final city = pickup ? _from : _to;
+    final initial = (pickup ? _pickupPoint : _dropoffPoint) ??
+        egyptCityCenters[city] ??
+        const LatLng(30.0444, 31.2357);
+    final point = await Navigator.of(context).push<LatLng>(MaterialPageRoute(
+      builder: (_) => MapPointPicker(
+        title: pickup ? 'نقطة التجمع' : 'نقطة النزول',
+        initial: initial,
+      ),
+    ));
+    if (point != null) setState(() => pickup ? _pickupPoint = point : _dropoffPoint = point);
+  }
   late bool _smoking;
   late bool _pets;
   late bool _ac;
@@ -369,6 +389,28 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                   ),
                 ],
                 if (!widget.isEditing && _from != null && _to != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(minimumSize: const Size(0, 46)),
+                          icon: Icon(_pickupPoint != null ? Icons.check_circle_rounded : Icons.add_location_rounded),
+                          label: Text(_pickupPoint != null ? 'تم تحديد التجمع' : 'نقطة التجمع على الخريطة'),
+                          onPressed: () => _pickPoint(pickup: true),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(minimumSize: const Size(0, 46)),
+                          icon: Icon(_dropoffPoint != null ? Icons.check_circle_rounded : Icons.flag_rounded),
+                          label: Text(_dropoffPoint != null ? 'تم تحديد النزول' : 'نقطة النزول'),
+                          onPressed: () => _pickPoint(pickup: false),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'محطات على الطريق (اختياري)',

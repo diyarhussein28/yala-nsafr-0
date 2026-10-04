@@ -805,6 +805,20 @@ class _RouteHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (trip.originLat != null && trip.originLng != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 44)),
+                icon: const Icon(Icons.navigation_rounded),
+                label: const Text('الاتجاهات إلى نقطة التجمع'),
+                onPressed: () => launchUrl(
+                  Uri.parse('https://www.google.com/maps/dir/?api=1'
+                      '&destination=${trip.originLat},${trip.originLng}&travelmode=driving'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+            ),
         ],
       ),
     );
