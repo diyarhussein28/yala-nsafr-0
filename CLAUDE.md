@@ -12,7 +12,7 @@ backend/   NestJS 11 API (TypeORM, PostgreSQL, Kashier, FCM)
   src/common/              guards, decorators, serializers/public-user.ts, time/cairo.ts
   admin-panel/index.html   static web admin, served at /admin
   test/                    e2e suites against a real Postgres database
-mobile/    Flutter 3.32+ app (Riverpod, GoRouter), Arabic/RTL
+mobile/    Flutter 3.32+ app (Riverpod, GoRouter), Arabic (RTL) + English, light/dark
 ```
 
 The marketing website lives in a separate repository.
@@ -96,3 +96,12 @@ dispute windows, rating thresholds, subscription price/period).
 - `lib/core/api/api_client.dart`: Dio with single-flight token refresh; base URL from
   `--dart-define=API_BASE_URL`.
 - Add `MediaQuery.of(context).padding.bottom` to bottom-anchored widgets (Samsung nav bar).
+- **Strings**: wrap every user-facing string in `tr('النص العربي', [args])` (placeholders
+  `{0}`, `{1}`) and add the English entry to `lib/core/i18n/en.dart`; `test/i18n_test.dart`
+  fails otherwise. Don't cache translated strings in globals/static finals — use getters.
+  Formatting (dates, money, seat counts) goes through `Fmt`; city/area names through
+  `placeName()` / `routeLabel()` (data stays Arabic, display follows the language).
+- Colours: use `context.textMuted` / `surfaceColor` / `readable(color)` from
+  `app_theme.dart` so dark mode keeps working; open bottom sheets with
+  `useRootNavigator: true` so they cover the tab bar.
+- Store release steps: `docs/RELEASE.md`. Production deploy: `deploy/README.md`.

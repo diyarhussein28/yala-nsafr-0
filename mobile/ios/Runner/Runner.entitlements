@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Push notifications (FCM via APNs). Xcode switches this to "production" for App Store builds. -->
+	<key>aps-environment</key>
+	<string>development</string>
+	<!-- Universal links for shared trips (https://<APP_LINK_HOST>/t/<id>). The API serves the
+	     matching /.well-known/apple-app-site-association once IOS_TEAM_ID is set. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:$(APP_LINK_HOST)</string>
+	</array>
+</dict>
+</plist>

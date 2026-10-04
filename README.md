@@ -7,11 +7,11 @@ account.
 
 | | |
 |---|---|
-| **Backend** | NestJS 11 · PostgreSQL + PostGIS · Redis · TypeORM |
-| **Mobile** | Flutter (Dart SDK ≥ 3.3), Riverpod, GoRouter — Arabic-first, RTL |
-| **Payments** | Kashier only — trip escrow (authorize → capture), driver payouts, driver subscriptions |
-| **Push** | Firebase Cloud Messaging |
-| **Tests** | 211 end-to-end tests against a real Postgres instance, run in CI |
+| **Backend** | NestJS 11 · PostgreSQL · TypeORM (migrations) · Docker deploy with Caddy |
+| **Mobile** | Flutter, Riverpod, GoRouter — Arabic-first (RTL) with English, light & dark themes |
+| **Payments** | Kashier only — card escrow (authorize → capture), mobile wallets, driver payouts, subscriptions, cash-commission payments |
+| **Push / crashes** | Firebase Cloud Messaging · Crashlytics (app) · Sentry (API, optional) |
+| **Tests** | 220+ end-to-end API tests against a real Postgres instance, plus Flutter unit tests — all run in CI |
 
 The marketing site lives separately at
 [and222row/yala-nsafr-website](https://github.com/and222row/yala-nsafr-website).
@@ -20,18 +20,27 @@ The marketing site lives separately at
 
 ## What it does
 
-**Trips & booking** — search by route and date, seat availability, women-only trips,
-preferences (smoking, pets, luggage, A/C, chattiness), per-trip comments and group chat,
-live driver location while a trip is running, and an SOS button for every participant.
+**Trips & booking** — search by route and date (including stops along the way), seat
+availability, women-only trips, preferences (smoking, pets, luggage, A/C, chattiness),
+exact pickup and drop-off points picked on a map, weekly recurring trips, per-trip comments
+and group chat, and shareable trip links (`/t/<id>`) that open the app or show a preview
+page. While a trip runs the driver's location is streamed — also with the screen locked —
+and passengers see the car, its trail and an ETA on a map; every participant has an SOS
+button.
 
-**Money** — card and wallet payments are *authorized* at booking and only *captured*
-when the driver ends the trip, so a passenger's funds are held rather than taken.
+**Money** — card payments are *authorized* at booking and only *captured* when the driver
+ends the trip, so a passenger's funds are held rather than taken. Mobile wallets (Vodafone
+Cash etc.) can't be held, so they are charged at booking and refunded by policy.
+Driver earnings stay on hold for the dispute window before they become withdrawable, and
+commission owed on cash trips is netted from card earnings or paid through Kashier — a
+driver over the configurable limit can't post new trips until it is settled.
 Cancellations resolve by policy (free cancel → void the hold, late cancel → capture then
 partially refund, no refund → capture in full). Cash trips skip escrow entirely and are
 tracked for commission only.
 
-**Drivers** — verification, earnings broken down per trip, withdrawals to Vodafone Cash /
-InstaPay / bank, and subscription-gated trip posting. Subscriptions are prepaid periods
+**Drivers** — ID and licence verification (documents in private storage, served through
+short-lived signed links), earnings broken down per trip with a full ledger, withdrawals to
+Vodafone Cash / InstaPay / bank, and subscription-gated trip posting. Subscriptions are prepaid periods
 (default 200 EGP / 30 days, set in `platform_config`; 0 disables the paywall) paid through
 Kashier — Stripe was removed because it does not onboard merchants in Egypt.
 
@@ -45,6 +54,14 @@ auto-reject bookings a driver never answers, release seats held by unpaid checko
 expired ratings, remind drivers before their subscription lapses, and reconcile captures and
 payouts against Kashier.
 
+**Admin** — a web panel at `/admin` (dashboard with charts, verification queue, users,
+trips, disputes, withdrawals, live platform settings, broadcast notifications) and the
+same tools inside the app for admin accounts. Every admin action is written to an audit log.
+
+**App** — Arabic and English (Profile → Settings → Language, switches live), light and dark
+themes, offline banner, forced/optional update prompt driven by the API, push
+notifications that open the right screen, and crash reporting.
+
 ---
 
 ## Getting started
@@ -52,14 +69,13 @@ payouts against Kashier.
 ### Prerequisites
 
 - Node.js 20+
-- PostgreSQL 16 with PostGIS
-- Redis
-- Flutter SDK ≥ 3.3
+- PostgreSQL 16
+- Flutter 3.32+
 - A Kashier account (test mode is enough — see [Kashier setup](#kashier-setup))
 
 ### 1. Database
 
-`backend/docker-compose.yml` brings up Postgres (with PostGIS) and Redis:
+`backend/docker-compose.yml` brings up Postgres (and a Redis container the API does not use yet):
 
 ```bash
 cd backend && docker compose up -d
@@ -83,8 +99,13 @@ Set `PAYMENT_MOCK=true` to work without Kashier credentials at all.
 
 ```bash
 npm run migration:run   # creates the schema
+npm run seed            # optional: demo admin, drivers, passengers, trips and history
 npm run start:dev
 ```
+
+`npm run seed` creates accounts on `+2010000000xx` — `+201000000001` is the admin,
+`+201000000010`–`12` verified drivers, `+201000000020`–`22` passengers. Sign in with any of
+them; with `SMS_PROVIDER=stub` the OTP is printed in the API log.
 
 The API serves on `http://localhost:3000/api/v1`; the admin panel on `http://localhost:3000/admin`.
 
@@ -126,7 +147,12 @@ For any build that runs against a real server, pass the API address at build tim
 flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com/api/v1
 ```
 
-The project needs Flutter 3.32 or newer.
+The project needs Flutter 3.32 or newer. Store builds (signing, app links, push, map
+tiles) are covered step by step in [`docs/RELEASE.md`](docs/RELEASE.md); running the API
+in production in [`deploy/README.md`](deploy/README.md).
+
+**Strings**: every user-facing string goes through `tr('…')` with its English
+translation in `lib/core/i18n/en.dart`; `test/i18n_test.dart` fails if one is missing.
 
 Testing driver and passenger side by side is easiest with two devices in two terminals
 (`flutter run -d all` works too, but interleaves the logs).
@@ -206,6 +232,7 @@ job, which re-checks recent payouts directly against Kashier.
 
 ```bash
 cd backend && npm run test:e2e
+cd mobile && flutter analyze && flutter test
 ```
 
 These run against a **real Postgres database** rather than mocks, with Kashier calls
@@ -224,29 +251,33 @@ stubbed. Two consequences worth knowing:
 
 ```
 backend/          NestJS API
-  src/modules/    admin auth blocks bookings disputes earnings location messages
-                  notifications payments ratings scheduler sos subscriptions trips
-                  upload users
-  src/database/   entities
+  src/modules/    admin audit auth blocks bookings disputes earnings location messages
+                  notifications payments ratings scheduler share sms sos subscriptions
+                  trips upload users
+  src/common/     job locks, Cairo-time helpers, serializers, request logging
+  src/database/   entities, migrations, seed
+  admin-panel/    the web admin (static, served at /admin)
   test/           end-to-end suite
 mobile/           Flutter app (lib/core, lib/features, lib/shared)
+deploy/           Docker Compose production setup (API, Postgres, Caddy, backups)
+docs/             release guide
 ```
 
 ---
 
 ## Known gaps
 
-- **Uploaded ID documents are served publicly** from `/uploads` under unguessable names.
-  They should move to private object storage with signed URLs before launch.
-- **Cash-trip commission is tracked, not collected.** The driver's earnings summary now shows
-  `cashCommissionOwed`, but it is not yet netted against payouts — a business decision.
-- **Late-cancellation driver compensation** is announced to the driver but not credited.
 - **Payout webhook signature is unverified against a real delivery.** It follows the
   documented algorithm, but Kashier publishes no test vector for it. If payout webhooks
   start being rejected, the error log prints both the received header and the computed
   payload.
-- **Push notifications need FCM credentials** (`FCM_*` in `.env`); without them
-  notification sends fail silently in the log.
+- **Wallet payments** use Kashier's hosted checkout with `allowedMethods=wallet`; verify the
+  flow once in the Kashier sandbox with your merchant account before launch.
+- **Push notifications need FCM credentials** (`FCM_*` in `.env`) and, for iOS, an APNs key
+  uploaded to Firebase; without them notification sends fail silently in the log.
+- **Server-sent texts are Arabic.** Push notifications and SMS are written in Arabic for
+  every user; the app UI itself is fully bilingual and the user's choice is stored in
+  `preferredLanguage`, ready for localized notifications.
 
 ---
 
