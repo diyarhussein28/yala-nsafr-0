@@ -25,6 +25,7 @@ import { creditPassengerCompletion, REFERRAL_REWARD_EGP, restorePromoCredit } fr
 import { applyDriverCancellationStrike, LATE_DRIVER_CANCEL_HOURS } from './driver-strikes';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { DriverBalanceService } from '../earnings/driver-balance.service';
+import { Exclusive } from '../../common/jobs/exclusive';
 
 // Matches the app's date picker. See assertDepartureTimeInRange — this needs to drop
 // inside Kashier's authorization hold window before online payments can be relied on.
@@ -580,6 +581,7 @@ export class TripsService {
    * until this runs, so retry the capture and let Kashier settle which case it was.
    */
   @Cron(CronExpression.EVERY_30_MINUTES)
+  @Exclusive()
   async reconcileCapturedPayments(): Promise<void> {
     if (this.kashier.isMock) return;
 

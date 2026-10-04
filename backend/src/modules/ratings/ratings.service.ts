@@ -13,6 +13,7 @@ import { User } from '../../database/entities/user.entity';
 import { SubmitRatingDto } from './dto/submit-rating.dto';
 import { PlatformConfig, CONFIG_KEYS } from '../../database/entities/platform-config.entity';
 import { toPublicUser } from '../../common/serializers/public-user';
+import { Exclusive } from '../../common/jobs/exclusive';
 
 // Fallbacks for a fresh database — platform_config (admin-editable) takes precedence.
 // Ratings are revealed after 7 days if the other party hasn't submitted
@@ -145,6 +146,7 @@ export class RatingsService {
 
   // Reveal ratings whose 7-day window has expired and recalculate affected users
   @Cron(CronExpression.EVERY_HOUR)
+  @Exclusive()
   async revealExpiredRatings(): Promise<void> {
     const expired = await this.ratingRepo.find({
       where: { isRevealed: false, revealAfter: LessThanOrEqual(new Date()) },

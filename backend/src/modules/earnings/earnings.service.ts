@@ -24,6 +24,7 @@ import {
   DriverLedgerEntry,
   LedgerEntryType,
 } from '../../database/entities/driver-ledger-entry.entity';
+import { Exclusive } from '../../common/jobs/exclusive';
 
 
 // How long a delivered payout is re-checked for a bounce-back. Kashier reports
@@ -230,6 +231,7 @@ export class EarningsService {
    * on the gateway's view without depending on delivery.
    */
   @Cron(CronExpression.EVERY_30_MINUTES)
+  @Exclusive()
   async reconcilePendingWithdrawals(): Promise<void> {
     if (this.kashier.isMock) return;
 

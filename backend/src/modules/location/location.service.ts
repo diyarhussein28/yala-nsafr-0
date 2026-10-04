@@ -12,6 +12,7 @@ import { TripLocation } from '../../database/entities/trip-location.entity';
 import { Trip, TripStatus } from '../../database/entities/trip.entity';
 import { Booking, PARTICIPANT_BOOKING_STATUSES } from '../../database/entities/booking.entity';
 import { PostLocationDto } from './dto/post-location.dto';
+import { Exclusive } from '../../common/jobs/exclusive';
 
 /**
  * GPS points are kept long enough to settle any dispute about the trip (the dispute
@@ -57,6 +58,7 @@ export class LocationService {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  @Exclusive()
   async purgeOldLocations(): Promise<number> {
     const cutoff = new Date(Date.now() - LOCATION_RETENTION_DAYS * 24 * 3_600_000);
     const result = await this.locationRepo

@@ -39,6 +39,7 @@ import {
   REFERRAL_REWARD_EGP,
   restorePromoCredit,
 } from './booking-side-effects';
+import { Exclusive } from '../../common/jobs/exclusive';
 
 // Auto-confirm 2 hours after departure time if no dispute
 const AUTO_CONFIRM_HOURS = 2;
@@ -490,6 +491,7 @@ export class BookingsService {
 
   /** Runs every 5 minutes — auto-rejects bookings pending for over 30 minutes */
   @Cron(CronExpression.EVERY_5_MINUTES)
+  @Exclusive()
   async autoRejectExpiredBookings(): Promise<void> {
     const cutoff = new Date(Date.now() - 30 * 60 * 1000);
 
@@ -550,6 +552,7 @@ export class BookingsService {
    * may simply have been lost) — a paid booking is moved on to the driver instead.
    */
   @Cron(CronExpression.EVERY_5_MINUTES)
+  @Exclusive()
   async expireAbandonedPayments(): Promise<void> {
     const cutoff = new Date(Date.now() - PENDING_PAYMENT_TTL_MINUTES * 60 * 1000);
     const stale = await this.bookingRepo.find({

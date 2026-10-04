@@ -674,6 +674,31 @@ describe('Security & integrity regressions', () => {
     });
   });
 
+  it('a scheduled job does not run while another instance holds its lock', async () => {
+    // Simulate a second instance already running the job by holding the same lock
+    const key = (() => {
+      let h = 0x811c9dc5;
+      const name = 'LocationService.purgeOldLocations';
+      for (let i = 0; i < name.length; i++) { h ^= name.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+      return h | 0;
+    })();
+    const other = dataSource.createQueryRunner();
+    await other.connect();
+    await other.startTransaction();
+    await other.query('SELECT pg_advisory_xact_lock($1)', [key]);
+    try {
+      const spy = jest.spyOn(dataSource.getRepository(TripLocation), 'createQueryBuilder');
+      const result = await locationService.purgeOldLocations();
+      expect(result).toBeUndefined();
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      await other.commitTransaction();
+      await other.release();
+    }
+    // Once released, the job runs normally
+    expect(typeof (await locationService.purgeOldLocations())).toBe('number');
+  });
+
   // ── Pure helpers ───────────────────────────────────────────────────────────
 
   describe('Cairo time helpers', () => {

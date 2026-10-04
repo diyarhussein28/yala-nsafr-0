@@ -22,6 +22,7 @@ import {
 import { PlatformConfig, CONFIG_KEYS } from '../../database/entities/platform-config.entity';
 import { KashierService } from './kashier.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { Exclusive } from '../../common/jobs/exclusive';
 
 // Defaults for a fresh database; admins change them through platform_config.
 // 200 EGP / 30 days is the price the app has always advertised.
@@ -252,6 +253,7 @@ export class SubscriptionBillingService {
    * are reminded before their period runs out rather than finding out when posting fails.
    */
   @Cron(CronExpression.EVERY_HOUR)
+  @Exclusive()
   async sendRenewalReminders(): Promise<void> {
     const now = new Date();
     const soon = new Date(now.getTime() + 3 * 24 * 3_600_000);

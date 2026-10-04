@@ -27,6 +27,7 @@ import {
   PaymentSettlementService,
   PaymentSettlement,
 } from '../payments/payment-settlement.service';
+import { Exclusive } from '../../common/jobs/exclusive';
 
 @Injectable()
 export class AdminService implements OnModuleInit {
@@ -598,6 +599,7 @@ export class AdminService implements OnModuleInit {
 
   // ── SLA cron ───────────────────────────────────────────────────────────────
   @Cron(CronExpression.EVERY_HOUR)
+  @Exclusive()
   async handleSlaExpiry(): Promise<void> {
     const expired = await this.disputeRepo.find({
       where: {

@@ -11,6 +11,7 @@ import { KashierService } from '../payments/kashier.service';
 import { applyDriverCancellationStrike } from '../trips/driver-strikes';
 import { restorePromoCredit } from '../bookings/booking-side-effects';
 import { formatCairoTime } from '../../common/time/cairo';
+import { Exclusive } from '../../common/jobs/exclusive';
 
 @Injectable()
 export class SchedulerService {
@@ -29,6 +30,7 @@ export class SchedulerService {
   // ── Runs every 5 minutes ────────────────────────────────────────────────────
 
   @Cron(CronExpression.EVERY_5_MINUTES)
+  @Exclusive()
   async handleTripLifecycle() {
     await Promise.all([
       this.sendPreDepartureReminders(),

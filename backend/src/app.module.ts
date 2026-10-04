@@ -28,6 +28,7 @@ import { HealthController } from './health.controller';
 import { SmsModule } from './modules/sms/sms.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuditInterceptor } from './modules/audit/audit.interceptor';
+import { JobLockRegistrar } from './common/jobs/exclusive';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { AuditInterceptor } from './modules/audit/audit.interceptor';
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+    JobLockRegistrar,
   ],
 })
 export class AppModule {}
