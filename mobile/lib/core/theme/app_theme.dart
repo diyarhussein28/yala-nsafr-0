@@ -184,15 +184,17 @@ class AppTheme {
         titleTextStyle: cairo.copyWith(fontSize: 18, fontWeight: FontWeight.w700, color: text),
         iconTheme: IconThemeData(color: text),
       ),
+      // Matches AppCard: borderless with a soft shadow in light mode, a hairline border
+      // in dark mode where shadows do not read.
       cardTheme: CardThemeData(
         color: surface,
-        elevation: 0,
+        elevation: isDark ? 0 : 1.5,
         margin: EdgeInsets.zero,
         surfaceTintColor: Colors.transparent,
-        shadowColor: AppColors.cardShadow,
+        shadowColor: const Color(0x22101828),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          side: BorderSide(color: divider),
+          side: isDark ? BorderSide(color: divider) : BorderSide.none,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

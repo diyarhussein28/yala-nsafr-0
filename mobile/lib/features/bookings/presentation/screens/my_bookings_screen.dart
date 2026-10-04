@@ -5,9 +5,10 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/models/booking.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/format.dart';
+import '../../../../shared/widgets/ui.dart';
 import '../../providers/bookings_provider.dart';
 import '../../../../shared/widgets/skeletons.dart';
-import '../../../../shared/widgets/trip_badge_row.dart';
 
 // ── Cancel booking dialog ─────────────────────────────────────────────────────
 
@@ -231,46 +232,29 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
       body: _initialLoad
           ? SkeletonCardList(itemBuilder: () => const ListCardSkeleton())
           : _error != null && _bookings.isEmpty
-              ? Center(child: Text(_error!))
+              ? EmptyState(
+                  icon: Icons.cloud_off_rounded,
+                  title: 'تعذّر تحميل حجوزاتك',
+                  message: _error,
+                  color: AppColors.error,
+                  actionLabel: 'إعادة المحاولة',
+                  onAction: () => _load(reset: true),
+                )
               : _bookings.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.book_online_outlined,
-                                size: 80, color: Colors.grey.shade300),
-                            const SizedBox(height: 16),
-                            const Text('لا توجد حجوزات بعد',
-                                style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey)),
-                            const SizedBox(height: 8),
-                            Text(
-                              'ابحث عن رحلة وحجز مقعدك بكل سهولة',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 13, color: Colors.grey[400]),
-                            ),
-                            const SizedBox(height: 24),
-                            FilledButton.icon(
-                              icon: const Icon(Icons.search_rounded),
-                              label: const Text('ابحث عن رحلة'),
-                              onPressed: () => context.go('/search'),
-                            ),
-                          ],
-                        ),
-                      ),
+                  ? EmptyState(
+                      icon: Icons.confirmation_number_outlined,
+                      title: 'لا توجد حجوزات بعد',
+                      message: 'ابحث عن رحلة واحجز مقعدك في دقيقة.',
+                      actionLabel: 'ابحث عن رحلة',
+                      onAction: () => context.go('/search'),
                     )
                   : RefreshIndicator(
                       onRefresh: () => _load(reset: true),
                       child: ListView.separated(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                         itemCount:
                             _bookings.length + (_hasMore || _loading ? 1 : 0),
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (_, i) {
                           if (i == _bookings.length) {
                             return _loading
@@ -358,24 +342,25 @@ class _BookingCard extends ConsumerWidget {
       booking.trip?.status == 'active' || booking.trip?.status == 'ongoing';
 
   Color get _statusColor => switch (booking.status) {
-        'pending_driver_approval' => Colors.blue,
-        'pending' || 'pending_payment' => Colors.orange,
-        'in_progress' => Colors.orange,
-        'confirmed' when _tripIsActive => Colors.orange,
-        'confirmed' => AppColors.primary,
-        'completed' || 'trip_completed' => Colors.grey,
-        'cancelled' || 'cancelled_by_passenger' || 'cancelled_by_driver' || 'refunded' => Colors.red,
-        'disputed' => Colors.deepOrange,
-        _ => Colors.grey,
+        'pending_driver_approval' => AppColors.warning,
+        'pending' || 'pending_payment' => AppColors.warning,
+        'in_progress' => AppColors.info,
+        'confirmed' when _tripIsActive => AppColors.info,
+        'confirmed' => AppColors.success,
+        'completed' || 'trip_completed' => AppColors.primary,
+        'cancelled' || 'cancelled_by_passenger' || 'cancelled_by_driver' => AppColors.error,
+        'refunded' => AppColors.textSecondary,
+        'disputed' => AppColors.womenOnly,
+        _ => AppColors.textSecondary,
       };
 
   String get _statusLabel => switch (booking.status) {
-        'pending_driver_approval' => 'في انتظار موافقة السائق',
+        'pending_driver_approval' => 'بانتظار السائق',
         'pending' || 'pending_payment' => 'قيد الانتظار',
         'in_progress' => 'الرحلة جارية',
         'confirmed' when _tripIsActive => 'الرحلة جارية',
         'confirmed' => 'مؤكد',
-        'completed' || 'trip_completed' => 'مكتمل',
+        'completed' || 'trip_completed' => 'مكتملة',
         'cancelled' || 'cancelled_by_passenger' || 'cancelled_by_driver' => 'ملغى',
         'refunded' => 'مسترد',
         'disputed' => 'نزاع',
@@ -385,116 +370,132 @@ class _BookingCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final trip = booking.trip;
+    final t = Theme.of(context).textTheme;
+    final dimmed = booking.status.startsWith('cancelled') || booking.status == 'refunded';
 
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+    final actions = <Widget>[
+      if (booking.isActive)
+        _CardAction(
+          icon: Icons.location_on_rounded,
+          label: 'تتبع السائق',
+          color: Theme.of(context).colorScheme.primary,
+          onTap: () => context.push('/trips/${booking.tripId}/live', extra: {'isDriver': false}),
+        ),
+      if (booking.canRate)
+        _CardAction(
+          icon: Icons.star_rounded,
+          label: 'قيّم الرحلة',
+          color: AppColors.secondary,
+          onTap: () => context.push('/bookings/rate', extra: booking),
+        ),
+      if (booking.canCancel)
+        _CardAction(
+          icon: Icons.close_rounded,
+          label: 'إلغاء الحجز',
+          color: AppColors.error,
+          onTap: () async {
+            final didCancel = await _showCancelDialog(context, ref, booking);
+            if (didCancel && context.mounted) onRefresh();
+          },
+        ),
+    ];
+
+    return Opacity(
+      opacity: dimmed ? 0.72 : 1,
+      child: AppCard(
+        padding: EdgeInsets.zero,
         onTap: () => context.push('/trips/${booking.tripId}'),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 8, 0),
+              child: Row(
                 children: [
+                  Icon(Icons.event_rounded, size: 16, color: context.textMuted),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      trip != null
-                          ? '${trip.originCity} ← ${trip.destinationCity}'
-                          : 'رحلة #${booking.tripId.substring(0, 8)}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 15),
+                      trip != null ? '${Fmt.relativeDay(trip.departureTime)} · ${Fmt.time(trip.departureTime)}' : '',
+                      style: t.labelMedium,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: _statusColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _statusColor),
-                    ),
-                    child: Text(_statusLabel,
-                        style:
-                            TextStyle(color: _statusColor, fontSize: 12)),
-                  ),
+                  StatusPill(label: _statusLabel, color: _statusColor),
+                  if (booking.canDispute)
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert_rounded, color: context.textMuted),
+                      tooltip: 'المزيد',
+                      onSelected: (_) => context.push('/disputes/open?bookingId=${booking.id}'),
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'dispute', child: Text('الإبلاغ عن مشكلة / فتح نزاع')),
+                      ],
+                    )
+                  else
+                    const SizedBox(width: 8),
                 ],
               ),
-              const SizedBox(height: 8),
-              Row(
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+              child: trip != null
+                  ? RouteTimeline(
+                      dense: true,
+                      fromCity: trip.originCity,
+                      toCity: trip.destinationCity,
+                      fromDetail: trip.originAddress,
+                      toDetail: trip.destinationAddress,
+                    )
+                  : Text('رحلة #${booking.tripId.substring(0, 8)}', style: t.titleSmall),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: context.dividerColor))),
+              child: Row(
                 children: [
-                  const Icon(Icons.event_seat_rounded,
-                      size: 14, color: Colors.grey),
+                  Icon(Icons.event_seat_rounded, size: 16, color: context.textMuted),
                   const SizedBox(width: 4),
-                  Text('${booking.seatsCount} مقعد',
-                      style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(width: 12),
-                  const Icon(Icons.attach_money_rounded,
-                      size: 14, color: Colors.grey),
-                  Text('${booking.totalAmount.toStringAsFixed(0)} جنيه',
-                      style: Theme.of(context).textTheme.bodySmall),
+                  Text('${booking.seatsCount} ${booking.seatsCount == 1 ? 'مقعد' : 'مقاعد'}', style: t.bodySmall),
+                  const SizedBox(width: 14),
+                  Icon(
+                    booking.paymentMethod == 'cash' ? Icons.payments_rounded : Icons.credit_card_rounded,
+                    size: 16,
+                    color: context.textMuted,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(booking.paymentMethod == 'cash' ? 'كاش' : 'بطاقة', style: t.bodySmall),
+                  const Spacer(),
+                  Text(Fmt.money(booking.totalAmount), style: t.titleMedium),
                 ],
               ),
-              if (trip != null) TripBadgeRow.fromTrip(trip),
-              if (booking.canCancel ||
-                  booking.isActive ||
-                  booking.canRate ||
-                  booking.canDispute) ...[
-                const SizedBox(height: 4),
-                Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 0,
-                  runSpacing: 0,
-                  children: [
-                    if (booking.canCancel)
-                      TextButton.icon(
-                        icon: const Icon(Icons.cancel_outlined, size: 16),
-                        label: const Text('إلغاء'),
-                        style: TextButton.styleFrom(
-                            foregroundColor: Colors.red),
-                        onPressed: () async {
-                          final didCancel =
-                              await _showCancelDialog(context, ref, booking);
-                          if (didCancel && context.mounted) onRefresh();
-                        },
-                      ),
-                    if (booking.isActive)
-                      TextButton.icon(
-                        icon: const Icon(Icons.location_on_rounded, size: 16),
-                        label: const Text('تتبع السائق'),
-                        style: TextButton.styleFrom(
-                            foregroundColor: AppColors.primary),
-                        onPressed: () => context.push(
-                          '/trips/${booking.tripId}/live',
-                          extra: {'isDriver': false},
-                        ),
-                      ),
-                    if (booking.canRate)
-                      TextButton.icon(
-                        icon: const Icon(Icons.star_outline_rounded, size: 16),
-                        label: const Text('قيّم الرحلة'),
-                        style: TextButton.styleFrom(
-                            foregroundColor: AppColors.secondary),
-                        onPressed: () =>
-                            context.push('/bookings/rate', extra: booking),
-                      ),
-                    if (booking.canDispute)
-                      TextButton.icon(
-                        icon: const Icon(Icons.report_outlined, size: 16),
-                        label: const Text('فتح نزاع'),
-                        style: TextButton.styleFrom(
-                            foregroundColor: Colors.deepOrange),
-                        onPressed: () => context.push(
-                          '/disputes/open?bookingId=${booking.id}',
-                        ),
-                      ),
-                  ],
+            ),
+            if (actions.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(border: Border(top: BorderSide(color: context.dividerColor))),
+                child: Row(
+                  children: [for (final a in actions) Expanded(child: a)],
                 ),
-              ],
-            ],
-          ),
+              ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class _CardAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _CardAction({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18, color: color),
+      label: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700)),
     );
   }
 }

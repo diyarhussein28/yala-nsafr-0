@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
-import '../../../../shared/widgets/rating_stars.dart';
+import '../../../../shared/widgets/ui.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -27,201 +26,299 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _refresh() => ref.read(authProvider.notifier).refreshUser();
 
+  Future<void> _confirmSignOut() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تسجيل الخروج'),
+        content: const Text('هل تريد تسجيل الخروج من حسابك؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('خروج'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) ref.read(authProvider.notifier).signOut();
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     if (user == null) return const SizedBox.shrink();
+    final t = Theme.of(context).textTheme;
+    final isDriver = user.role == 'both' || user.role == 'driver' || user.canDrive;
+
+    (String, Color) verifState(bool verified, bool pending) => verified
+        ? ('موثّق', AppColors.success)
+        : pending
+            ? ('قيد المراجعة', AppColors.warning)
+            : ('غير موثّق', AppColors.textSecondary);
+    final id = verifState(user.idVerified, user.idVerificationPending);
+    final drv = verifState(user.driverVerified, user.driverVerificationPending);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('حسابي'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_rounded),
-            onPressed: () => context.push('/profile/edit'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (dialogContext) => AlertDialog(
-                  title: const Text('تسجيل الخروج'),
-                  content: const Text('هل أنت متأكد؟'),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(dialogContext, false),
-                        child: const Text('إلغاء')),
-                    FilledButton(
-                        onPressed: () => Navigator.pop(dialogContext, true),
-                        child: const Text('خروج')),
-                  ],
-                ),
-              );
-              if (ok == true) {
-                ref.read(authProvider.notifier).signOut();
-              }
-            },
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          // Avatar + name
-          Center(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 44,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  backgroundImage: user.profilePhotoUrl != null
-                      ? CachedNetworkImageProvider(user.profilePhotoUrl!)
-                      : null,
-                  child: user.profilePhotoUrl == null
-                      ? Text(
-                          user.fullName.isNotEmpty ? user.fullName[0] : '?',
-                          style: const TextStyle(
-                              fontSize: 36,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold),
-                        )
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                Text(user.fullName,
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(user.phoneNumber,
-                    style: TextStyle(color: Colors.grey[600])),
-                if (user.ratingCount > 0) ...[
-                  const SizedBox(height: 8),
-                  RatingStars(
-                      rating: user.ratingAverage, count: user.ratingCount),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Verification status
-          _SectionCard(
-            title: 'التحقق',
-            children: [
-              _VerifTile(
-                label: 'هوية وطنية',
-                verified: user.idVerified,
-                pending: user.idVerificationPending,
-                onTap: user.idVerified || user.idVerificationPending
-                    ? null
-                    : () => context.push('/profile/id-verification'),
-              ),
-              _VerifTile(
-                label: 'تحقق السائق',
-                verified: user.driverVerified,
-                pending: user.driverVerificationPending,
-                onTap: user.driverVerified || user.driverVerificationPending
-                    ? null
-                    : () => context.push('/profile/driver-verification'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Stats
-          if (user.completedTripsAsPassenger > 0 || user.completedTripsAsDriver > 0)
-            _SectionCard(
-              title: 'إحصائياتي',
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.book_online_rounded),
-                  title: const Text('رحلات حجزتها'),
-                  trailing: Text('${user.completedTripsAsPassenger}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.directions_car_rounded),
-                  title: const Text('رحلات قدّمتها'),
-                  trailing: Text('${user.completedTripsAsDriver}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                ),
-              ],
-            ),
-          const SizedBox(height: 12),
-
-          // Earnings (drivers only)
-          if (user.canDrive || user.completedTripsAsDriver > 0) ...[
-            const SizedBox(height: 12),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.account_balance_wallet_rounded,
-                    color: AppColors.primary),
-                title: const Text('أرباحي'),
-                subtitle: const Text('سجل الرحلات المكتملة'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => context.push('/drivers/earnings'),
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-
-          // Subscription
-          _SubscriptionTile(),
-          const SizedBox(height: 12),
-
-          // Referral
-          if (user.referralCode != null) ...[
-            const SizedBox(height: 12),
-            _ReferralCard(
-              code: user.referralCode!,
-              promoBalance: user.promoBalance,
-            ),
-          ],
-          const SizedBox(height: 12),
-
-          // Disputes
-          ListTile(
-            leading: const Icon(Icons.gavel_rounded),
-            title: const Text('نزاعاتي'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            tileColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-            onTap: () => context.push('/disputes'),
-          ),
-
-          // Admin panel (visible to admins only)
-          if (user.role == 'admin') ...[
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8, right: 4),
-              child: Text('لوحة الإدارة',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(color: Colors.red[700])),
-            ),
-            Card(
-              color: Colors.red.shade50,
+          padding: EdgeInsets.zero,
+          children: [
+            Container(
+              decoration: const BoxDecoration(gradient: AppColors.heroGradient),
+              padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 8, 20, 28),
               child: Column(
                 children: [
-                  ListTile(
-                    leading: Icon(Icons.report_problem_rounded,
-                        color: Colors.red[700]),
-                    title: const Text('إدارة النزاعات'),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => context.push('/admin/disputes'),
+                  Row(
+                    children: [
+                      Text('حسابي', style: t.titleLarge?.copyWith(color: Colors.white)),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'تعديل الملف',
+                        icon: const Icon(Icons.edit_outlined, color: Colors.white),
+                        onPressed: () => context.push('/profile/edit'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 2),
+                    ),
+                    child: UserAvatar(photoUrl: user.profilePhotoUrl, name: user.fullName, size: 88),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: Text(user.fullName,
+                            style: t.headlineSmall?.copyWith(color: Colors.white),
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      if (user.idVerified) ...[
+                        const SizedBox(width: 6),
+                        const Icon(Icons.verified_rounded, color: Colors.white, size: 20),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(user.phoneNumber,
+                        style: t.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.8))),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      _HeaderStat(
+                        value: user.ratingCount > 0 ? user.ratingAverage.toStringAsFixed(1) : '—',
+                        label: 'التقييم',
+                        icon: Icons.star_rounded,
+                      ),
+                      _HeaderStat(value: '${user.completedTripsAsPassenger}', label: 'رحلة كراكب'),
+                      _HeaderStat(value: '${user.completedTripsAsDriver}', label: 'رحلة كسائق'),
+                    ],
                   ),
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _MenuGroup(title: 'التوثيق', children: [
+                    _MenuTile(
+                      icon: Icons.badge_rounded,
+                      color: AppColors.info,
+                      title: 'البطاقة الشخصية',
+                      subtitle: id.$1,
+                      subtitleColor: id.$2,
+                      onTap: user.idVerified || user.idVerificationPending
+                          ? null
+                          : () => context.push('/profile/id-verification'),
+                    ),
+                    _MenuTile(
+                      icon: Icons.drive_eta_rounded,
+                      color: AppColors.primary,
+                      title: isDriver ? 'توثيق السائق' : 'كن سائقاً على يلا نسافر',
+                      subtitle: isDriver ? drv.$1 : 'انشر رحلاتك وشارك تكلفة الطريق',
+                      subtitleColor: isDriver ? drv.$2 : null,
+                      onTap: user.driverVerified || user.driverVerificationPending
+                          ? null
+                          : () => context.push('/profile/driver-verification'),
+                    ),
+                  ]),
+                  if (isDriver) ...[
+                    const SizedBox(height: 16),
+                    _MenuGroup(title: 'السائق', children: [
+                      _MenuTile(
+                        icon: Icons.account_balance_wallet_rounded,
+                        color: AppColors.success,
+                        title: 'أرباحي',
+                        subtitle: 'الرصيد والسحب وسجل الرحلات',
+                        onTap: () => context.push('/drivers/earnings'),
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    _SubscriptionTile(),
+                  ],
+                  if (user.referralCode != null) ...[
+                    const SizedBox(height: 16),
+                    _ReferralCard(code: user.referralCode!, promoBalance: user.promoBalance),
+                  ],
+                  const SizedBox(height: 16),
+                  _MenuGroup(title: 'المساعدة', children: [
+                    _MenuTile(
+                      icon: Icons.notifications_rounded,
+                      color: AppColors.secondary,
+                      title: 'الإشعارات',
+                      onTap: () => context.push('/notifications'),
+                    ),
+                    _MenuTile(
+                      icon: Icons.gavel_rounded,
+                      color: AppColors.womenOnly,
+                      title: 'نزاعاتي',
+                      subtitle: 'متابعة البلاغات والنزاعات المفتوحة',
+                      onTap: () => context.push('/disputes'),
+                    ),
+                  ]),
+                  if (user.role == 'admin') ...[
+                    const SizedBox(height: 16),
+                    _MenuGroup(title: 'الإدارة', children: [
+                      _MenuTile(icon: Icons.dashboard_rounded, color: AppColors.primary, title: 'لوحة التحكم', onTap: () => context.push('/admin')),
+                      _MenuTile(icon: Icons.people_alt_rounded, color: AppColors.info, title: 'المستخدمون والتوثيق', onTap: () => context.push('/admin/users')),
+                      _MenuTile(icon: Icons.route_rounded, color: AppColors.primary, title: 'الرحلات', onTap: () => context.push('/admin/trips')),
+                      _MenuTile(icon: Icons.gavel_rounded, color: AppColors.womenOnly, title: 'النزاعات', onTap: () => context.push('/admin/disputes')),
+                      _MenuTile(icon: Icons.payments_rounded, color: AppColors.success, title: 'طلبات السحب', onTap: () => context.push('/admin/withdrawals')),
+                      _MenuTile(icon: Icons.tune_rounded, color: AppColors.secondary, title: 'إعدادات المنصة', onTap: () => context.push('/admin/config')),
+                    ]),
+                  ],
+                  const SizedBox(height: 24),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                      side: BorderSide(color: AppColors.error.withValues(alpha: 0.4)),
+                    ),
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text('تسجيل الخروج'),
+                    onPressed: _confirmSignOut,
+                  ),
+                  const SizedBox(height: 12),
+                  Text('يلا نسافر', textAlign: TextAlign.center, style: t.labelSmall),
+                ],
+              ),
+            ),
           ],
-        ],
         ),
       ),
+    );
+  }
+}
+
+class _HeaderStat extends StatelessWidget {
+  final String value;
+  final String label;
+  final IconData? icon;
+  const _HeaderStat({required this.value, required this.label, this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, color: AppColors.secondary, size: 18),
+                  const SizedBox(width: 3),
+                ],
+                Text(value, style: t.titleLarge?.copyWith(color: Colors.white)),
+              ],
+            ),
+            Text(label, style: t.labelSmall?.copyWith(color: Colors.white.withValues(alpha: 0.8))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuGroup extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+  const _MenuGroup({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 4, bottom: 8),
+          child: Text(title, style: Theme.of(context).textTheme.labelMedium),
+        ),
+        AppCard(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) Divider(indent: 64, endIndent: 16, color: context.dividerColor),
+                children[i],
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MenuTile extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String? subtitle;
+  final Color? subtitleColor;
+  final VoidCallback? onTap;
+
+  const _MenuTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    this.subtitle,
+    this.subtitleColor,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      leading: IconBadge(icon: icon, color: color, size: 38),
+      title: Text(title, style: Theme.of(context).textTheme.titleSmall),
+      subtitle: subtitle == null
+          ? null
+          : Text(subtitle!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: subtitleColor,
+                    fontWeight: subtitleColor != null ? FontWeight.w600 : null,
+                  )),
+      trailing: onTap != null ? Icon(Icons.chevron_right_rounded, color: context.textMuted) : null,
     );
   }
 }
@@ -236,10 +333,10 @@ class _ReferralCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Card(
-      color: AppColors.primary.withValues(alpha: 0.06),
+      color: AppColors.secondary.withValues(alpha: context.isDark ? 0.14 : 0.1),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        side: BorderSide(color: AppColors.secondary.withValues(alpha: 0.35)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -322,30 +419,6 @@ class _ReferralCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-  const _SectionCard({required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8, right: 4),
-          child: Text(title,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(color: Colors.grey[600])),
-        ),
-        Card(child: Column(children: children)),
-      ],
     );
   }
 }
@@ -443,47 +516,3 @@ final _subStatusProvider =
   return res.data as Map<String, dynamic>;
 });
 
-class _VerifTile extends StatelessWidget {
-  final String label;
-  final bool verified;
-  final bool pending;
-  final VoidCallback? onTap;
-
-  const _VerifTile({
-    required this.label,
-    required this.verified,
-    this.pending = false,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final Icon icon;
-    final String subtitle;
-    final Color subtitleColor;
-
-    if (verified) {
-      icon = const Icon(Icons.verified_rounded, color: AppColors.primary);
-      subtitle = 'تم التحقق';
-      subtitleColor = AppColors.primary;
-    } else if (pending) {
-      icon = const Icon(Icons.hourglass_top_rounded, color: Colors.orange);
-      subtitle = 'قيد المراجعة';
-      subtitleColor = Colors.orange;
-    } else {
-      icon = const Icon(Icons.radio_button_unchecked_rounded, color: Colors.grey);
-      subtitle = 'غير محقق';
-      subtitleColor = Colors.grey;
-    }
-
-    return ListTile(
-      leading: icon,
-      title: Text(label),
-      subtitle: Text(subtitle, style: TextStyle(color: subtitleColor)),
-      trailing: onTap != null
-          ? const Icon(Icons.chevron_right_rounded)
-          : null,
-      onTap: onTap,
-    );
-  }
-}

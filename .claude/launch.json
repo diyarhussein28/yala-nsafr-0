@@ -2,10 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "backend",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "backend", "run", "start:dev"],
-      "port": 3000
+      "name": "mobile-web",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5600",
+        "--directory",
+        "/private/tmp/claude-501/-Users-diyarhussein-Documents-yala-nsafr-master/779817ae-61b0-4b91-b120-529f60e48075/scratchpad/iosbuild/mobile/build/web"
+      ],
+      "port": 5600
     }
   ]
 }

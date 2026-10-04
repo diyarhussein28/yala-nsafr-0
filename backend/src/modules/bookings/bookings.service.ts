@@ -904,12 +904,21 @@ export class BookingsService {
 
 
   async getPassengerBookings(passengerId: string): Promise<(Booking & { hasRated: boolean })[]> {
-    const bookings = await this.bookingRepo.find({
+    const found = await this.bookingRepo.find({
       where: { passengerId },
       relations: { trip: { driver: true } },
       order: { createdAt: 'DESC' },
     });
-    if (bookings.length === 0) return [];
+    if (found.length === 0) return [];
+
+    // Trips still ahead (soonest first) above history (most recent first). Ordering by
+    // booking date put a trip booked weeks ago for tomorrow below last month's trips.
+    const live = new Set<string>([...ACTIVE_BOOKING_STATUSES, BookingStatus.DISPUTED]);
+    const at = (b: Booking) => new Date(b.trip?.departureTime ?? b.createdAt).getTime();
+    const bookings = [
+      ...found.filter((b) => live.has(b.status)).sort((a, b) => at(a) - at(b)),
+      ...found.filter((b) => !live.has(b.status)).sort((a, b) => at(b) - at(a)),
+    ];
 
     const bookingIds = bookings.map((b) => b.id);
     const ratedRows = await this.dataSource.query<Array<{ booking_id: string }>>(
