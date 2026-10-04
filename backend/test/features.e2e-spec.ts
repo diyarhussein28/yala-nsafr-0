@@ -2977,11 +2977,11 @@ describe('Features E2E', () => {
       // A follow-up is appended, not refused and not overwriting the first statement
       const followUp = await disputesService.respond(dispute.id, driverUser, {
         response: 'The diversion was signposted at the Ring Road exit',
-        evidenceUrls: ['https://y/late.jpg'],
+        evidenceUrls: [`private:${driverUser.id}/late.jpg`],
       } as any);
       expect(followUp.otherPartyResponse).toContain('Route was diverted for roadworks');
       expect(followUp.otherPartyResponse).toContain('signposted at the Ring Road exit');
-      expect(followUp.otherPartyEvidenceUrls).toContain('https://y/late.jpg');
+      expect(followUp.otherPartyEvidenceUrls).toContain(`private:${driverUser.id}/late.jpg`);
 
       notifySpy.mockRestore();
       await cleanup(trip.id, booking.id, payment.id);
@@ -2998,18 +2998,18 @@ describe('Features E2E', () => {
       } as any);
 
       await disputesService.addEvidence(dispute.id, passengerUser, {
-        evidenceUrls: ['https://x/1.jpg', 'https://x/2.jpg'],
+        evidenceUrls: [`private:${passengerUser.id}/1.jpg`, `private:${passengerUser.id}/2.jpg`],
       } as any);
       // The responding party's evidence lands on their own side of the record
       const withDriverEvidence = await disputesService.addEvidence(dispute.id, driverUser, {
-        evidenceUrls: ['https://y/0.jpg'],
+        evidenceUrls: [`private:${driverUser.id}/0.jpg`],
       } as any);
       expect(withDriverEvidence.evidenceUrls).toHaveLength(2);
-      expect(withDriverEvidence.otherPartyEvidenceUrls).toEqual(['https://y/0.jpg']);
+      expect(withDriverEvidence.otherPartyEvidenceUrls).toEqual([`private:${driverUser.id}/0.jpg`]);
 
       await disputesService.respond(dispute.id, driverUser, {
         response: 'my side',
-        evidenceUrls: ['https://y/1.jpg'],
+        evidenceUrls: [`private:${driverUser.id}/1.jpg`],
       } as any);
 
       const sla = await disputesService.getSlaStatus(dispute.id, passengerUser);
@@ -3568,7 +3568,7 @@ describe('Features E2E', () => {
       const { trip, booking, payment } = await disputableBooking();
       const notifySpy = jest.spyOn(notificationsService, 'sendToUser').mockResolvedValue(undefined as any);
       const urls = (n: number, p: string) =>
-        Array.from({ length: n }, (_, i) => `https://${p}/${i}.jpg`);
+        Array.from({ length: n }, (_, i) => `private:${passengerUser.id}/${p}-${i}.jpg`);
 
       // Too many at the door
       await expect(

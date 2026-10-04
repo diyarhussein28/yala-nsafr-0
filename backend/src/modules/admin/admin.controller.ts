@@ -71,7 +71,7 @@ export class AdminController {
 
   @Get('users/:id')
   getUser(@Param('id', ParseUUIDPipe) id: string) {
-    return this.adminService.getUserDetail(id);
+    return this.adminService.getUserDetailForAdmin(id);
   }
 
   @Patch('users/:id/status')

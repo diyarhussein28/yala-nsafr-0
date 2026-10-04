@@ -16,7 +16,7 @@ export class UsersController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   getMe(@CurrentUser() user: User) {
-    return user;
+    return this.usersService.getMe(user);
   }
 
   @Patch('me')

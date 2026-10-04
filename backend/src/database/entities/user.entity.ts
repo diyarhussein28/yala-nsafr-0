@@ -59,8 +59,12 @@ export class User {
   @Column({ name: 'national_id_number', nullable: true, length: 14 })
   nationalIdNumber: string;
 
+  // Stored as private storage references (see StorageService), never public URLs
   @Column({ name: 'national_id_photo_url', nullable: true })
   nationalIdPhotoUrl: string;
+
+  @Column({ name: 'national_id_back_photo_url', type: 'varchar', nullable: true })
+  nationalIdBackPhotoUrl: string | null;
 
   @Column({ name: 'id_verified', default: false })
   idVerified: boolean;

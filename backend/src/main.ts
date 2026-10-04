@@ -45,6 +45,8 @@ async function bootstrap() {
   // Lets in-flight requests and transactions finish on a deploy or restart
   app.enableShutdownHooks();
 
+  // Public uploads only (profile and car photos). Identity documents and dispute evidence
+  // live in uploads-private/ and are reachable only through signed /api/v1/files links.
   const uploadsDir = join(process.cwd(), 'uploads');
   mkdirSync(uploadsDir, { recursive: true });
 

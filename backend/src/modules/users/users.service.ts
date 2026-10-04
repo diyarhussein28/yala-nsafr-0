@@ -5,6 +5,7 @@ import { User, UserRole, UserStatus } from '../../database/entities/user.entity'
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { SubmitIdVerificationDto } from './dto/submit-id-verification.dto';
 import { SubmitDriverVerificationDto } from './dto/submit-driver-verification.dto';
+import { StorageService } from '../upload/storage.service';
 import { parseEgyptianNationalId } from '../../common/validation/egyptian-national-id';
 
 const REFERRAL_WELCOME_CREDIT = 20;
@@ -14,7 +15,18 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly storage: StorageService,
   ) {}
+
+  /** The user's own record, with private document references turned into signed links. */
+  async getMe(user: User) {
+    return {
+      ...user,
+      nationalIdPhotoUrl: await this.storage.viewUrl(user.nationalIdPhotoUrl),
+      nationalIdBackPhotoUrl: await this.storage.viewUrl(user.nationalIdBackPhotoUrl),
+      drivingLicencePhotoUrl: await this.storage.viewUrl(user.drivingLicencePhotoUrl),
+    };
+  }
 
   async findById(id: string): Promise<User> {
     const user = await this.userRepo.findOne({ where: { id } });
@@ -53,6 +65,8 @@ export class UsersService {
     if (dto.gender !== undefined && user.gender && dto.gender !== user.gender) {
       throw new BadRequestException('لا يمكن تغيير الجنس بعد تحديده. تواصل مع الدعم إن كان هناك خطأ.');
     }
+
+    if (dto.profilePhotoUrl) this.storage.assertAcceptable(dto.profilePhotoUrl, user.id);
 
     const changes: Partial<User> = { ...dto };
     if (user.status === UserStatus.PENDING_VERIFICATION && dto.fullName) {
@@ -101,6 +115,11 @@ export class UsersService {
       throw new BadRequestException('الرقم القومي لا يطابق الجنس المسجّل في ملفك');
     }
 
+    if (dto.nationalIdPhotoUrl) this.storage.assertAcceptable(dto.nationalIdPhotoUrl, user.id, { requirePrivate: true });
+    if (dto.nationalIdBackPhotoUrl) {
+      this.storage.assertAcceptable(dto.nationalIdBackPhotoUrl, user.id, { requirePrivate: true });
+    }
+
     const taken = await this.userRepo.findOne({
       where: { nationalIdNumber: dto.nationalIdNumber },
       select: { id: true },
@@ -115,6 +134,7 @@ export class UsersService {
     await this.userRepo.update(user.id, {
       nationalIdNumber: dto.nationalIdNumber,
       ...(dto.nationalIdPhotoUrl ? { nationalIdPhotoUrl: dto.nationalIdPhotoUrl } : {}),
+      ...(dto.nationalIdBackPhotoUrl ? { nationalIdBackPhotoUrl: dto.nationalIdBackPhotoUrl } : {}),
       gender: parsed.gender,
       idVerified: false,
       idVerifiedAt: null as unknown as Date,
@@ -123,6 +143,10 @@ export class UsersService {
   }
 
   async submitDriverVerification(user: User, dto: SubmitDriverVerificationDto): Promise<{ message: string }> {
+    if (dto.drivingLicencePhotoUrl) {
+      this.storage.assertAcceptable(dto.drivingLicencePhotoUrl, user.id, { requirePrivate: true });
+    }
+    if (dto.vehiclePhotoUrl) this.storage.assertAcceptable(dto.vehiclePhotoUrl, user.id);
     // Same reasoning as the ID: changed licence or vehicle details must be re-reviewed,
     // otherwise a verified driver could switch to an unchecked car and plate.
     await this.userRepo.update(user.id, {

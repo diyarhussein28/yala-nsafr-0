@@ -14,6 +14,7 @@ import {
 import { Booking } from '../../database/entities/booking.entity';
 import { User } from '../../database/entities/user.entity';
 import { toPublicUser } from '../../common/serializers/public-user';
+import { StorageService } from '../upload/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RespondToDisputeDto } from './dto/respond-to-dispute.dto';
 import { AddEvidenceDto } from './dto/add-evidence.dto';
@@ -26,6 +27,7 @@ export class DisputesService {
     @InjectRepository(Booking)
     private readonly bookingRepo: Repository<Booking>,
     private readonly notifications: NotificationsService,
+    private readonly storage: StorageService,
   ) {}
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -88,7 +90,12 @@ export class DisputesService {
     const { dispute, booking } = await this.loadWithAccess(disputeId, user);
 
     return {
-      dispute: { ...dispute, openedBy: toPublicUser(dispute.openedBy) },
+      dispute: {
+        ...dispute,
+        openedBy: toPublicUser(dispute.openedBy),
+        evidenceUrls: await this.storage.viewUrls(dispute.evidenceUrls),
+        otherPartyEvidenceUrls: await this.storage.viewUrls(dispute.otherPartyEvidenceUrls),
+      },
       booking: {
         id: booking.id,
         totalAmount: booking.totalAmount,
@@ -121,7 +128,8 @@ export class DisputesService {
    * This used to `.slice(0, 10)` the result, so the eleventh photo vanished without
    * telling anyone — the submitter thought the admin had it.
    */
-  private appendEvidence(existing: string[] | null, incoming: string[]): string[] {
+  private appendEvidence(existing: string[] | null, incoming: string[], userId?: string): string[] {
+    if (userId) for (const ref of incoming) this.storage.assertAcceptable(ref, userId);
     const merged = [...(existing ?? []), ...incoming];
     if (merged.length > MAX_DISPUTE_EVIDENCE) {
       throw new BadRequestException(
@@ -146,11 +154,12 @@ export class DisputesService {
     // Previously only the opener could, which meant the responding party had exactly one
     // chance to attach anything — a photo found later could not be submitted at all.
     if (isOpener) {
-      dispute.evidenceUrls = this.appendEvidence(dispute.evidenceUrls, dto.evidenceUrls);
+      dispute.evidenceUrls = this.appendEvidence(dispute.evidenceUrls, dto.evidenceUrls, user.id);
     } else {
       dispute.otherPartyEvidenceUrls = this.appendEvidence(
         dispute.otherPartyEvidenceUrls,
         dto.evidenceUrls,
+        user.id,
       );
     }
 
@@ -185,6 +194,7 @@ export class DisputesService {
       dispute.otherPartyEvidenceUrls = this.appendEvidence(
         dispute.otherPartyEvidenceUrls,
         dto.evidenceUrls,
+        user.id,
       );
     }
 

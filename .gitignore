@@ -51,3 +51,7 @@ server.log
 .idea/
 .DS_Store
 Thumbs.db
+
+# Uploaded files (public and private identity documents)
+backend/uploads/
+backend/uploads-private/

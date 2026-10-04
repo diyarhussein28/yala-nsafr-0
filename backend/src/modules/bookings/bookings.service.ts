@@ -28,6 +28,7 @@ import {
   PaymentSettlement,
 } from '../payments/payment-settlement.service';
 import { BlocksService } from '../blocks/blocks.service';
+import { StorageService } from '../upload/storage.service';
 import {
   DriverLedgerEntry,
   LedgerEntryType,
@@ -76,6 +77,7 @@ export class BookingsService {
     private readonly kashier: KashierService,
     private readonly settlement: PaymentSettlementService,
     private readonly blocks: BlocksService,
+    private readonly storage: StorageService,
   ) {}
 
   private async getConfigNum(key: string, fallback: number): Promise<number> {
@@ -1046,6 +1048,7 @@ export class BookingsService {
       const existing = await manager.findOne(Dispute, { where: { bookingId: dto.bookingId } });
       if (existing) throw new BadRequestException('A dispute already exists for this booking');
 
+      for (const ref of dto.evidenceUrls ?? []) this.storage.assertAcceptable(ref, user.id);
       if ((dto.evidenceUrls?.length ?? 0) > MAX_DISPUTE_EVIDENCE) {
         throw new BadRequestException(
           `Attach at most ${MAX_DISPUTE_EVIDENCE} pieces of evidence`,

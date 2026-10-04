@@ -414,6 +414,59 @@ describe('Security & integrity regressions', () => {
     expect((await paymentRepo.findOneBy({ id: payment.id }))?.gatewayTransactionId).toBeNull();
   });
 
+  // ── Private document storage ───────────────────────────────────────────────
+
+  describe('private uploads', () => {
+    // A real 1×1 PNG
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+
+    it('stores a private file under a reference and serves it only through a valid signed link', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/upload/photo?visibility=private')
+        .set('Authorization', token(passenger))
+        .attach('photo', png, { filename: 'id.png', contentType: 'image/png' })
+        .expect(201);
+      expect(res.body.ref).toMatch(new RegExp(`^private:${passenger.id}/[0-9a-f-]{36}\\.png$`));
+
+      const signed = new URL(res.body.url);
+      await request(app.getHttpServer()).get(signed.pathname + signed.search).expect(200);
+
+      // Tampered signature or a key without a signature → not found
+      const bad = new URL(res.body.url);
+      bad.searchParams.set('sig', '0'.repeat(64));
+      await request(app.getHttpServer()).get(bad.pathname + bad.search).expect(404);
+      await request(app.getHttpServer()).get(signed.pathname).expect(404);
+
+      // Not reachable through the public static folder either
+      const fileName = res.body.ref.split('/').pop();
+      await request(app.getHttpServer()).get(`/uploads/${fileName}`).expect(404);
+    });
+
+    it('refuses a file whose bytes are not an image, whatever its declared type', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/upload/photo?visibility=private')
+        .set('Authorization', token(passenger))
+        .attach('photo', Buffer.from('<script>alert(1)</script>'), { filename: 'x.png', contentType: 'image/png' })
+        .expect(400);
+    });
+
+    it("cannot submit someone else's document reference or an outside URL", async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/users/me/id-verification')
+        .set('Authorization', token(stranger))
+        .send({ nationalIdNumber: '29901010100031', nationalIdPhotoUrl: `private:${passenger.id}/x.png` })
+        .expect(400);
+      await request(app.getHttpServer())
+        .patch('/api/v1/users/me')
+        .set('Authorization', token(stranger))
+        .send({ profilePhotoUrl: 'https://evil.example/tracker.png' })
+        .expect(400);
+    });
+  });
+
   // ── Profile & verification ─────────────────────────────────────────────────
 
   describe('profile and ID verification', () => {

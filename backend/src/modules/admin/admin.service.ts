@@ -22,6 +22,7 @@ import { NotifyPartyDto } from './dto/notify-party.dto';
 import { UpdateConfigDto } from './dto/update-config.dto';
 import { ListUsersQueryDto, ListDisputesQueryDto, ListTripsQueryDto } from './dto/list-query.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { StorageService } from '../upload/storage.service';
 import {
   PaymentSettlementService,
   PaymentSettlement,
@@ -49,6 +50,7 @@ export class AdminService implements OnModuleInit {
     private readonly dataSource: DataSource,
     private readonly notifications: NotificationsService,
     private readonly settlement: PaymentSettlementService,
+    private readonly storage: StorageService,
   ) {}
 
   // ── Seed default config on first run ──────────────────────────────────────
@@ -163,13 +165,27 @@ export class AdminService implements OnModuleInit {
     qb.skip((page - 1) * limit).take(limit);
 
     const [users, total] = await qb.getManyAndCount();
-    return { data: users, total, page, limit };
+    return { data: await Promise.all(users.map((u) => this.withDocumentLinks(u))), total, page, limit };
   }
 
   async getUserDetail(id: string): Promise<User> {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
     return user;
+  }
+
+  /** For admin screens: private document references become short-lived signed links. */
+  async withDocumentLinks(user: User): Promise<User> {
+    return {
+      ...user,
+      nationalIdPhotoUrl: (await this.storage.viewUrl(user.nationalIdPhotoUrl)) as string,
+      nationalIdBackPhotoUrl: await this.storage.viewUrl(user.nationalIdBackPhotoUrl),
+      drivingLicencePhotoUrl: (await this.storage.viewUrl(user.drivingLicencePhotoUrl)) as string,
+    };
+  }
+
+  async getUserDetailForAdmin(id: string) {
+    return this.withDocumentLinks(await this.getUserDetail(id));
   }
 
   async approveIdVerification(userId: string, adminId: string): Promise<User> {
@@ -215,6 +231,7 @@ export class AdminService implements OnModuleInit {
     // queue and kept the user listed as awaiting review.
     user.nationalIdNumber = null as unknown as string;
     user.nationalIdPhotoUrl = null as unknown as string;
+    user.nationalIdBackPhotoUrl = null;
     user.idVerified = false;
     const saved = await this.userRepo.save(user);
     this.notifyUser(
@@ -313,6 +330,8 @@ export class AdminService implements OnModuleInit {
       relations: { trip: { driver: true }, passenger: true, payment: true },
     });
 
+    dispute.evidenceUrls = await this.storage.viewUrls(dispute.evidenceUrls);
+    dispute.otherPartyEvidenceUrls = await this.storage.viewUrls(dispute.otherPartyEvidenceUrls);
     return { dispute, booking };
   }
 
