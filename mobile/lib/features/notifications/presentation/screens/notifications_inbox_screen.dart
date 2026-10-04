@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/services/fcm_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/models/app_notification.dart';
@@ -29,24 +30,14 @@ class _NotificationsInboxScreenState
 
     final screen = data['screen'] as String?;
     final tripId = data['tripId'] as String?;
-    final disputeId = data['disputeId'] as String?;
 
     if (screen == 'trip_chat' && tripId != null) {
       context.push('/trips/$tripId/chat', extra: <String, dynamic>{'label': ''});
       return;
     }
 
-    final route = switch (screen) {
-      'trip_detail' when tripId != null => '/trips/$tripId',
-      'trip_passengers' when tripId != null => '/trips/$tripId/passengers',
-      'my_bookings' => '/my-bookings',
-      'dispute_detail' when disputeId != null => '/disputes/$disputeId',
-      'admin_disputes' => '/admin/disputes',
-      'earnings' => '/drivers/earnings',
-      _ => null,
-    };
-
-    if (route != null) context.push(route);
+    final route = FcmService.routeFor(Map<String, dynamic>.from(data));
+    if (route != null && route != '/notifications') context.push(route);
   }
 
   @override

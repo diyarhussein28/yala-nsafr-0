@@ -2,13 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/providers/connectivity_provider.dart';
+import '../../core/api/api_client.dart';
+import '../../core/services/update_checker.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/notifications/providers/notifications_provider.dart';
 import '../widgets/verified_badge.dart';
 
-class MainShell extends ConsumerWidget {
+class MainShell extends ConsumerStatefulWidget {
   final Widget child;
   const MainShell({super.key, required this.child});
+
+  @override
+  ConsumerState<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends ConsumerState<MainShell> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) UpdateChecker.check(context, ref.read(dioProvider));
+    });
+  }
 
   int _indexForPath(String path) => switch (path) {
         String p when p.startsWith('/search') => 0,
@@ -19,7 +34,7 @@ class MainShell extends ConsumerWidget {
       };
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     final currentIndex = _indexForPath(location);
     final user = ref.watch(authProvider).user;
@@ -71,7 +86,7 @@ class MainShell extends ConsumerWidget {
               ),
             ),
           ),
-          Expanded(child: child),
+          Expanded(child: widget.child),
         ],
       ),
       bottomNavigationBar: DecoratedBox(

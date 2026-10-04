@@ -64,6 +64,8 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   geolocator: ^14.0.0
+  firebase_crashlytics: ^4.3.10
+  package_info_plus: ^9.0.1
 
   # Payments: all card payments (trip fares and driver subscriptions) go through
   # Kashier's hosted checkout in a WebView — no native payment SDK. flutter_stripe was

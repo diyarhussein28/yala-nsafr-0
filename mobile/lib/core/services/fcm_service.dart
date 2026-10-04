@@ -113,6 +113,10 @@ class FcmService {
     navigateFromNotification(route, extra: extra);
   }
 
+  /// Where a notification's data payload should take the user. Shared by push taps and
+  /// the in-app inbox so both stay in step.
+  static String? routeFor(Map<String, dynamic> data) => _routeFrom(data);
+
   static String? _routeFrom(Map<String, dynamic> data) {
     final screen = data['screen'] as String?;
     final tripId = data['tripId'] as String?;
@@ -128,8 +132,16 @@ class FcmService {
       'admin_disputes' => '/admin/disputes',
       'admin_sos' when tripId != null => '/trips/$tripId',
       'admin_sos' => '/admin/disputes',
-      'earnings' => '/drivers/earnings',
-      _ => null,
+      'earnings' || 'driver_earnings' => '/drivers/earnings',
+      'trip_passengers' when tripId != null => '/trips/$tripId/passengers',
+      'trip_passengers' || 'my_trips' => '/my-trips',
+      'subscription' => '/subscription',
+      'profile' => '/profile',
+      'id_verification' => '/profile/id-verification',
+      'driver_verification' => '/profile/driver-verification',
+      // Anything else that names a trip still lands somewhere useful
+      _ when tripId != null => '/trips/$tripId',
+      _ => '/notifications',
     };
   }
 
