@@ -4,6 +4,7 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/rating_stars.dart';
+import '../../../../core/i18n/tr.dart';
 
 // ── Providers ──────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ class _UserPublicProfileScreenState
         if (mounted) {
           setState(() => _isBlocked = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم إلغاء الحظر')),
+            SnackBar(content: Text(tr('تم إلغاء الحظر'))),
           );
         }
       } catch (e) {
@@ -68,17 +69,17 @@ class _UserPublicProfileScreenState
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('حظر المستخدم'),
-          content: const Text(
-              'هل تريد حظر هذا المستخدم؟ لن يتمكن من التواصل معك.'),
+          title: Text(tr('حظر المستخدم')),
+          content: Text(
+              tr('هل تريد حظر هذا المستخدم؟ لن يتمكن من التواصل معك.')),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('تراجع')),
+                child: Text(tr('تراجع'))),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('حظر'),
+              child: Text(tr('حظر')),
             ),
           ],
         ),
@@ -92,7 +93,7 @@ class _UserPublicProfileScreenState
         if (mounted) {
           setState(() => _isBlocked = true);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم حظر المستخدم')),
+            SnackBar(content: Text(tr('تم حظر المستخدم'))),
           );
         }
       } catch (e) {
@@ -112,7 +113,7 @@ class _UserPublicProfileScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الملف الشخصي'),
+        title: Text(tr('الملف الشخصي')),
         actions: [
           if (_blockLoading)
             const Padding(
@@ -124,7 +125,7 @@ class _UserPublicProfileScreenState
             )
           else
             IconButton(
-              tooltip: _isBlocked ? 'إلغاء الحظر' : 'حظر المستخدم',
+              tooltip: _isBlocked ? tr('إلغاء الحظر') : tr('حظر المستخدم'),
               icon: Icon(
                 _isBlocked ? Icons.block_flipped : Icons.block_rounded,
                 color: _isBlocked ? Colors.grey : Colors.red,
@@ -199,13 +200,13 @@ class _ProfileBody extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(name.isNotEmpty ? name : 'مستخدم',
+                Text(name.isNotEmpty ? name : tr('مستخدم'),
                     style: const TextStyle(
                         fontSize: 22, fontWeight: FontWeight.bold)),
                 if (memberSince != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'عضو منذ ${memberSince.year}',
+                    tr('عضو منذ {0}', [memberSince.year]),
                     style: TextStyle(color: Colors.grey[600], fontSize: 13),
                   ),
                 ],
@@ -213,7 +214,7 @@ class _ProfileBody extends ConsumerWidget {
                 if (ratingCount > 0)
                   RatingStars(rating: ratingAvg, count: ratingCount)
                 else
-                  Text('لا توجد تقييمات بعد',
+                  Text(tr('لا توجد تقييمات بعد'),
                       style:
                           TextStyle(color: Colors.grey[500], fontSize: 13)),
               ],
@@ -227,13 +228,13 @@ class _ProfileBody extends ConsumerWidget {
             children: [
               _Badge(
                 icon: Icons.badge_rounded,
-                label: 'هوية محققة',
+                label: tr('هوية محققة'),
                 active: idVerified,
               ),
               const SizedBox(width: 12),
               _Badge(
                 icon: Icons.directions_car_rounded,
-                label: 'سائق محقق',
+                label: tr('سائق محقق'),
                 active: driverVerified,
               ),
             ],
@@ -251,19 +252,19 @@ class _ProfileBody extends ConsumerWidget {
                     children: [
                       _Stat(
                           value: '$tripsAsDriver',
-                          label: 'رحلات\nمكتملة',
+                          label: tr('رحلات\nمكتملة'),
                           color: AppColors.primary),
                       _divider(),
                       _Stat(
                           value: '$tripsAsPassenger',
-                          label: 'رحلات\nكراكب',
+                          label: tr('رحلات\nكراكب'),
                           color: AppColors.primary),
                       _divider(),
                       _Stat(
                           value: ratingCount > 0
                               ? ratingAvg.toStringAsFixed(1)
                               : '-',
-                          label: 'متوسط\nالتقييم',
+                          label: tr('متوسط\nالتقييم'),
                           color: AppColors.primary),
                     ],
                   ),
@@ -278,7 +279,7 @@ class _ProfileBody extends ConsumerWidget {
                             size: 16, color: Colors.red),
                         const SizedBox(width: 6),
                         Text(
-                          '$cancelledTripsAsDriver رحلة ملغاة تلقائياً',
+                          tr('{0} رحلة ملغاة تلقائياً', [cancelledTripsAsDriver]),
                           style: const TextStyle(
                               color: Colors.red,
                               fontSize: 13,
@@ -306,7 +307,7 @@ class _ProfileBody extends ConsumerWidget {
           if (hasVehicle) const SizedBox(height: 12),
 
           // Ratings list
-          Text('التقييمات',
+          Text(tr('التقييمات'),
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -315,12 +316,12 @@ class _ProfileBody extends ConsumerWidget {
           ratingsAsync.when(
             loading: () =>
                 const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            error: (_, __) => Text('تعذّر تحميل التقييمات',
+            error: (_, __) => Text(tr('تعذّر تحميل التقييمات'),
                 style: TextStyle(color: Colors.grey[500])),
             data: (ratings) => ratings.isEmpty
                 ? Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text('لا توجد تقييمات بعد',
+                    child: Text(tr('لا توجد تقييمات بعد'),
                         style: TextStyle(color: Colors.grey[500])),
                   )
                 : Column(

@@ -6,6 +6,7 @@ import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/models/user.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../../core/i18n/tr.dart';
 
 Future<void> guardedPostTrip(BuildContext context, WidgetRef ref) async {
   final user = ref.read(authProvider).user;
@@ -39,15 +40,15 @@ Future<void> guardedPostTrip(BuildContext context, WidgetRef ref) async {
         canPost = true; // on error, allow through
         if (ctx.mounted) Navigator.of(ctx).pop();
       });
-      return const AlertDialog(
+      return AlertDialog(
         content: Padding(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('جاري التحقق...'),
+              const CircularProgressIndicator(),
+              const SizedBox(width: 16),
+              Text(tr('جاري التحقق...')),
             ],
           ),
         ),
@@ -111,16 +112,16 @@ class _VerificationSheet extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               isPending
-                  ? 'طلب التحقق قيد المراجعة'
-                  : 'التحقق من هوية السائق مطلوب',
+                  ? tr('طلب التحقق قيد المراجعة')
+                  : tr('التحقق من هوية السائق مطلوب'),
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               isPending
-                  ? 'سيتم مراجعة بياناتك خلال 24–48 ساعة. ستصلك إشعار عند الموافقة.'
-                  : 'لضمان سلامة الركاب، يجب إكمال التحقق من رخصة القيادة وبيانات السيارة قبل نشر الرحلات.',
+                  ? tr('سيتم مراجعة بياناتك خلال 24–48 ساعة. ستصلك إشعار عند الموافقة.')
+                  : tr('لضمان سلامة الركاب، يجب إكمال التحقق من رخصة القيادة وبيانات السيارة قبل نشر الرحلات.'),
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.5),
             ),
@@ -130,7 +131,7 @@ class _VerificationSheet extends StatelessWidget {
                 width: double.infinity,
                 child: FilledButton.icon(
                   icon: const Icon(Icons.arrow_forward_rounded),
-                  label: const Text('إبدأ التحقق الآن'),
+                  label: Text(tr('إبدأ التحقق الآن')),
                   onPressed: () {
                     Navigator.pop(context);
                     context.push('/profile/driver-verification');
@@ -143,7 +144,7 @@ class _VerificationSheet extends StatelessWidget {
               width: double.infinity,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text(isPending ? 'حسناً' : 'لاحقاً'),
+                child: Text(isPending ? tr('حسناً') : tr('لاحقاً')),
               ),
             ),
           ],

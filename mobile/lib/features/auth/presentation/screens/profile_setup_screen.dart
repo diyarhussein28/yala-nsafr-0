@@ -6,6 +6,7 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../providers/auth_provider.dart';
+import '../../../../core/i18n/tr.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -51,7 +52,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         } on DioException catch (e) {
           // Referral errors are non-fatal — profile is already saved
           final msg = (e.response?.data as Map<String, dynamic>?)?['message'] as String?;
-          if (mounted) setState(() => _error = msg ?? 'كود الدعوة غير صحيح');
+          if (mounted) setState(() => _error = msg ?? tr('كود الدعوة غير صحيح'));
           await Future.delayed(const Duration(seconds: 2));
         }
       }
@@ -67,7 +68,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('إنشاء حسابك')),
+      appBar: AppBar(title: Text(tr('إنشاء حسابك'))),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -79,21 +80,21 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'الاسم الكامل',
-                    prefixIcon: Icon(Icons.person_outline_rounded),
+                  decoration: InputDecoration(
+                    labelText: tr('الاسم الكامل'),
+                    prefixIcon: const Icon(Icons.person_outline_rounded),
                   ),
                   validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'الاسم مطلوب' : null,
+                      v == null || v.trim().isEmpty ? tr('الاسم مطلوب') : null,
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 24),
-                Text('الجنس', style: Theme.of(context).textTheme.titleMedium),
+                Text(tr('الجنس'), style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'male', label: Text('ذكر')),
-                    ButtonSegment(value: 'female', label: Text('أنثى')),
+                  segments: [
+                    ButtonSegment(value: 'male', label: Text(tr('ذكر'))),
+                    ButtonSegment(value: 'female', label: Text(tr('أنثى'))),
                   ],
                   selected: {_gender},
                   onSelectionChanged: (s) => setState(() => _gender = s.first),
@@ -101,11 +102,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _referralCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'كود دعوة صديق (اختياري)',
-                    prefixIcon: Icon(Icons.card_giftcard_rounded),
-                    hintText: 'مثال: AHMED3',
-                    helperText: 'احصل على 20 جنيه رصيد ترحيبي عند إدخال كود صديق',
+                  decoration: InputDecoration(
+                    labelText: tr('كود دعوة صديق (اختياري)'),
+                    prefixIcon: const Icon(Icons.card_giftcard_rounded),
+                    hintText: tr('مثال: AHMED3'),
+                    helperText: tr('احصل على 20 جنيه رصيد ترحيبي عند إدخال كود صديق'),
                   ),
                   textCapitalization: TextCapitalization.characters,
                   maxLength: 6,
@@ -133,7 +134,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 ],
                 const Spacer(),
                 AppButton(
-                  label: 'حفظ ومتابعة',
+                  label: tr('حفظ ومتابعة'),
                   loading: _loading,
                   onPressed: _save,
                 ),

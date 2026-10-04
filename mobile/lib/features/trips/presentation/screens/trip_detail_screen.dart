@@ -16,6 +16,8 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../providers/trips_provider.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../bookings/providers/bookings_provider.dart';
+import '../../../../core/i18n/tr.dart';
+import '../../../../core/constants/egypt_cities.dart';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
@@ -52,7 +54,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل بدء الرحلة: $e')),
+          SnackBar(content: Text(tr('فشل بدء الرحلة: {0}', [e]))),
         );
       }
     } finally {
@@ -63,6 +65,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   void _showAddSeatsSheet(BuildContext context, trip) {
     int extraSeats = 1;
     showModalBottomSheet(
+      useRootNavigator: true,
       context: context,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -79,7 +82,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                     borderRadius: BorderRadius.circular(2)),
               ),
               const SizedBox(height: 16),
-              Text('إضافة مقاعد أخرى',
+              Text(tr('إضافة مقاعد أخرى'),
                   style: Theme.of(ctx).textTheme.titleLarge
                       ?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
@@ -109,7 +112,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'الإجمالي: ${(trip.pricePerSeat * extraSeats).toStringAsFixed(0)} جنيه',
+                tr('الإجمالي: {0} جنيه', [(trip.pricePerSeat * extraSeats).toStringAsFixed(0)]),
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 24),
@@ -123,7 +126,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                       extra: {'trip': trip, 'seats': extraSeats},
                     );
                   },
-                  child: const Text('متابعة للدفع'),
+                  child: Text(tr('متابعة للدفع')),
                 ),
               ),
             ],
@@ -137,15 +140,15 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('إنهاء الرحلة'),
-        content: const Text('هل أنت متأكد من إنهاء الرحلة؟'),
+        title: Text(tr('إنهاء الرحلة')),
+        content: Text(tr('هل أنت متأكد من إنهاء الرحلة؟')),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
+              child: Text(tr('إلغاء'))),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('إنهاء')),
+              child: Text(tr('إنهاء'))),
         ],
       ),
     );
@@ -158,13 +161,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       ref.invalidate(myTripsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إنهاء الرحلة بنجاح')),
+          SnackBar(content: Text(tr('تم إنهاء الرحلة بنجاح'))),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل إنهاء الرحلة: $e')),
+          SnackBar(content: Text(tr('فشل إنهاء الرحلة: {0}', [e]))),
         );
       }
     } finally {
@@ -184,7 +187,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء إرسال التعليق')),
+          SnackBar(content: Text(tr('حدث خطأ أثناء إرسال التعليق'))),
         );
       }
     } finally {
@@ -197,18 +200,18 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   Future<void> _shareTrip(Trip trip) async {
     AnalyticsService.logTripShared(tripId: trip.id).ignore();
     final buf = StringBuffer()
-      ..writeln('🚗 رحلة على يلا نسافر')
+      ..writeln(tr('🚗 رحلة على يلا نسافر'))
       ..writeln()
-      ..writeln('${trip.originCity} ← ${trip.destinationCity}')
+      ..writeln(routeLabel(trip.originCity, trip.destinationCity))
       ..writeln('📅 ${Fmt.dayLong(trip.departureTime)} — ${Fmt.time(trip.departureTime)}')
-      ..writeln('💺 ${trip.availableSeats} مقعد متاح')
-      ..writeln('💰 ${Fmt.money(trip.pricePerSeat)} للمقعد');
+      ..writeln(tr('💺 {0} مقعد متاح', [trip.availableSeats]))
+      ..writeln(tr('💰 {0} للمقعد', [Fmt.money(trip.pricePerSeat)]));
     final vehicle = trip.driver.vehicleLabel;
     if (vehicle.isNotEmpty) buf.writeln('🚙 $vehicle');
     buf
-      ..writeln('👤 ${trip.driver.fullName}${trip.driver.driverVerified ? ' (سائق موثّق)' : ''}')
+      ..writeln('👤 ${trip.driver.fullName}${trip.driver.driverVerified ? tr(' (سائق موثّق)') : ''}')
       ..writeln()
-      ..writeln('احجز مقعدك من هنا:')
+      ..writeln(tr('احجز مقعدك من هنا:'))
       // Served by the API (ShareController): a preview page that opens the app
       ..write('$shareBaseUrl/t/${trip.id}');
 
@@ -222,12 +225,12 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تفاصيل الرحلة'),
+        title: Text(tr('تفاصيل الرحلة')),
         actions: [
           tripAsync.maybeWhen(
             data: (trip) => IconButton(
               icon: const Icon(Icons.share_rounded),
-              tooltip: 'مشاركة الرحلة',
+              tooltip: tr('مشاركة الرحلة'),
               onPressed: () => _shareTrip(trip),
             ),
             orElse: () => const SizedBox.shrink(),
@@ -236,11 +239,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
             tripAsync.maybeWhen(
               data: (trip) => IconButton(
                 icon: const Icon(Icons.chat_bubble_outline_rounded),
-                tooltip: 'مجموعة الرحلة',
+                tooltip: tr('مجموعة الرحلة'),
                 onPressed: () => context.push(
                   '/trips/${trip.id}/chat',
                   extra: {
-                    'label': '${trip.originCity} ← ${trip.destinationCity}',
+                    'label': routeLabel(trip.originCity, trip.destinationCity),
                   },
                 ),
               ),
@@ -252,10 +255,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => EmptyState(
           icon: Icons.cloud_off_rounded,
-          title: 'تعذّر تحميل الرحلة',
+          title: tr('تعذّر تحميل الرحلة'),
           message: '$e',
           color: AppColors.error,
-          actionLabel: 'إعادة المحاولة',
+          actionLabel: tr('إعادة المحاولة'),
           onAction: () => ref.invalidate(tripDetailProvider(widget.tripId)),
         ),
         data: (trip) {
@@ -302,7 +305,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
                           icon: const Icon(Icons.people_rounded),
-                          label: const Text('عرض الركاب'),
+                          label: Text(tr('عرض الركاب')),
                           onPressed: () =>
                               context.push('/trips/${trip.id}/passengers'),
                         ),
@@ -317,7 +320,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                         strokeWidth: 2, color: Colors.white),
                                   )
                                 : const Icon(Icons.play_arrow_rounded),
-                            label: const Text('بدء الرحلة'),
+                            label: Text(tr('بدء الرحلة')),
                             onPressed: _startingTrip
                                 ? null
                                 : () => _startTrip(trip.id),
@@ -326,7 +329,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                             trip.status == 'ongoing') ...[
                           FilledButton.icon(
                             icon: const Icon(Icons.location_on_rounded),
-                            label: const Text('مشاركة الموقع الحي'),
+                            label: Text(tr('مشاركة الموقع الحي')),
                             style: FilledButton.styleFrom(
                                 backgroundColor: Colors.orange),
                             onPressed: () => context.push(
@@ -345,8 +348,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                   )
                                 : const Icon(Icons.flag_rounded,
                                     color: Colors.red),
-                            label: const Text('إنهاء الرحلة',
-                                style: TextStyle(color: Colors.red)),
+                            label: Text(tr('إنهاء الرحلة'),
+                                style: const TextStyle(color: Colors.red)),
                             style: OutlinedButton.styleFrom(
                                 side: const BorderSide(color: Colors.red)),
                             onPressed:
@@ -369,11 +372,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('لديك حجز في هذه الرحلة',
+                                      Text(tr('لديك حجز في هذه الرحلة'),
                                           style: Theme.of(context).textTheme.titleSmall),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '${st.label} · ${existingBooking.seatsCount} ${existingBooking.seatsCount == 1 ? 'مقعد' : 'مقاعد'}',
+                                        '${st.label} · ${Fmt.seats(existingBooking.seatsCount)}',
                                         style: Theme.of(context).textTheme.bodySmall?.copyWith(color: st.color, fontWeight: FontWeight.w600),
                                       ),
                                     ],
@@ -381,7 +384,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                 ),
                                 TextButton(
                                   onPressed: () => context.push('/my-bookings'),
-                                  child: const Text('حجوزاتي'),
+                                  child: Text(tr('حجوزاتي')),
                                 ),
                               ],
                             ),
@@ -400,7 +403,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                             width: double.infinity,
                             child: OutlinedButton.icon(
                               icon: const Icon(Icons.add_circle_outline_rounded),
-                              label: const Text('إضافة مقاعد أخرى'),
+                              label: Text(tr('إضافة مقاعد أخرى')),
                               onPressed: () => _showAddSeatsSheet(context, trip),
                             ),
                           ),
@@ -421,11 +424,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text('عدد المقاعد', style: Theme.of(context).textTheme.titleSmall),
+                                        Text(tr('عدد المقاعد'), style: Theme.of(context).textTheme.titleSmall),
                                         Text(
                                           trip.availableSeats == 1
-                                              ? 'آخر مقعد متاح'
-                                              : '${trip.availableSeats} مقاعد متاحة',
+                                              ? tr('آخر مقعد متاح')
+                                              : tr('{0} مقاعد متاحة', [trip.availableSeats]),
                                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                                 color: trip.availableSeats <= 2 ? AppColors.warning : null,
                                               ),
@@ -455,7 +458,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                               ),
                               Row(
                                 children: [
-                                  Text('الإجمالي', style: Theme.of(context).textTheme.titleSmall),
+                                  Text(tr('الإجمالي'), style: Theme.of(context).textTheme.titleSmall),
                                   const Spacer(),
                                   Text(
                                     Fmt.money(trip.pricePerSeat * _seats),
@@ -468,12 +471,12 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'لن يُخصم المبلغ إلا بعد انتهاء الرحلة — يُحجز فقط عند الدفع بالبطاقة.',
+                                tr('لن يُخصم المبلغ إلا بعد انتهاء الرحلة — يُحجز فقط عند الدفع بالبطاقة.'),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                               const SizedBox(height: 16),
                               AppButton(
-                                label: 'احجز الآن',
+                                label: tr('احجز الآن'),
                                 onPressed: trip.availableSeats >= _seats
                                     ? () {
                                         AnalyticsService.logBookingStart(
@@ -526,9 +529,9 @@ class _SeatsSummary extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _StatItem(label: 'إجمالي', value: '${trip.totalSeats}'),
-            _StatItem(label: 'محجوز', value: '$booked', color: Colors.orange),
-            _StatItem(label: 'متاح', value: '${trip.availableSeats}', color: AppColors.primary),
+            _StatItem(label: tr('إجمالي'), value: '${trip.totalSeats}'),
+            _StatItem(label: tr('محجوز'), value: '$booked', color: Colors.orange),
+            _StatItem(label: tr('متاح'), value: '${trip.availableSeats}', color: AppColors.primary),
           ],
         ),
       ),
@@ -569,7 +572,7 @@ class _CommentsList extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('أسئلة وتعليقات',
+        Text(tr('أسئلة وتعليقات'),
             style: Theme.of(context)
                 .textTheme
                 .titleMedium
@@ -582,7 +585,7 @@ class _CommentsList extends ConsumerWidget {
           data: (comments) => comments.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text('لا توجد تعليقات بعد. كن أول من يسأل!',
+                  child: Text(tr('لا توجد تعليقات بعد. كن أول من يسأل!'),
                       style: TextStyle(color: Colors.grey[600])),
                 )
               : Column(
@@ -620,10 +623,10 @@ class _CommentInputBar extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: commentCtrl,
-              decoration: const InputDecoration(
-                hintText: 'اسأل السائق أو أضف تعليقاً…',
+              decoration: InputDecoration(
+                hintText: tr('اسأل السائق أو أضف تعليقاً…'),
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               ),
               maxLines: 4,
               minLines: 1,
@@ -732,7 +735,7 @@ class _NotesCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('ملاحظات السائق', style: Theme.of(context).textTheme.labelMedium),
+                Text(tr('ملاحظات السائق'), style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 4),
                 Text(notes, style: Theme.of(context).textTheme.bodyMedium),
               ],
@@ -766,9 +769,11 @@ class _RouteHeader extends StatelessWidget {
               children: [
                 Icon(Icons.event_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
-                Expanded(child: Text(Fmt.relativeDay(trip.departureTime) == 'اليوم' || Fmt.relativeDay(trip.departureTime) == 'غداً'
-                    ? '${Fmt.relativeDay(trip.departureTime)} · ${Fmt.dayLong(trip.departureTime)}'
-                    : Fmt.dayLong(trip.departureTime), style: t.titleSmall)),
+                Expanded(child: Text(
+                    Fmt.isNear(trip.departureTime)
+                        ? '${Fmt.relativeDay(trip.departureTime)} · ${Fmt.dayLong(trip.departureTime)}'
+                        : Fmt.dayLong(trip.departureTime),
+                    style: t.titleSmall)),
                 StatusPill(label: st.label, color: st.color),
               ],
             ),
@@ -784,7 +789,7 @@ class _RouteHeader extends StatelessWidget {
                     toCity: trip.destinationCity,
                     fromDetail: trip.originAddress,
                     toDetail: trip.stops.isNotEmpty
-                        ? '${trip.destinationAddress ?? ''}${trip.destinationAddress != null ? ' · ' : ''}عبر ${trip.stops.join('، ')}'
+                        ? tr('{0}{1}عبر {2}', [trip.destinationAddress ?? '', trip.destinationAddress != null ? ' · ' : '', Fmt.list(trip.stops)])
                         : trip.destinationAddress,
                     fromTime: Fmt.time(trip.departureTime),
                     toTime: trip.estimatedArrivalTime != null ? Fmt.time(trip.estimatedArrivalTime!) : null,
@@ -799,7 +804,7 @@ class _RouteHeader extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                           height: 1,
                         )),
-                    Text('ج.م / مقعد', style: t.labelSmall),
+                    Text(tr('ج.م / مقعد'), style: t.labelSmall),
                   ],
                 ),
               ],
@@ -811,7 +816,7 @@ class _RouteHeader extends StatelessWidget {
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 44)),
                 icon: const Icon(Icons.navigation_rounded),
-                label: const Text('الاتجاهات إلى نقطة التجمع'),
+                label: Text(tr('الاتجاهات إلى نقطة التجمع')),
                 onPressed: () => launchUrl(
                   Uri.parse('https://www.google.com/maps/dir/?api=1'
                       '&destination=${trip.originLat},${trip.originLng}&travelmode=driving'),
@@ -857,7 +862,7 @@ class _DriverCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      d.driverVerified ? 'سائق موثّق بالبطاقة والرخصة' : 'السائق',
+                      d.driverVerified ? tr('سائق موثّق بالبطاقة والرخصة') : tr('السائق'),
                       style: t.bodySmall,
                     ),
                   ],
@@ -873,8 +878,8 @@ class _DriverCard extends StatelessWidget {
                 child: _MiniStat(
                   icon: Icons.star_rounded,
                   color: AppColors.secondary,
-                  value: d.ratingCount > 0 ? d.ratingAverage.toStringAsFixed(1) : 'جديد',
-                  label: d.ratingCount > 0 ? '${d.ratingCount} تقييم' : 'لا تقييمات بعد',
+                  value: d.ratingCount > 0 ? d.ratingAverage.toStringAsFixed(1) : tr('جديد'),
+                  label: d.ratingCount > 0 ? tr('{0} تقييم', [d.ratingCount]) : tr('لا تقييمات بعد'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -883,7 +888,7 @@ class _DriverCard extends StatelessWidget {
                   icon: Icons.route_rounded,
                   color: AppColors.primary,
                   value: '${d.completedTripsAsDriver}',
-                  label: 'رحلة مكتملة',
+                  label: tr('رحلة مكتملة'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -946,7 +951,7 @@ class _PreferencesCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('التفضيلات', style: Theme.of(context).textTheme.titleMedium),
+            Text(tr('التفضيلات'), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -955,23 +960,23 @@ class _PreferencesCard extends StatelessWidget {
                 if (trip.womenOnly)
                   _prefChip(
                       icon: Icons.female_rounded,
-                      label: 'نساء فقط',
+                      label: tr('نساء فقط'),
                       allowed: true),
                 _prefChip(
                     icon: Icons.smoke_free_rounded,
                     label:
-                        trip.smokingAllowed ? 'التدخين مسموح' : 'لا تدخين',
+                        trip.smokingAllowed ? tr('التدخين مسموح') : tr('لا تدخين'),
                     allowed: trip.smokingAllowed),
                 _prefChip(
                     icon: Icons.pets_rounded,
                     label:
-                        trip.petsAllowed ? 'حيوانات أليفة' : 'لا حيوانات',
+                        trip.petsAllowed ? tr('حيوانات أليفة') : tr('لا حيوانات'),
                     allowed: trip.petsAllowed),
                 _prefChip(
                     icon: Icons.luggage_rounded,
                     label: trip.luggageSize != 'none'
-                        ? 'حقائب مسموح'
-                        : 'بدون حقائب',
+                        ? tr('حقائب مسموح')
+                        : tr('بدون حقائب'),
                     allowed: trip.luggageSize != 'none'),
               ],
             ),
@@ -1020,7 +1025,7 @@ class _CoPassengersSection extends ConsumerWidget {
                         size: 18, color: AppColors.primary),
                     const SizedBox(width: 8),
                     Text(
-                      'رفقاء الرحلة (${passengers.length})',
+                      tr('رفقاء الرحلة ({0})', [passengers.length]),
                       style: Theme.of(context)
                           .textTheme
                           .titleSmall
@@ -1067,14 +1072,14 @@ class _SosButtonState extends ConsumerState<_SosButton> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تأكيد SOS'),
-        content: const Text(
-          'سيتم الاتصال بالطوارئ (123) وإرسال تنبيه للسائق والإدارة فوراً.',
+        title: Text(tr('تأكيد SOS')),
+        content: Text(
+          tr('سيتم الاتصال بالطوارئ (123) وإرسال تنبيه للسائق والإدارة فوراً.'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
+            child: Text(tr('إلغاء')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
@@ -1097,8 +1102,8 @@ class _SosButtonState extends ConsumerState<_SosButton> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إرسال تنبيه الطوارئ. فريق الدعم في طريقه.'),
+          SnackBar(
+            content: Text(tr('تم إرسال تنبيه الطوارئ. فريق الدعم في طريقه.')),
             backgroundColor: Colors.red,
           ),
         );
@@ -1123,7 +1128,7 @@ class _SosButtonState extends ConsumerState<_SosButton> {
                     strokeWidth: 2, color: Colors.white),
               )
             : const Icon(Icons.sos_rounded),
-        label: const Text('SOS — طوارئ'),
+        label: Text(tr('SOS — طوارئ')),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.red,
           foregroundColor: Colors.white,
@@ -1143,7 +1148,7 @@ class _PassengerChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final firstName = p['firstName'] as String? ?? 'راكب';
+    final firstName = p['firstName'] as String? ?? tr('راكب');
     final rating = double.tryParse(p['ratingAverage']?.toString() ?? '') ?? 0.0;
     final ratingCount = (p['ratingCount'] as num?)?.toInt() ?? 0;
     final gender = p['gender'] as String?;
@@ -1168,7 +1173,7 @@ class _PassengerChip extends StatelessWidget {
                   radius: 26,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   child: Text(
-                    firstName.isNotEmpty ? firstName[0] : '؟',
+                    firstName.isNotEmpty ? firstName[0] : tr('؟'),
                     style: const TextStyle(
                       fontSize: 20,
                       color: AppColors.primary,
@@ -1255,22 +1260,22 @@ class _TripClosedNotice extends StatelessWidget {
     final (icon, message, color) = switch (status) {
       'active' || 'ongoing' => (
           Icons.directions_car_filled_rounded,
-          'الرحلة جارية بالفعل — لم يعد الحجز متاحاً',
+          tr('الرحلة جارية بالفعل — لم يعد الحجز متاحاً'),
           Colors.orange,
         ),
       'completed' => (
           Icons.check_circle_outline_rounded,
-          'انتهت هذه الرحلة',
+          tr('انتهت هذه الرحلة'),
           Colors.grey,
         ),
       'cancelled' => (
           Icons.cancel_outlined,
-          'تم إلغاء هذه الرحلة',
+          tr('تم إلغاء هذه الرحلة'),
           Colors.red,
         ),
       _ => (
           Icons.info_outline_rounded,
-          'الحجز غير متاح على هذه الرحلة',
+          tr('الحجز غير متاح على هذه الرحلة'),
           Colors.grey,
         ),
     };

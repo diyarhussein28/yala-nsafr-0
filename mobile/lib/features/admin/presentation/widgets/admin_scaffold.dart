@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
+import '../../../../core/i18n/tr.dart';
 
 class AdminScaffold extends StatelessWidget {
   final String title;
@@ -47,8 +48,8 @@ class _AdminDrawer extends ConsumerWidget {
                 const Icon(Icons.admin_panel_settings_rounded,
                     color: Colors.white, size: 36),
                 const SizedBox(height: 8),
-                const Text('لوحة الإدارة',
-                    style: TextStyle(
+                Text(tr('لوحة الإدارة'),
+                    style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.bold)),
@@ -58,16 +59,16 @@ class _AdminDrawer extends ConsumerWidget {
               ],
             ),
           ),
-          _NavTile(icon: Icons.dashboard_rounded, label: 'لوحة التحكم', route: '/admin', exact: true, currentPath: path),
-          _NavTile(icon: Icons.people_rounded, label: 'المستخدمون', route: '/admin/users', currentPath: path),
-          _NavTile(icon: Icons.directions_car_rounded, label: 'الرحلات', route: '/admin/trips', currentPath: path),
-          _NavTile(icon: Icons.gavel_rounded, label: 'النزاعات', route: '/admin/disputes', currentPath: path),
-          _NavTile(icon: Icons.account_balance_wallet_rounded, label: 'السحوبات', route: '/admin/withdrawals', currentPath: path),
-          _NavTile(icon: Icons.settings_rounded, label: 'الإعدادات', route: '/admin/config', currentPath: path),
+          _NavTile(icon: Icons.dashboard_rounded, label: tr('لوحة التحكم'), route: '/admin', exact: true, currentPath: path),
+          _NavTile(icon: Icons.people_rounded, label: tr('المستخدمون'), route: '/admin/users', currentPath: path),
+          _NavTile(icon: Icons.directions_car_rounded, label: tr('الرحلات'), route: '/admin/trips', currentPath: path),
+          _NavTile(icon: Icons.gavel_rounded, label: tr('النزاعات'), route: '/admin/disputes', currentPath: path),
+          _NavTile(icon: Icons.account_balance_wallet_rounded, label: tr('السحوبات'), route: '/admin/withdrawals', currentPath: path),
+          _NavTile(icon: Icons.settings_rounded, label: tr('الإعدادات'), route: '/admin/config', currentPath: path),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.home_rounded),
-            title: const Text('العودة للتطبيق'),
+            title: Text(tr('العودة للتطبيق')),
             onTap: () {
               Navigator.pop(context);
               context.go('/search');

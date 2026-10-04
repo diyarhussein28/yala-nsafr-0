@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../core/api/api_client.dart';
+import '../../core/i18n/tr.dart';
 
 /// Kashier hosted checkout for an immediate charge (a subscription period, or the
 /// commission a driver owes on cash trips).
@@ -84,7 +85,7 @@ class _KashierCheckoutScreenState
       canPop: !_confirming,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('الدفع'),
+          title: Text(tr('الدفع')),
           automaticallyImplyLeading: false,
           leading: _confirming
               ? null
@@ -94,13 +95,13 @@ class _KashierCheckoutScreenState
                 ),
         ),
         body: _confirming || _controller == null
-            ? const Center(
+            ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('جاري تأكيد الدفع...', style: TextStyle(fontSize: 16)),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(tr('جاري تأكيد الدفع...'), style: const TextStyle(fontSize: 16)),
                   ],
                 ),
               )
@@ -112,14 +113,14 @@ class _KashierCheckoutScreenState
                         const Icon(Icons.wifi_off_rounded,
                             size: 64, color: Colors.grey),
                         const SizedBox(height: 16),
-                        const Text('تعذّر تحميل صفحة الدفع'),
+                        Text(tr('تعذّر تحميل صفحة الدفع')),
                         const SizedBox(height: 16),
                         FilledButton(
                           onPressed: () {
                             setState(() => _loadError = false);
                             _controller!.reload();
                           },
-                          child: const Text('إعادة المحاولة'),
+                          child: Text(tr('إعادة المحاولة')),
                         ),
                       ],
                     ),

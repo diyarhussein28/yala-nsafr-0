@@ -10,6 +10,8 @@ import '../../../../shared/widgets/skeletons.dart';
 import '../../providers/trips_provider.dart';
 import '../widgets/post_trip_guard.dart';
 import '../../../../core/services/analytics_service.dart';
+import '../../../../core/i18n/tr.dart';
+import '../../../../core/constants/egypt_cities.dart';
 
 // ── Sort / Filter state ───────────────────────────────────────────────────────
 
@@ -123,6 +125,7 @@ class _TripResultsScreenState extends ConsumerState<TripResultsScreen> {
         : allTrips.map((t) => t.pricePerSeat).reduce((a, b) => a > b ? a : b);
 
     final result = await showModalBottomSheet<_TripFilters>(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -148,9 +151,9 @@ class _TripResultsScreenState extends ConsumerState<TripResultsScreen> {
         toolbarHeight: 64,
         title: Column(
           children: [
-            Text('${p.from} ← ${p.to}'),
+            Text(routeLabel(p.from, p.to)),
             Text(
-              '${Fmt.relativeDay(p.date)} · ${p.seats} ${p.seats == 1 ? 'مقعد' : 'مقاعد'}',
+              '${Fmt.relativeDay(p.date)} · ${Fmt.seats(p.seats)}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -161,10 +164,10 @@ class _TripResultsScreenState extends ConsumerState<TripResultsScreen> {
             SkeletonCardList(itemBuilder: () => const TripResultSkeleton()),
         error: (e, _) => EmptyState(
           icon: Icons.cloud_off_rounded,
-          title: 'تعذّر تحميل الرحلات',
+          title: tr('تعذّر تحميل الرحلات'),
           message: '$e',
           color: AppColors.error,
-          actionLabel: 'إعادة المحاولة',
+          actionLabel: tr('إعادة المحاولة'),
           onAction: () => ref.read(tripSearchProvider.notifier).search(widget.params),
         ),
         data: (trips) {
@@ -233,11 +236,11 @@ class _SortFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const sorts = [
-      (_SortBy.recommended, 'الأفضل'),
-      (_SortBy.priceAsc, 'الأرخص'),
-      (_SortBy.timeAsc, 'الأقرب وقتاً'),
-      (_SortBy.ratingDesc, 'الأعلى تقييماً'),
+    final sorts = [
+      (_SortBy.recommended, tr('الأفضل')),
+      (_SortBy.priceAsc, tr('الأرخص')),
+      (_SortBy.timeAsc, tr('الأقرب وقتاً')),
+      (_SortBy.ratingDesc, tr('الأعلى تقييماً')),
     ];
 
     return SizedBox(
@@ -273,7 +276,7 @@ class _SortFilterBar extends StatelessWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.tune_rounded),
-                tooltip: 'فلترة',
+                tooltip: tr('فلترة'),
                 onPressed: onFilterTap,
               ),
               if (filterCount > 0)
@@ -327,21 +330,21 @@ class _EmptySearch extends StatelessWidget {
         children: [
           EmptyState(
             icon: Icons.directions_car_outlined,
-            title: 'لا توجد رحلات ${Fmt.relativeDay(params.date)}',
-            message: 'لم يعلن أي سائق عن رحلة ${params.from} ← ${params.to} في هذا اليوم بعد. جرّب يوماً آخر، أو انشر رحلتك وشارك تكلفة الطريق.',
+            title: tr('لا توجد رحلات {0}', [Fmt.relativeDay(params.date)]),
+            message: tr('لم يعلن أي سائق عن رحلة {0} ← {1} في هذا اليوم بعد. جرّب يوماً آخر، أو انشر رحلتك وشارك تكلفة الطريق.', [placeName(params.from), placeName(params.to)]),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
               children: [
                 AppButton(
-                  label: 'ابحث في يوم آخر',
+                  label: tr('ابحث في يوم آخر'),
                   icon: const Icon(Icons.calendar_month_rounded, color: Colors.white),
                   onPressed: onChangeDate,
                 ),
                 const SizedBox(height: 10),
                 AppButton(
-                  label: 'انشر رحلتك',
+                  label: tr('انشر رحلتك'),
                   outlined: true,
                   icon: const Icon(Icons.add_road_rounded),
                   onPressed: onPostTrip,
@@ -366,9 +369,9 @@ class _EmptyFiltered extends StatelessWidget {
   Widget build(BuildContext context) {
     return EmptyState(
       icon: Icons.filter_alt_off_rounded,
-      title: hasFilters ? 'لا توجد رحلات بهذه الفلاتر' : 'لا توجد رحلات متاحة',
-      message: hasFilters ? 'خفّف الفلاتر لرؤية رحلات أكثر.' : null,
-      actionLabel: hasFilters ? 'مسح الفلاتر' : null,
+      title: hasFilters ? tr('لا توجد رحلات بهذه الفلاتر') : tr('لا توجد رحلات متاحة'),
+      message: hasFilters ? tr('خفّف الفلاتر لرؤية رحلات أكثر.') : null,
+      actionLabel: hasFilters ? tr('مسح الفلاتر') : null,
       onAction: hasFilters ? onClear : null,
     );
   }
@@ -422,11 +425,11 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   @override
   Widget build(BuildContext context) {
-    const periodEntries = [
-      ('morning', 'صباحاً', Icons.wb_sunny_outlined),
-      ('afternoon', 'ظهراً', Icons.wb_cloudy_outlined),
-      ('evening', 'مساءً', Icons.nights_stay_outlined),
-      ('night', 'ليلاً', Icons.bedtime_outlined),
+    final periodEntries = [
+      ('morning', tr('صباحاً'), Icons.wb_sunny_outlined),
+      ('afternoon', tr('ظهراً'), Icons.wb_cloudy_outlined),
+      ('evening', tr('مساءً'), Icons.nights_stay_outlined),
+      ('night', tr('ليلاً'), Icons.bedtime_outlined),
     ];
 
     final divisions =
@@ -450,12 +453,12 @@ class _FilterSheetState extends State<_FilterSheet> {
           padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
           child: Row(
             children: [
-              const Text('فلترة النتائج',
+              Text(tr('فلترة النتائج'),
                   style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const Spacer(),
               TextButton(
-                  onPressed: _reset, child: const Text('مسح الكل')),
+                  onPressed: _reset, child: Text(tr('مسح الكل'))),
             ],
           ),
         ),
@@ -469,8 +472,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                 // ── Price ─────────────────────────────────────────────────
                 Row(
                   children: [
-                    const Text('الحد الأقصى للسعر',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    Text(tr('الحد الأقصى للسعر'),
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -480,7 +483,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${_maxPrice.toInt()} جنيه',
+                        tr('{0} جنيه', [_maxPrice.toInt()]),
                         style: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,
@@ -500,8 +503,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                 const SizedBox(height: 8),
 
                 // ── Departure period ───────────────────────────────────────
-                const Text('وقت الانطلاق',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                Text(tr('وقت الانطلاق'),
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -533,7 +536,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 if (!widget.womenOnlySearch)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('نساء فقط'),
+                    title: Text(tr('نساء فقط')),
                     secondary: Icon(Icons.female_rounded,
                         color: _womenOnly
                             ? AppColors.womenOnly
@@ -544,9 +547,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                   ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('سائق موثّق فقط'),
-                  subtitle: const Text('تحقق من الهوية والسيارة',
-                      style: TextStyle(fontSize: 12)),
+                  title: Text(tr('سائق موثّق فقط')),
+                  subtitle: Text(tr('تحقق من الهوية والسيارة'),
+                      style: const TextStyle(fontSize: 12)),
                   secondary: Icon(Icons.verified_rounded,
                       color: _verifiedOnly
                           ? AppColors.primary
@@ -568,7 +571,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(48)),
               onPressed: () => Navigator.pop(context, _result),
-              child: const Text('تطبيق الفلاتر'),
+              child: Text(tr('تطبيق الفلاتر')),
             ),
           ),
         ),
@@ -591,10 +594,10 @@ class _TripCard extends StatelessWidget {
     final d = trip.driver;
     final seatsLeft = trip.availableSeats;
     final (seatText, seatColor) = switch (seatsLeft) {
-      <= 0 => ('مكتملة', context.textMuted),
-      1 => ('آخر مقعد', AppColors.error),
-      2 => ('مقعدان متبقيان', AppColors.warning),
-      _ => ('$seatsLeft مقاعد متاحة', AppColors.success),
+      <= 0 => (tr('مكتملة'), context.textMuted),
+      1 => (tr('آخر مقعد'), AppColors.error),
+      2 => (tr('مقعدان متبقيان'), AppColors.warning),
+      _ => (tr('{0} مقاعد متاحة', [seatsLeft]), AppColors.success),
     };
 
     return AppCard(
@@ -633,10 +636,10 @@ class _TripCard extends StatelessWidget {
                       trip.pricePerSeat.toStringAsFixed(0),
                       style: t.headlineSmall?.copyWith(color: scheme.primary, fontWeight: FontWeight.w800, height: 1),
                     ),
-                    Text('ج.م / مقعد', style: t.labelSmall),
+                    Text(tr('ج.م / مقعد'), style: t.labelSmall),
                     if (seats > 1) ...[
                       const SizedBox(height: 4),
-                      Text('الإجمالي ${(trip.pricePerSeat * seats).toStringAsFixed(0)}', style: t.labelSmall),
+                      Text(tr('الإجمالي {0}', [(trip.pricePerSeat * seats).toStringAsFixed(0)]), style: t.labelSmall),
                     ],
                   ],
                 ),
@@ -650,7 +653,7 @@ class _TripCard extends StatelessWidget {
                 children: [
                   Icon(Icons.alt_route_rounded, size: 16, color: context.textMuted),
                   const SizedBox(width: 6),
-                  Expanded(child: Text('عبر ${trip.stops.join('، ')}', style: t.bodySmall)),
+                  Expanded(child: Text(tr('عبر {0}', [Fmt.list(trip.stops)]), style: t.bodySmall)),
                 ],
               ),
             ),
@@ -662,9 +665,9 @@ class _TripCard extends StatelessWidget {
               children: [
                 StatusPill(label: seatText, color: seatColor, icon: Icons.event_seat_rounded),
                 if (trip.womenOnly)
-                  const StatusPill(label: 'نساء فقط', color: AppColors.womenOnly, icon: Icons.female_rounded),
+                  StatusPill(label: tr('نساء فقط'), color: AppColors.womenOnly, icon: Icons.female_rounded),
                 if (trip.airConditioning)
-                  const StatusPill(label: 'تكييف', color: AppColors.info, icon: Icons.ac_unit_rounded),
+                  StatusPill(label: tr('تكييف'), color: AppColors.info, icon: Icons.ac_unit_rounded),
               ],
             ),
           ),
@@ -706,7 +709,7 @@ class _TripCard extends StatelessWidget {
                     ],
                   )
                 else
-                  Text('سائق جديد', style: t.bodySmall),
+                  Text(tr('سائق جديد'), style: t.bodySmall),
               ],
             ),
           ),

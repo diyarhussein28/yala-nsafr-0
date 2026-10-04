@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/api_client.dart';
 import '../widgets/admin_scaffold.dart';
+import '../../../../core/i18n/tr.dart';
 
 final _configProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
@@ -67,7 +68,7 @@ class _AdminConfigScreenState extends ConsumerState<AdminConfigScreen> {
       final ratingReveal = int.tryParse(_ratingRevealCtrl.text);
 
       if (commission == null || commission < 0 || commission > 50) {
-        throw Exception('نسبة العمولة يجب أن تكون بين 0 و 50%');
+        throw Exception(tr('نسبة العمولة يجب أن تكون بين 0 و 50%'));
       }
 
       await ref.read(dioProvider).patch('/admin/config', data: {
@@ -90,7 +91,7 @@ class _AdminConfigScreenState extends ConsumerState<AdminConfigScreen> {
   Widget build(BuildContext context) {
     final configAsync = ref.watch(_configProvider);
     return AdminScaffold(
-      title: 'الإعدادات',
+      title: tr('الإعدادات'),
       body: configAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
@@ -102,45 +103,45 @@ class _AdminConfigScreenState extends ConsumerState<AdminConfigScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // ── Editable section ─────────────────────────────────────────
-                Text('إعدادات قابلة للتعديل',
+                Text(tr('إعدادات قابلة للتعديل'),
                     style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 10),
                 _Field(
                   ctrl: _commissionCtrl,
-                  label: 'نسبة العمولة (%)',
-                  hint: 'مثال: 7 = 7%',
+                  label: tr('نسبة العمولة (%)'),
+                  hint: tr('مثال: 7 = 7%'),
                   icon: Icons.percent_rounded,
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 _Field(
                   ctrl: _autoConfirmCtrl,
-                  label: 'تأكيد الوصول التلقائي (ساعة)',
-                  hint: 'عدد الساعات بعد انتهاء الرحلة',
+                  label: tr('تأكيد الوصول التلقائي (ساعة)'),
+                  hint: tr('عدد الساعات بعد انتهاء الرحلة'),
                   icon: Icons.check_circle_rounded,
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 _Field(
                   ctrl: _disputeWindowCtrl,
-                  label: 'نافذة النزاع (ساعة)',
-                  hint: 'المدة المسموح فيها بفتح نزاع',
+                  label: tr('نافذة النزاع (ساعة)'),
+                  hint: tr('المدة المسموح فيها بفتح نزاع'),
                   icon: Icons.gavel_rounded,
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 _Field(
                   ctrl: _disputeSlaCtrl,
-                  label: 'مهلة الرد على النزاع (ساعة)',
-                  hint: 'المدة المتاحة للطرف الآخر للرد قبل الحسم التلقائي',
+                  label: tr('مهلة الرد على النزاع (ساعة)'),
+                  hint: tr('المدة المتاحة للطرف الآخر للرد قبل الحسم التلقائي'),
                   icon: Icons.timer_rounded,
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 _Field(
                   ctrl: _ratingRevealCtrl,
-                  label: 'كشف التقييمات (يوم)',
-                  hint: 'عدد الأيام قبل الكشف المتبادل',
+                  label: tr('كشف التقييمات (يوم)'),
+                  hint: tr('عدد الأيام قبل الكشف المتبادل'),
                   icon: Icons.star_rounded,
                   keyboardType: TextInputType.number,
                 ),
@@ -152,10 +153,10 @@ class _AdminConfigScreenState extends ConsumerState<AdminConfigScreen> {
                         style: const TextStyle(color: Colors.red)),
                   ),
                 if (_saved)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 10),
-                    child: Text('تم الحفظ بنجاح ✅',
-                        style: TextStyle(color: Colors.green)),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(tr('تم الحفظ بنجاح ✅'),
+                        style: const TextStyle(color: Colors.green)),
                   ),
                 FilledButton(
                   onPressed: _saving ? null : _save,
@@ -165,41 +166,41 @@ class _AdminConfigScreenState extends ConsumerState<AdminConfigScreen> {
                           height: 18,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
-                      : const Text('حفظ الإعدادات'),
+                      : Text(tr('حفظ الإعدادات')),
                 ),
 
                 // ── Read-only section ────────────────────────────────────────
                 const SizedBox(height: 28),
-                Text('إعدادات النظام (للعرض فقط)',
+                Text(tr('إعدادات النظام (للعرض فقط)'),
                     style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 10),
                 _ReadOnly(
-                  label: 'حد التقييم المنخفض',
+                  label: tr('حد التقييم المنخفض'),
                   value: config['low_rating_threshold']?.toString() ?? '-',
                   icon: Icons.star_border_rounded,
                 ),
                 _ReadOnly(
-                  label: 'الحد الأدنى للتقييمات قبل الإبلاغ',
+                  label: tr('الحد الأدنى للتقييمات قبل الإبلاغ'),
                   value: config['min_ratings_for_flag']?.toString() ?? '-',
                   icon: Icons.flag_rounded,
                 ),
                 _ReadOnly(
-                  label: 'إلغاء مجاني (ساعة)',
+                  label: tr('إلغاء مجاني (ساعة)'),
                   value: config['free_cancel_hours']?.toString() ?? '-',
                   icon: Icons.cancel_rounded,
                 ),
                 _ReadOnly(
-                  label: 'إلغاء متأخر (ساعة)',
+                  label: tr('إلغاء متأخر (ساعة)'),
                   value: config['late_cancel_hours']?.toString() ?? '-',
                   icon: Icons.timer_rounded,
                 ),
                 _ReadOnly(
-                  label: 'رسوم الإلغاء المتأخر (%)',
+                  label: tr('رسوم الإلغاء المتأخر (%)'),
                   value: '${((double.tryParse(config['late_cancel_fee_pct']?.toString() ?? '0') ?? 0) * 100).toStringAsFixed(0)}%',
                   icon: Icons.money_off_rounded,
                 ),
                 _ReadOnly(
-                  label: 'تعويض السائق (%)',
+                  label: tr('تعويض السائق (%)'),
                   value: '${((double.tryParse(config['driver_compensation_pct']?.toString() ?? '0') ?? 0) * 100).toStringAsFixed(0)}%',
                   icon: Icons.payments_rounded,
                 ),

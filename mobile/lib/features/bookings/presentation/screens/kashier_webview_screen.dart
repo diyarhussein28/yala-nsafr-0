@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
+import '../../../../core/i18n/tr.dart';
 
 class KashierWebViewScreen extends ConsumerStatefulWidget {
   final String bookingId;
@@ -81,16 +82,16 @@ class _KashierWebViewScreenState extends ConsumerState<KashierWebViewScreen> {
     final leave = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('هل تريد المغادرة؟'),
-        content: const Text('الدفع لم يكتمل بعد. يمكنك مراجعة حجوزاتك لاحقاً.'),
+        title: Text(tr('هل تريد المغادرة؟')),
+        content: Text(tr('الدفع لم يكتمل بعد. يمكنك مراجعة حجوزاتك لاحقاً.')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('متابعة الدفع'),
+            child: Text(tr('متابعة الدفع')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('مغادرة'),
+            child: Text(tr('مغادرة')),
           ),
         ],
       ),
@@ -108,7 +109,7 @@ class _KashierWebViewScreenState extends ConsumerState<KashierWebViewScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('إتمام الدفع'),
+          title: Text(tr('إتمام الدفع')),
           automaticallyImplyLeading: false,
           leading: IconButton(
             icon: const Icon(Icons.close),
@@ -120,20 +121,20 @@ class _KashierWebViewScreenState extends ConsumerState<KashierWebViewScreen> {
           ),
         ),
         body: _healing
-            ? const Center(
+            ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
                     Text(
-                      'جاري تأكيد الدفع...',
-                      style: TextStyle(fontSize: 16),
+                      tr('جاري تأكيد الدفع...'),
+                      style: const TextStyle(fontSize: 16),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
-                      'يرجى الانتظار',
-                      style: TextStyle(color: Colors.grey),
+                      tr('يرجى الانتظار'),
+                      style: const TextStyle(color: Colors.grey),
                     ),
                   ],
                 ),
@@ -146,14 +147,14 @@ class _KashierWebViewScreenState extends ConsumerState<KashierWebViewScreen> {
                         const Icon(Icons.wifi_off_rounded,
                             size: 64, color: Colors.grey),
                         const SizedBox(height: 16),
-                        const Text('تعذّر تحميل صفحة الدفع'),
+                        Text(tr('تعذّر تحميل صفحة الدفع')),
                         const SizedBox(height: 16),
                         FilledButton(
                           onPressed: () {
                             setState(() => _loadError = false);
                             _controller.reload();
                           },
-                          child: const Text('إعادة المحاولة'),
+                          child: Text(tr('إعادة المحاولة')),
                         ),
                       ],
                     ),

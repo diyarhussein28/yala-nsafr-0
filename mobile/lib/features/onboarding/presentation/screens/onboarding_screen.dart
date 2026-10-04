@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../../core/i18n/tr.dart';
 
 class OnboardingScreen extends ConsumerWidget {
   const OnboardingScreen({super.key});
@@ -45,7 +46,7 @@ class OnboardingScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'أهلاً بك في يلا نسافر!',
+                tr('أهلاً بك في يلا نسافر!'),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
@@ -54,7 +55,7 @@ class OnboardingScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'سافر بذكاء بين المدن المصرية',
+                tr('سافر بذكاء بين المدن المصرية'),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -64,22 +65,22 @@ class OnboardingScreen extends ConsumerWidget {
               const SizedBox(height: 52),
 
               // Feature rows
-              const _FeatureRow(
+              _FeatureRow(
                 icon: Icons.search_rounded,
-                title: 'ابحث عن رحلة',
-                body: 'سافر بين المدن بتكلفة أقل مع سائق موثوق',
+                title: tr('ابحث عن رحلة'),
+                body: tr('سافر بين المدن بتكلفة أقل مع سائق موثوق'),
               ),
               const SizedBox(height: 28),
-              const _FeatureRow(
+              _FeatureRow(
                 icon: Icons.add_road_rounded,
-                title: 'انشر رحلتك',
-                body: 'شارك التكلفة مع مسافرين على طريقك واكسب من كل رحلة',
+                title: tr('انشر رحلتك'),
+                body: tr('شارك التكلفة مع مسافرين على طريقك واكسب من كل رحلة'),
               ),
               const SizedBox(height: 28),
-              const _FeatureRow(
+              _FeatureRow(
                 icon: Icons.verified_user_rounded,
-                title: 'سافر بأمان',
-                body: 'سائقون موثوقون، تقييمات حقيقية، وزر طوارئ في كل رحلة',
+                title: tr('سافر بأمان'),
+                body: tr('سائقون موثوقون، تقييمات حقيقية، وزر طوارئ في كل رحلة'),
               ),
 
               const Spacer(),
@@ -95,9 +96,9 @@ class OnboardingScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: const Text(
-                  'ابدأ الآن',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                child: Text(
+                  tr('ابدأ الآن'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(height: 24),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/services/upload_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/i18n/tr.dart';
 
 /// A tappable slot for one document photo (ID front/back, licence, car...). Picks from
 /// camera or gallery, uploads privately, and reports the stored reference.
@@ -42,6 +43,7 @@ class _DocumentUploadTileState extends ConsumerState<DocumentUploadTile> {
 
   Future<void> _pick() async {
     final source = await showModalBottomSheet<ImageSource>(
+      useRootNavigator: true,
       context: context,
       builder: (ctx) => SafeArea(
         child: Column(
@@ -49,12 +51,12 @@ class _DocumentUploadTileState extends ConsumerState<DocumentUploadTile> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera_rounded),
-              title: const Text('التقاط صورة'),
+              title: Text(tr('التقاط صورة')),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_rounded),
-              title: const Text('اختيار من المعرض'),
+              title: Text(tr('اختيار من المعرض')),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
             const SizedBox(height: 8),
@@ -76,7 +78,7 @@ class _DocumentUploadTileState extends ConsumerState<DocumentUploadTile> {
       setState(() => _preview = uploaded.previewUrl);
       widget.onUploaded(uploaded.ref);
     } catch (_) {
-      if (mounted) setState(() => _error = 'تعذّر رفع الصورة، حاول مرة أخرى');
+      if (mounted) setState(() => _error = tr('تعذّر رفع الصورة، حاول مرة أخرى'));
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -124,13 +126,13 @@ class _DocumentUploadTileState extends ConsumerState<DocumentUploadTile> {
                                 color: Colors.black54,
                                 borderRadius: BorderRadius.circular(AppRadius.pill),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.check_circle_rounded, color: Colors.white, size: 14),
-                                  SizedBox(width: 4),
-                                  Text('تم الرفع · اضغط للتغيير',
-                                      style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600)),
+                                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 14),
+                                  const SizedBox(width: 4),
+                                  Text(tr('تم الرفع · اضغط للتغيير'),
+                                      style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600)),
                                 ],
                               ),
                             ),

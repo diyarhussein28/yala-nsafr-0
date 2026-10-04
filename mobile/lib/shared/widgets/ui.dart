@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/i18n/tr.dart';
+import '../../core/constants/egypt_cities.dart';
 
 /// A white (or dark-surface) rounded card with the app's soft shadow.
 class AppCard extends StatelessWidget {
@@ -168,7 +170,7 @@ class UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = name.trim().isEmpty ? '؟' : name.trim().characters.first;
+    final initial = name.trim().isEmpty ? tr('؟') : name.trim().characters.first;
     final fallback = Container(
       width: size,
       height: size,
@@ -252,9 +254,9 @@ class RouteTimeline extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(city, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 15)),
+                Text(placeName(city), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 15)),
                 if (detail != null && detail.isNotEmpty)
-                  Text(detail, style: Theme.of(context).textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(placeName(detail), style: Theme.of(context).textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),

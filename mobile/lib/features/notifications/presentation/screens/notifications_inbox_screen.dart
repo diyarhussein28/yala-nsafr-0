@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/models/app_notification.dart';
 import '../../providers/notifications_provider.dart';
 import '../../../../shared/widgets/skeletons.dart';
+import '../../../../core/i18n/tr.dart';
 
 class NotificationsInboxScreen extends ConsumerStatefulWidget {
   const NotificationsInboxScreen({super.key});
@@ -46,14 +47,14 @@ class _NotificationsInboxScreenState
     final notifAsync = ref.watch(notificationsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('الإشعارات')),
+      appBar: AppBar(title: Text(tr('الإشعارات'))),
       body: notifAsync.when(
         loading: () => SkeletonCardList(
           itemBuilder: () => const NotifTileSkeleton(),
           count: 6,
           padding: EdgeInsets.zero,
         ),
-        error: (_, __) => const Center(child: Text('تعذّر تحميل الإشعارات')),
+        error: (_, __) => Center(child: Text(tr('تعذّر تحميل الإشعارات'))),
         data: (notifications) {
           if (notifications.isEmpty) {
             return Center(
@@ -63,7 +64,7 @@ class _NotificationsInboxScreenState
                   Icon(Icons.notifications_off_rounded,
                       size: 64, color: theme.colorScheme.outline),
                   const SizedBox(height: 12),
-                  Text('لا توجد إشعارات',
+                  Text(tr('لا توجد إشعارات'),
                       style: theme.textTheme.bodyLarge?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant)),
                 ],
@@ -197,10 +198,10 @@ class _NotifTile extends StatelessWidget {
 
   String _relativeTime(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'الآن';
-    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} د';
-    if (diff.inHours < 24) return 'منذ ${diff.inHours} س';
-    if (diff.inDays < 7) return 'منذ ${diff.inDays} أيام';
+    if (diff.inMinutes < 1) return tr('الآن');
+    if (diff.inMinutes < 60) return tr('منذ {0} د', [diff.inMinutes]);
+    if (diff.inHours < 24) return tr('منذ {0} س', [diff.inHours]);
+    if (diff.inDays < 7) return tr('منذ {0} أيام', [diff.inDays]);
     return '${dt.day}/${dt.month}/${dt.year}';
   }
 }

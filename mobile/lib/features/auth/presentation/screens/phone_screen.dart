@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../providers/auth_provider.dart';
 import '../widgets/auth_scaffold.dart';
+import '../../../../core/i18n/tr.dart';
 
 class PhoneScreen extends ConsumerStatefulWidget {
   const PhoneScreen({super.key});
@@ -39,15 +40,15 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
   Widget build(BuildContext context) {
     final muted = context.textMuted;
     return AuthScaffold(
-      title: 'أهلاً بك في يلا نسافر',
-      subtitle: 'رحلات بين المحافظات بأمان وبسعر أقل',
+      title: tr('أهلاً بك في يلا نسافر'),
+      subtitle: tr('رحلات بين المحافظات بأمان وبسعر أقل'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('رقم الموبايل', style: Theme.of(context).textTheme.titleMedium),
+          Text(tr('رقم الموبايل'), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
-            'هنبعتلك رمز تحقق في رسالة نصية',
+            tr('هنبعتلك رمز تحقق في رسالة نصية'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 20),
@@ -73,7 +74,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
           ],
           const SizedBox(height: 20),
           AppButton(
-            label: 'إرسال رمز التحقق',
+            label: tr('إرسال رمز التحقق'),
             loading: _loading,
             onPressed: _phoneValid ? _send : null,
           ),
@@ -84,7 +85,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'سائقون موثّقون بالبطاقة والرخصة، ودفع آمن لا يُخصم إلا بعد انتهاء الرحلة.',
+                  tr('سائقون موثّقون بالبطاقة والرخصة، ودفع آمن لا يُخصم إلا بعد انتهاء الرحلة.'),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: muted),
                 ),
               ),
@@ -92,7 +93,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            'بالمتابعة أنت توافق على شروط الاستخدام وسياسة الخصوصية',
+            tr('بالمتابعة أنت توافق على شروط الاستخدام وسياسة الخصوصية'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelSmall,
           ),

@@ -5,6 +5,7 @@ import '../../../../core/models/chat_message.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../../providers/messages_provider.dart';
+import '../../../../core/i18n/tr.dart';
 
 class TripChatScreen extends ConsumerStatefulWidget {
   final String tripId;
@@ -90,7 +91,7 @@ class _TripChatScreenState extends ConsumerState<TripChatScreen> {
       setState(() => _pending.remove(optimistic));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل الإرسال: $e')),
+          SnackBar(content: Text(tr('فشل الإرسال: {0}', [e]))),
         );
       }
     } finally {
@@ -108,7 +109,7 @@ class _TripChatScreenState extends ConsumerState<TripChatScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('مجموعة الرحلة', style: TextStyle(fontSize: 16)),
+            Text(tr('مجموعة الرحلة'), style: const TextStyle(fontSize: 16)),
             Text(widget.tripLabel,
                 style:
                     const TextStyle(fontSize: 12, color: Colors.white70)),
@@ -130,7 +131,7 @@ class _TripChatScreenState extends ConsumerState<TripChatScreen> {
                     const SizedBox(height: 12),
                     Text(
                       e.toString().contains('403')
-                          ? 'لا يمكنك الوصول لهذا الدردشة\nيجب أن يكون لديك حجز مؤكد'
+                          ? tr('لا يمكنك الوصول لهذا الدردشة\nيجب أن يكون لديك حجز مؤكد')
                           : '$e',
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.grey),
@@ -141,17 +142,17 @@ class _TripChatScreenState extends ConsumerState<TripChatScreen> {
               data: (messages) {
                 final all = [...messages, ..._pending];
                 if (all.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.chat_bubble_outline_rounded,
+                        const Icon(Icons.chat_bubble_outline_rounded,
                             size: 56, color: Colors.grey),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                         Text(
-                          'لا توجد رسائل بعد\nكن أول من يبدأ المحادثة!',
+                          tr('لا توجد رسائل بعد\nكن أول من يبدأ المحادثة!'),
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey),
+                          style: const TextStyle(color: Colors.grey),
                         ),
                       ],
                     ),
@@ -258,7 +259,7 @@ class _MessageBubble extends StatelessWidget {
                     radius: 14,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.12),
                     child: Text(
-                      msg.senderName.isNotEmpty ? msg.senderName[0] : '؟',
+                      msg.senderName.isNotEmpty ? msg.senderName[0] : tr('؟'),
                       style: const TextStyle(
                           fontSize: 11, color: AppColors.primary),
                     ),
@@ -354,7 +355,7 @@ class _InputBar extends StatelessWidget {
                 minLines: 1,
                 maxLength: 1000,
                 decoration: InputDecoration(
-                  hintText: 'اكتب رسالة…',
+                  hintText: tr('اكتب رسالة…'),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,

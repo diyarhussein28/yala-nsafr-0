@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/models/trip.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/i18n/tr.dart';
 
 class TripBadgeRow extends StatelessWidget {
   final bool womenOnly;
@@ -33,22 +34,22 @@ class TripBadgeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final specs = <_BadgeSpec>[];
     if (driverVerified) {
-      specs.add(const _BadgeSpec(Icons.verified_rounded, 'موثق', AppColors.primary));
+      specs.add(_BadgeSpec(Icons.verified_rounded, tr('موثق'), AppColors.primary));
     }
     if (womenOnly) {
-      specs.add(const _BadgeSpec(Icons.female_rounded, 'نساء فقط', AppColors.womenOnly));
+      specs.add(_BadgeSpec(Icons.female_rounded, tr('نساء فقط'), AppColors.womenOnly));
     }
     if (airConditioning) {
-      specs.add(const _BadgeSpec(Icons.ac_unit_rounded, 'تكييف', Colors.lightBlue));
+      specs.add(_BadgeSpec(Icons.ac_unit_rounded, tr('تكييف'), Colors.lightBlue));
     }
     if (smokingAllowed) {
-      specs.add(_BadgeSpec(Icons.smoking_rooms_rounded, 'تدخين', Colors.amber.shade700));
+      specs.add(_BadgeSpec(Icons.smoking_rooms_rounded, tr('تدخين'), Colors.amber.shade700));
     }
     if (petsAllowed) {
-      specs.add(_BadgeSpec(Icons.pets_rounded, 'حيوانات', Colors.green.shade600));
+      specs.add(_BadgeSpec(Icons.pets_rounded, tr('حيوانات'), Colors.green.shade600));
     }
     if (quietRide) {
-      specs.add(const _BadgeSpec(Icons.volume_off_rounded, 'هادئة', Colors.indigo));
+      specs.add(_BadgeSpec(Icons.volume_off_rounded, tr('هادئة'), Colors.indigo));
     }
 
     if (specs.isEmpty) return const SizedBox.shrink();

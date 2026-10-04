@@ -1,3 +1,4 @@
+import '../../core/i18n/tr.dart';
 class ChatMessage {
   final String id;
   final String tripId;
@@ -22,7 +23,7 @@ class ChatMessage {
       id: json['id'] as String,
       tripId: json['tripId'] as String? ?? '',
       senderId: json['senderId'] as String? ?? '',
-      senderName: rawName.isNotEmpty ? rawName : (sender?['phoneNumber'] as String? ?? '؟'),
+      senderName: rawName.isNotEmpty ? rawName : (sender?['phoneNumber'] as String? ?? tr('؟')),
       body: json['body'] as String? ?? '',
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ?? DateTime.now(),
     );

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/api_client.dart';
 import '../widgets/admin_scaffold.dart';
+import '../../../../core/i18n/tr.dart';
+import '../../../../core/constants/egypt_cities.dart';
 
 final _analyticsProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
@@ -16,7 +18,7 @@ class AdminDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(_analyticsProvider);
     return AdminScaffold(
-      title: 'لوحة التحكم',
+      title: tr('لوحة التحكم'),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
@@ -54,19 +56,19 @@ class _StatsGrid extends StatelessWidget {
     final dis = data['disputes'] as Map<String, dynamic>? ?? {};
 
     final cards = [
-      _Card(label: 'المستخدمون', value: '${u['total'] ?? 0}', icon: Icons.people_rounded, color: Colors.blue),
-      _Card(label: 'الرحلات', value: '${t['total'] ?? 0}', icon: Icons.directions_car_rounded, color: Colors.green),
+      _Card(label: tr('المستخدمون'), value: '${u['total'] ?? 0}', icon: Icons.people_rounded, color: Colors.blue),
+      _Card(label: tr('الرحلات'), value: '${t['total'] ?? 0}', icon: Icons.directions_car_rounded, color: Colors.green),
       _Card(
-        label: 'الإيرادات',
-        value: '${(rev['totalEgp'] as num?)?.toStringAsFixed(0) ?? 0} ج',
+        label: tr('الإيرادات'),
+        value: tr('{0} ج', [(rev['totalEgp'] as num?)?.toStringAsFixed(0) ?? 0]),
         icon: Icons.attach_money_rounded,
         color: Colors.orange,
       ),
-      _Card(label: 'نزاعات مفتوحة', value: '${dis['open'] ?? 0}', icon: Icons.gavel_rounded, color: Colors.red),
-      _Card(label: 'تحقق هوية معلق', value: '${u['pendingIdVerifications'] ?? 0}', icon: Icons.badge_rounded, color: Colors.purple),
-      _Card(label: 'تحقق سائق معلق', value: '${u['pendingDriverVerifications'] ?? 0}', icon: Icons.drive_eta_rounded, color: Colors.teal),
-      _Card(label: 'مكتملة (30 يوم)', value: '${t['completedLast30Days'] ?? 0}', icon: Icons.check_circle_rounded, color: Colors.green.shade700),
-      _Card(label: 'ثقة منخفضة', value: '${u['trustFlagged'] ?? 0}', icon: Icons.flag_rounded, color: Colors.red.shade700),
+      _Card(label: tr('نزاعات مفتوحة'), value: '${dis['open'] ?? 0}', icon: Icons.gavel_rounded, color: Colors.red),
+      _Card(label: tr('تحقق هوية معلق'), value: '${u['pendingIdVerifications'] ?? 0}', icon: Icons.badge_rounded, color: Colors.purple),
+      _Card(label: tr('تحقق سائق معلق'), value: '${u['pendingDriverVerifications'] ?? 0}', icon: Icons.drive_eta_rounded, color: Colors.teal),
+      _Card(label: tr('مكتملة (30 يوم)'), value: '${t['completedLast30Days'] ?? 0}', icon: Icons.check_circle_rounded, color: Colors.green.shade700),
+      _Card(label: tr('ثقة منخفضة'), value: '${u['trustFlagged'] ?? 0}', icon: Icons.flag_rounded, color: Colors.red.shade700),
     ];
 
     return GridView.count(
@@ -131,7 +133,7 @@ class _TopRoutesCard extends StatelessWidget {
               children: [
                 const Icon(Icons.route_rounded, size: 18),
                 const SizedBox(width: 8),
-                Text('أكثر المسارات رحلات',
+                Text(tr('أكثر المسارات رحلات'),
                     style: Theme.of(context).textTheme.titleMedium),
               ],
             ),
@@ -152,12 +154,12 @@ class _TopRoutesCard extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        '${r['originCity']} ← ${r['destinationCity']}',
+                        routeLabel(r['originCity'] as String?, r['destinationCity'] as String?),
                         style:
                             const TextStyle(fontWeight: FontWeight.w500),
                       ),
                     ),
-                    Text('${r['tripCount']} رحلة',
+                    Text(tr('{0} رحلة', [r['tripCount']]),
                         style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),

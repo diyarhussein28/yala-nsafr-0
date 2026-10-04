@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../router/app_router.dart';
+import '../../core/i18n/tr.dart';
 
 @pragma('vm:entry-point')
 Future<void> _onBackgroundMessage(RemoteMessage message) async {
@@ -16,10 +17,10 @@ class FcmService {
   static final _messaging = FirebaseMessaging.instance;
   static final _localNotifications = FlutterLocalNotificationsPlugin();
 
-  static const _channel = AndroidNotificationChannel(
+  static final _channel = AndroidNotificationChannel(
     'yala_high',
-    'يلا نسافر',
-    description: 'إشعارات الحجوزات والرحلات',
+    tr('يلا نسافر'),
+    description: tr('إشعارات الحجوزات والرحلات'),
     importance: Importance.high,
   );
 

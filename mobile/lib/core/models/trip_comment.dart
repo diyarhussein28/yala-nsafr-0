@@ -1,3 +1,4 @@
+import '../../core/i18n/tr.dart';
 class TripComment {
   final String id;
   final String tripId;
@@ -20,7 +21,7 @@ class TripComment {
   });
 
   String get displayName =>
-      userFullName.isNotEmpty ? userFullName : (userPhone.isNotEmpty ? userPhone : 'مستخدم');
+      userFullName.isNotEmpty ? userFullName : (userPhone.isNotEmpty ? userPhone : tr('مستخدم'));
 
   factory TripComment.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>? ?? {};

@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../providers/auth_provider.dart';
 import '../widgets/auth_scaffold.dart';
+import '../../../../core/i18n/tr.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
   final String phone;
@@ -53,8 +54,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
     return AuthScaffold(
       showBack: true,
-      title: 'أدخل رمز التحقق',
-      subtitle: 'أرسلنا رمزاً من 6 أرقام إلى ${widget.phone}',
+      title: tr('أدخل رمز التحقق'),
+      subtitle: tr('أرسلنا رمزاً من 6 أرقام إلى {0}', [widget.phone]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -95,14 +96,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
           ],
           const SizedBox(height: 28),
           AppButton(
-            label: 'تأكيد والدخول',
+            label: tr('تأكيد والدخول'),
             loading: _loading,
             onPressed: _code.length == 6 ? _verify : null,
           ),
           const SizedBox(height: 12),
           TextButton(
             onPressed: _loading ? null : () => Navigator.of(context).maybePop(),
-            child: const Text('تغيير رقم الموبايل'),
+            child: Text(tr('تغيير رقم الموبايل')),
           ),
         ],
       ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/models/dispute.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../providers/disputes_provider.dart';
+import '../../../../core/i18n/tr.dart';
 
 class DisputesScreen extends ConsumerWidget {
   const DisputesScreen({super.key});
@@ -13,20 +14,20 @@ class DisputesScreen extends ConsumerWidget {
     final disputesAsync = ref.watch(myDisputesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('نزاعاتي')),
+      appBar: AppBar(title: Text(tr('نزاعاتي'))),
       body: disputesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
         data: (disputes) {
           if (disputes.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.gavel_rounded, size: 72, color: Colors.grey),
-                  SizedBox(height: 12),
-                  Text('لا توجد نزاعات',
-                      style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  const Icon(Icons.gavel_rounded, size: 72, color: Colors.grey),
+                  const SizedBox(height: 12),
+                  Text(tr('لا توجد نزاعات'),
+                      style: const TextStyle(fontSize: 16, color: Colors.grey)),
                 ],
               ),
             );
@@ -109,13 +110,13 @@ class _DisputeCard extends StatelessWidget {
   }
 
   String _reasonLabel(String reason) => switch (reason) {
-        'driver_no_show' => 'السائق لم يحضر',
-        'passenger_no_show' => 'الراكب لم يحضر',
-        'route_changed' => 'تغيير المسار',
-        'safety_concern' => 'مشكلة أمان',
-        'payment_issue' => 'مشكلة دفع',
-        'behavior_issue' => 'مشكلة سلوكية',
-        'other' => 'أخرى',
+        'driver_no_show' => tr('السائق لم يحضر'),
+        'passenger_no_show' => tr('الراكب لم يحضر'),
+        'route_changed' => tr('تغيير المسار'),
+        'safety_concern' => tr('مشكلة أمان'),
+        'payment_issue' => tr('مشكلة دفع'),
+        'behavior_issue' => tr('مشكلة سلوكية'),
+        'other' => tr('أخرى'),
         _ => reason,
       };
 

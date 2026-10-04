@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../providers/ratings_provider.dart';
+import '../../../../core/i18n/tr.dart';
 
 class RateScreen extends ConsumerStatefulWidget {
   final Booking booking;
@@ -28,17 +29,17 @@ class _RateScreenState extends ConsumerState<RateScreen> {
   String get _rateeName {
     final myId = ref.read(authProvider).user?.id;
     final trip = widget.booking.trip;
-    if (trip == null) return 'الطرف الآخر';
+    if (trip == null) return tr('الطرف الآخر');
     // If I'm the passenger → I'm rating the driver
     if (widget.booking.passengerId == myId) return trip.driver.fullName;
     // If I'm the driver → I'm rating the passenger
-    return widget.booking.passenger?.fullName ?? 'الراكب';
+    return widget.booking.passenger?.fullName ?? tr('الراكب');
   }
 
   Future<void> _submit() async {
     if (_score == 0) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('اختر عدد النجوم أولاً')));
+          .showSnackBar(SnackBar(content: Text(tr('اختر عدد النجوم أولاً'))));
       return;
     }
     final ok = await ref.read(submitRatingProvider.notifier).submit(
@@ -50,7 +51,7 @@ class _RateScreenState extends ConsumerState<RateScreen> {
         );
     if (ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إرسال التقييم')),
+        SnackBar(content: Text(tr('تم إرسال التقييم'))),
       );
       context.pop();
     }
@@ -66,7 +67,7 @@ class _RateScreenState extends ConsumerState<RateScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('تقييم الرحلة')),
+      appBar: AppBar(title: Text(tr('تقييم الرحلة'))),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -91,7 +92,7 @@ class _RateScreenState extends ConsumerState<RateScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'كيف كانت تجربتك مع $_rateeName؟',
+                    tr('كيف كانت تجربتك مع {0}؟', [_rateeName]),
                     style: Theme.of(context).textTheme.titleMedium,
                     textAlign: TextAlign.center,
                   ),
@@ -140,9 +141,9 @@ class _RateScreenState extends ConsumerState<RateScreen> {
             // Optional comment
             TextFormField(
               controller: _commentCtrl,
-              decoration: const InputDecoration(
-                labelText: 'تعليق (اختياري)',
-                hintText: 'شارك تجربتك...',
+              decoration: InputDecoration(
+                labelText: tr('تعليق (اختياري)'),
+                hintText: tr('شارك تجربتك...'),
                 alignLabelWithHint: true,
               ),
               maxLines: 3,
@@ -158,13 +159,13 @@ class _RateScreenState extends ConsumerState<RateScreen> {
 
             const Spacer(),
             AppButton(
-              label: 'إرسال التقييم',
+              label: tr('إرسال التقييم'),
               loading: loading,
               onPressed: _score > 0 ? _submit : null,
             ),
             const SizedBox(height: 12),
             AppButton(
-              label: 'تخطي',
+              label: tr('تخطي'),
               outlined: true,
               onPressed: loading ? null : () => context.pop(),
             ),
@@ -175,11 +176,11 @@ class _RateScreenState extends ConsumerState<RateScreen> {
   }
 
   String _scoreLabel(int score) => switch (score) {
-        1 => 'سيئ جداً',
-        2 => 'سيئ',
-        3 => 'مقبول',
-        4 => 'جيد',
-        5 => 'ممتاز',
-        _ => 'اختر تقييمك',
+        1 => tr('سيئ جداً'),
+        2 => tr('سيئ'),
+        3 => tr('مقبول'),
+        4 => tr('جيد'),
+        5 => tr('ممتاز'),
+        _ => tr('اختر تقييمك'),
       };
 }

@@ -8,6 +8,8 @@ import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/utils/format.dart';
 import '../../../../shared/widgets/kashier_checkout_screen.dart';
 import '../../../../shared/widgets/ui.dart';
+import '../../../../core/i18n/tr.dart';
+import '../../../../core/constants/egypt_cities.dart';
 
 class DriverEarningsScreen extends ConsumerWidget {
   const DriverEarningsScreen({super.key});
@@ -19,7 +21,7 @@ class DriverEarningsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('أرباحي', style: TextStyle(color: Colors.white)),
+        title: Text(tr('أرباحي'), style: const TextStyle(color: Colors.white)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -28,10 +30,10 @@ class DriverEarningsScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => EmptyState(
           icon: Icons.cloud_off_rounded,
-          title: 'تعذّر تحميل الأرباح',
+          title: tr('تعذّر تحميل الأرباح'),
           message: '$e',
           color: AppColors.error,
-          actionLabel: 'إعادة المحاولة',
+          actionLabel: tr('إعادة المحاولة'),
           onAction: () => ref.invalidate(earningsSummaryProvider),
         ),
         data: (summary) => Column(
@@ -44,10 +46,10 @@ class DriverEarningsScreen extends ConsumerWidget {
                 error: (e, _) => Center(child: Text('$e')),
                 data: (trips) {
                   if (trips.isEmpty) {
-                    return const EmptyState(
+                    return EmptyState(
                       icon: Icons.directions_car_outlined,
-                      title: 'لا توجد رحلات مكتملة بعد',
-                      message: 'ستظهر أرباح كل رحلة هنا فور إنهائها.',
+                      title: tr('لا توجد رحلات مكتملة بعد'),
+                      message: tr('ستظهر أرباح كل رحلة هنا فور إنهائها.'),
                     );
                   }
                   return RefreshIndicator(
@@ -101,7 +103,7 @@ class _SummaryStripState extends ConsumerState<_SummaryStrip> {
       ));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(paid == true ? 'تم سداد العمولة، شكراً لك ✅' : 'لم يكتمل الدفع'),
+        content: Text(paid == true ? tr('تم سداد العمولة، شكراً لك ✅') : tr('لم يكتمل الدفع')),
       ));
       ref.invalidate(earningsSummaryProvider);
     } catch (e) {
@@ -131,7 +133,7 @@ class _SummaryStripState extends ConsumerState<_SummaryStrip> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('متاح للسحب', textAlign: TextAlign.center, style: t.labelMedium?.copyWith(color: white70)),
+          Text(tr('متاح للسحب'), textAlign: TextAlign.center, style: t.labelMedium?.copyWith(color: white70)),
           Text(
             Fmt.money(summary.pendingBalance),
             textAlign: TextAlign.center,
@@ -140,24 +142,23 @@ class _SummaryStripState extends ConsumerState<_SummaryStrip> {
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(child: _HeroStat(label: 'هذا الشهر', value: Fmt.money(summary.thisMonthTotal))),
+              Expanded(child: _HeroStat(label: tr('هذا الشهر'), value: Fmt.money(summary.thisMonthTotal))),
               const SizedBox(width: 8),
-              Expanded(child: _HeroStat(label: 'إجمالي الأرباح', value: Fmt.money(summary.allTimeTotal))),
+              Expanded(child: _HeroStat(label: tr('إجمالي الأرباح'), value: Fmt.money(summary.allTimeTotal))),
               const SizedBox(width: 8),
-              Expanded(child: _HeroStat(label: 'تم سحبه', value: Fmt.money(summary.totalWithdrawn))),
+              Expanded(child: _HeroStat(label: tr('تم سحبه'), value: Fmt.money(summary.totalWithdrawn))),
             ],
           ),
           if (summary.heldBalance > 0) ...[
             const SizedBox(height: 10),
             _HeroNote(
               icon: Icons.lock_clock_rounded,
-              text: 'معلّق ${Fmt.money(summary.heldBalance)} حتى انتهاء مهلة النزاع'
-                  '${summary.nextReleaseAt != null ? ' — يتاح ${Fmt.relativeDay(summary.nextReleaseAt!)} ${Fmt.time(summary.nextReleaseAt!)}' : ''}',
+              text: tr('معلّق {0} حتى انتهاء مهلة النزاع{1}', [Fmt.money(summary.heldBalance), summary.nextReleaseAt != null ? tr(' — يتاح {0} {1}', [Fmt.relativeDay(summary.nextReleaseAt!), Fmt.time(summary.nextReleaseAt!)]) : '']),
             ),
           ],
           if (summary.pendingWithdrawal > 0) ...[
             const SizedBox(height: 8),
-            _HeroNote(icon: Icons.schedule_rounded, text: 'قيد التحويل: ${Fmt.money(summary.pendingWithdrawal)}'),
+            _HeroNote(icon: Icons.schedule_rounded, text: tr('قيد التحويل: {0}', [Fmt.money(summary.pendingWithdrawal)])),
           ],
           if (summary.cashCommissionOutstanding > 0) ...[
             const SizedBox(height: 10),
@@ -174,8 +175,7 @@ class _SummaryStripState extends ConsumerState<_SummaryStrip> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'عمولة مستحقة على رحلات الكاش: ${Fmt.money(summary.cashCommissionOutstanding)}'
-                      '${summary.cashCommissionOutstanding > summary.cashCommissionLimit ? '\nسدّدها لتتمكن من نشر رحلات جديدة' : ''}',
+                      tr('عمولة مستحقة على رحلات الكاش: {0}{1}', [Fmt.money(summary.cashCommissionOutstanding), summary.cashCommissionOutstanding > summary.cashCommissionLimit ? tr('\nسدّدها لتتمكن من نشر رحلات جديدة') : '']),
                       style: t.bodySmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -189,7 +189,7 @@ class _SummaryStripState extends ConsumerState<_SummaryStrip> {
                     onPressed: _paying ? null : _payCommission,
                     child: _paying
                         ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('سدّد الآن'),
+                        : Text(tr('سدّد الآن')),
                   ),
                 ],
               ),
@@ -264,8 +264,7 @@ class _WithdrawBar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
-                  'الحد الأدنى للسحب ${summary.minWithdrawal.toStringAsFixed(0)} ج'
-                  ' — رصيدك ${summary.pendingBalance.toStringAsFixed(0)} ج',
+                  tr('الحد الأدنى للسحب {0} ج — رصيدك {1} ج', [summary.minWithdrawal.toStringAsFixed(0), summary.pendingBalance.toStringAsFixed(0)]),
                   style:
                       TextStyle(color: Colors.grey.shade600, fontSize: 12),
                   textAlign: TextAlign.center,
@@ -275,7 +274,7 @@ class _WithdrawBar extends StatelessWidget {
               width: double.infinity,
               child: FilledButton.icon(
                 icon: const Icon(Icons.account_balance_rounded),
-                label: const Text('طلب سحب الأرباح'),
+                label: Text(tr('طلب سحب الأرباح')),
                 onPressed: canWithdraw
                     ? () => _showWithdrawSheet(context, summary)
                     : null,
@@ -289,6 +288,7 @@ class _WithdrawBar extends StatelessWidget {
 
   void _showWithdrawSheet(BuildContext context, EarningsSummary summary) {
     showModalBottomSheet(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -318,10 +318,10 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
   String _method = 'vodafone_cash';
   bool _loading = false;
 
-  static const _methods = [
-    ('vodafone_cash', 'فودافون كاش'),
-    ('instapay', 'إنستاباي'),
-    ('bank', 'تحويل بنكي'),
+  static List<(String, String)> get _methods => [
+    ('vodafone_cash', tr('فودافون كاش')),
+    ('instapay', tr('إنستاباي')),
+    ('bank', tr('تحويل بنكي')),
   ];
 
   @override
@@ -348,8 +348,8 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('تم إرسال طلب السحب بنجاح ✅'),
+          SnackBar(
+              content: Text(tr('تم إرسال طلب السحب بنجاح ✅')),
               backgroundColor: Colors.green),
         );
       }
@@ -387,14 +387,14 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('طلب سحب الأرباح',
+            Text(tr('طلب سحب الأرباح'),
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge
                     ?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Text(
-              'الرصيد المتاح: ${widget.summary.pendingBalance.toStringAsFixed(0)} ج',
+              tr('الرصيد المتاح: {0} ج', [widget.summary.pendingBalance.toStringAsFixed(0)]),
               style:
                   TextStyle(color: Colors.grey.shade600, fontSize: 13),
             ),
@@ -404,19 +404,19 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
             TextFormField(
               controller: _amountCtrl,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'المبلغ (جنيه)',
-                prefixIcon: Icon(Icons.payments_outlined),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: tr('المبلغ (جنيه)'),
+                prefixIcon: const Icon(Icons.payments_outlined),
+                border: const OutlineInputBorder(),
               ),
               validator: (v) {
                 final n = double.tryParse(v ?? '');
-                if (n == null) return 'أدخل مبلغاً صحيحاً';
+                if (n == null) return tr('أدخل مبلغاً صحيحاً');
                 if (n < widget.summary.minWithdrawal) {
-                  return 'الحد الأدنى ${widget.summary.minWithdrawal.toStringAsFixed(0)} ج';
+                  return tr('الحد الأدنى {0} ج', [widget.summary.minWithdrawal.toStringAsFixed(0)]);
                 }
                 if (n > widget.summary.pendingBalance) {
-                  return 'يتجاوز رصيدك المتاح';
+                  return tr('يتجاوز رصيدك المتاح');
                 }
                 return null;
               },
@@ -426,10 +426,10 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
             // Method
             DropdownButtonFormField<String>(
               initialValue: _method,
-              decoration: const InputDecoration(
-                labelText: 'طريقة الاستلام',
-                prefixIcon: Icon(Icons.account_balance_wallet_outlined),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: tr('طريقة الاستلام'),
+                prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
+                border: const OutlineInputBorder(),
               ),
               items: _methods
                   .map((m) => DropdownMenuItem(value: m.$1, child: Text(m.$2)))
@@ -443,12 +443,12 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
               controller: _accountCtrl,
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
-                labelText: _method == 'bank' ? 'رقم الحساب / IBAN' : 'رقم المحفظة',
+                labelText: _method == 'bank' ? tr('رقم الحساب / IBAN') : tr('رقم المحفظة'),
                 prefixIcon: const Icon(Icons.phone_android_outlined),
                 border: const OutlineInputBorder(),
               ),
               validator: (v) {
-                if (v == null || v.trim().length < 11) return 'أدخل رقماً صحيحاً';
+                if (v == null || v.trim().length < 11) return tr('أدخل رقماً صحيحاً');
                 return null;
               },
             ),
@@ -457,13 +457,13 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
             // Full name
             TextFormField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'الاسم الكامل',
-                prefixIcon: Icon(Icons.person_outline),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: tr('الاسم الكامل'),
+                prefixIcon: const Icon(Icons.person_outline),
+                border: const OutlineInputBorder(),
               ),
               validator: (v) =>
-                  (v == null || v.trim().length < 2) ? 'أدخل الاسم' : null,
+                  (v == null || v.trim().length < 2) ? tr('أدخل الاسم') : null,
             ),
 
             // Bank name (only for bank transfer)
@@ -471,13 +471,13 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
               const SizedBox(height: 14),
               TextFormField(
                 controller: _bankCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'اسم البنك',
-                  prefixIcon: Icon(Icons.account_balance_outlined),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: tr('اسم البنك'),
+                  prefixIcon: const Icon(Icons.account_balance_outlined),
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'أدخل اسم البنك' : null,
+                    (v == null || v.trim().isEmpty) ? tr('أدخل اسم البنك') : null,
               ),
             ],
 
@@ -492,7 +492,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                         width: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Text('إرسال الطلب'),
+                    : Text(tr('إرسال الطلب')),
               ),
             ),
           ],
@@ -525,11 +525,11 @@ class _TripEarningCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${trip.originCity} ← ${trip.destinationCity}', style: t.titleSmall),
+                Text(routeLabel(trip.originCity, trip.destinationCity), style: t.titleSmall),
                 const SizedBox(height: 2),
                 Text(
                   '${Fmt.dayShort(trip.departureTime)} · ${Fmt.time(trip.departureTime)}'
-                  '${trip.seatsCount > 1 ? ' · ${trip.seatsCount} مقاعد' : ''}',
+                  '${trip.seatsCount > 1 ? ' · ${Fmt.seats(trip.seatsCount)}' : ''}',
                   style: t.bodySmall,
                 ),
               ],
@@ -543,7 +543,7 @@ class _TripEarningCard extends StatelessWidget {
                     color: isCash ? AppColors.warning : Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w800,
                   )),
-              Text(isCash ? 'محصّل نقداً' : 'صافي بعد العمولة', style: t.labelSmall),
+              Text(isCash ? tr('محصّل نقداً') : tr('صافي بعد العمولة'), style: t.labelSmall),
             ],
           ),
         ],

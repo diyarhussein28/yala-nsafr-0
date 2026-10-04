@@ -7,6 +7,7 @@ import '../../../../core/models/booking.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/rating_stars.dart';
 import '../../providers/trips_provider.dart';
+import '../../../../core/i18n/tr.dart';
 
 class TripPassengersScreen extends ConsumerWidget {
   final String tripId;
@@ -17,7 +18,7 @@ class TripPassengersScreen extends ConsumerWidget {
     final bookingsAsync = ref.watch(tripBookingsProvider(tripId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('ركاب الرحلة')),
+      appBar: AppBar(title: Text(tr('ركاب الرحلة'))),
       body: bookingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
@@ -43,9 +44,9 @@ class TripPassengersScreen extends ConsumerWidget {
           final bookings = seen.values.toList();
 
           if (bookings.isEmpty) {
-            return const Center(
-              child: Text('لا يوجد ركاب لهذه الرحلة',
-                  style: TextStyle(color: Colors.grey, fontSize: 16)),
+            return Center(
+              child: Text(tr('لا يوجد ركاب لهذه الرحلة'),
+                  style: const TextStyle(color: Colors.grey, fontSize: 16)),
             );
           }
 
@@ -71,7 +72,7 @@ class _PassengerCard extends ConsumerWidget {
       ref.invalidate(tripBookingsProvider(booking.tripId));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تمت الموافقة على الحجز ✅')),
+          SnackBar(content: Text(tr('تمت الموافقة على الحجز ✅'))),
         );
       }
     } catch (e) {
@@ -85,14 +86,14 @@ class _PassengerCard extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('رفض الحجز'),
-        content: const Text('هل تريد رفض طلب الحجز هذا؟'),
+        title: Text(tr('رفض الحجز')),
+        content: Text(tr('هل تريد رفض طلب الحجز هذا؟')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('تراجع'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('رفض'),
+            child: Text(tr('رفض')),
           ),
         ],
       ),
@@ -103,7 +104,7 @@ class _PassengerCard extends ConsumerWidget {
       ref.invalidate(tripBookingsProvider(booking.tripId));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم رفض الحجز')),
+          SnackBar(content: Text(tr('تم رفض الحجز'))),
         );
       }
     } catch (e) {
@@ -117,7 +118,7 @@ class _PassengerCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final passenger = booking.passenger;
     final rawName = passenger?.fullName ?? '';
-    final name = rawName.isNotEmpty ? rawName : 'راكب';
+    final name = rawName.isNotEmpty ? rawName : tr('راكب');
     final rating = passenger?.ratingAverage ?? 0.0;
     final ratingCount = passenger?.ratingCount ?? 0;
     final canRate = booking.canRate;
@@ -154,11 +155,11 @@ class _PassengerCard extends ConsumerWidget {
                         if (ratingCount > 0)
                           RatingStars(rating: rating, count: ratingCount)
                         else
-                          Text('لا يوجد تقييم بعد',
+                          Text(tr('لا يوجد تقييم بعد'),
                               style:
                                   TextStyle(color: Colors.grey[600], fontSize: 12)),
                         Text(
-                          '${booking.seatsCount} مقعد · ${booking.totalAmount.toStringAsFixed(0)} جنيه',
+                          tr('{0} مقعد · {1} جنيه', [booking.seatsCount, booking.totalAmount.toStringAsFixed(0)]),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -173,7 +174,7 @@ class _PassengerCard extends ConsumerWidget {
                               backgroundColor: AppColors.primary,
                               minimumSize: const Size(60, 32)),
                           onPressed: () => _approveBooking(context, ref, booking),
-                          child: const Text('قبول', style: TextStyle(fontSize: 12)),
+                          child: Text(tr('قبول'), style: const TextStyle(fontSize: 12)),
                         ),
                         const SizedBox(width: 6),
                         OutlinedButton(
@@ -181,7 +182,7 @@ class _PassengerCard extends ConsumerWidget {
                               foregroundColor: Colors.red,
                               minimumSize: const Size(60, 32)),
                           onPressed: () => _rejectBooking(context, ref, booking),
-                          child: const Text('رفض', style: TextStyle(fontSize: 12)),
+                          child: Text(tr('رفض'), style: const TextStyle(fontSize: 12)),
                         ),
                       ],
                     )
@@ -189,10 +190,10 @@ class _PassengerCard extends ConsumerWidget {
                     FilledButton.tonal(
                       onPressed: () =>
                           context.push('/bookings/rate', extra: booking),
-                      child: const Text('قيّم'),
+                      child: Text(tr('قيّم')),
                     )
                   else if (booking.isCompleted)
-                    Text('تم التقييم',
+                    Text(tr('تم التقييم'),
                         style: TextStyle(color: Colors.grey[600], fontSize: 12))
                   else
                     const Icon(Icons.chevron_left_rounded, color: Colors.grey),
@@ -204,7 +205,7 @@ class _PassengerCard extends ConsumerWidget {
                   alignment: AlignmentDirectional.centerEnd,
                   child: TextButton.icon(
                     icon: const Icon(Icons.report_outlined, size: 16),
-                    label: const Text('فتح نزاع'),
+                    label: Text(tr('فتح نزاع')),
                     style: TextButton.styleFrom(
                         foregroundColor: Colors.deepOrange),
                     onPressed: () => context.push(

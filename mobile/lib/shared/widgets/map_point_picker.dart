@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_theme.dart';
 import 'app_button.dart';
+import '../../core/i18n/tr.dart';
 
 const _tileUrl = String.fromEnvironment(
   'MAP_TILE_URL',
@@ -84,11 +85,11 @@ class _MapPointPickerState extends State<MapPointPicker> {
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     boxShadow: AppShadows.card,
                   ),
-                  child: const Text('حرّك الخريطة حتى يكون الدبوس على نقطة التجمع بالضبط',
+                  child: Text(tr('حرّك الخريطة حتى يكون الدبوس على نقطة التجمع بالضبط'),
                       textAlign: TextAlign.center),
                 ),
                 const SizedBox(height: 10),
-                AppButton(label: 'تأكيد الموقع', onPressed: () => Navigator.pop(context, _center)),
+                AppButton(label: tr('تأكيد الموقع'), onPressed: () => Navigator.pop(context, _center)),
               ],
             ),
           ),

@@ -5,6 +5,7 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../core/i18n/tr.dart';
 
 // ── Providers ──────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ class _AdminDisputeDetailScreenState
       if (!mounted) return;
       _msgCtrl.clear();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إرسال الرسالة')),
+        SnackBar(content: Text(tr('تم إرسال الرسالة'))),
       );
     } catch (e) {
       if (!mounted) return;
@@ -80,7 +81,7 @@ class _AdminDisputeDetailScreenState
   ) async {
     if (_notesCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اكتب ملاحظات القرار أولاً')),
+        SnackBar(content: Text(tr('اكتب ملاحظات القرار أولاً'))),
       );
       return;
     }
@@ -98,7 +99,7 @@ class _AdminDisputeDetailScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تأكيد القرار'),
+        title: Text(tr('تأكيد القرار')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,8 +108,12 @@ class _AdminDisputeDetailScreenState
             if (blockUserId != null) ...[
               const SizedBox(height: 8),
               Text(
-                'سيتم ${_banInsteadOfSuspend ? 'حظر' : 'إيقاف'} '
-                '${_blockPassenger ? 'الراكب' : 'السائق'} من المنصة.',
+                switch ((_banInsteadOfSuspend, _blockPassenger)) {
+                  (true, true) => tr('سيتم حظر الراكب من المنصة.'),
+                  (true, false) => tr('سيتم حظر السائق من المنصة.'),
+                  (false, true) => tr('سيتم إيقاف الراكب من المنصة.'),
+                  (false, false) => tr('سيتم إيقاف السائق من المنصة.'),
+                },
                 style: const TextStyle(color: Colors.red),
               ),
             ],
@@ -117,10 +122,10 @@ class _AdminDisputeDetailScreenState
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
+              child: Text(tr('إلغاء'))),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('تأكيد')),
+              child: Text(tr('تأكيد'))),
         ],
       ),
     );
@@ -141,7 +146,7 @@ class _AdminDisputeDetailScreenState
       if (!mounted) return;
       ref.invalidate(_adminDisputeDetailProvider(widget.disputeId));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم البت في النزاع')),
+        SnackBar(content: Text(tr('تم البت في النزاع'))),
       );
     } catch (e) {
       if (!mounted) return;
@@ -153,9 +158,9 @@ class _AdminDisputeDetailScreenState
   }
 
   String _resolutionLabel(String r) => switch (r) {
-        'resolved_refund' => 'استرداد كامل المبلغ للراكب',
-        'resolved_release' => 'الإفراج عن المبلغ للسائق',
-        'resolved_split' => 'تقسيم المبلغ بين الطرفين',
+        'resolved_refund' => tr('استرداد كامل المبلغ للراكب'),
+        'resolved_release' => tr('الإفراج عن المبلغ للسائق'),
+        'resolved_split' => tr('تقسيم المبلغ بين الطرفين'),
         _ => r,
       };
 
@@ -165,7 +170,7 @@ class _AdminDisputeDetailScreenState
         ref.watch(_adminDisputeDetailProvider(widget.disputeId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('تفاصيل النزاع — إدارة')),
+      appBar: AppBar(title: Text(tr('تفاصيل النزاع — إدارة'))),
       body: detailAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
@@ -234,13 +239,13 @@ class _StatusChip extends StatelessWidget {
   final String status;
   const _StatusChip({required this.status});
 
-  static const _labels = {
-    'open': 'مفتوح',
-    'under_review': 'تحت المراجعة',
-    'resolved_refund': 'تم الاسترداد',
-    'resolved_release': 'تم الإفراج',
-    'resolved_split': 'تم التقسيم',
-    'closed': 'مغلق',
+  static Map<String, String> get _labels => {
+    'open': tr('مفتوح'),
+    'under_review': tr('تحت المراجعة'),
+    'resolved_refund': tr('تم الاسترداد'),
+    'resolved_release': tr('تم الإفراج'),
+    'resolved_split': tr('تم التقسيم'),
+    'closed': tr('مغلق'),
   };
   static const _colors = {
     'open': Colors.deepOrange,
@@ -293,14 +298,14 @@ class _PartiesCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('الأطراف',
+            Text(tr('الأطراف'),
                 style: Theme.of(context)
                     .textTheme
                     .titleSmall
                     ?.copyWith(color: Colors.grey[600])),
             const SizedBox(height: 12),
             _PartyTile(
-              label: 'السائق',
+              label: tr('السائق'),
               name: nameOf(driver),
               icon: Icons.directions_car_rounded,
               color: AppColors.primary,
@@ -310,7 +315,7 @@ class _PartiesCard extends StatelessWidget {
             ),
             const Divider(),
             _PartyTile(
-              label: 'الراكب',
+              label: tr('الراكب'),
               name: nameOf(passenger),
               icon: Icons.person_rounded,
               color: Colors.indigo,
@@ -352,7 +357,7 @@ class _PartyTile extends StatelessWidget {
       trailing: onView != null
           ? IconButton(
               icon: const Icon(Icons.person_search_rounded),
-              tooltip: 'عرض الملف',
+              tooltip: tr('عرض الملف'),
               onPressed: onView,
             )
           : null,
@@ -364,14 +369,14 @@ class _ComplaintCard extends StatelessWidget {
   final Map<String, dynamic> dispute;
   const _ComplaintCard({required this.dispute});
 
-  static const _reasonLabels = {
-    'no_show_driver': 'السائق لم يحضر',
-    'no_show_passenger': 'الراكب لم يحضر',
-    'unsafe_driving': 'قيادة غير آمنة',
-    'wrong_route': 'مسار خاطئ',
-    'payment_mismatch': 'خلاف في المبلغ',
-    'harassment': 'تحرش أو إزعاج',
-    'other': 'أخرى',
+  static Map<String, String> get _reasonLabels => {
+    'no_show_driver': tr('السائق لم يحضر'),
+    'no_show_passenger': tr('الراكب لم يحضر'),
+    'unsafe_driving': tr('قيادة غير آمنة'),
+    'wrong_route': tr('مسار خاطئ'),
+    'payment_mismatch': tr('خلاف في المبلغ'),
+    'harassment': tr('تحرش أو إزعاج'),
+    'other': tr('أخرى'),
   };
 
   @override
@@ -381,7 +386,7 @@ class _ComplaintCard extends StatelessWidget {
     final urls = (dispute['evidenceUrls'] as List?)?.length ?? 0;
 
     return _InfoCard(
-      title: 'الشكوى',
+      title: tr('الشكوى'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -402,7 +407,7 @@ class _ComplaintCard extends StatelessWidget {
           Text(desc),
           if (urls > 0) ...[
             const SizedBox(height: 8),
-            Text('$urls ملف دليل',
+            Text(tr('{0} ملف دليل', [urls]),
                 style:
                     TextStyle(color: Colors.grey[500], fontSize: 12)),
           ],
@@ -423,14 +428,14 @@ class _ResponseCard extends StatelessWidget {
         (dispute['otherPartyEvidenceUrls'] as List?)?.length ?? 0;
 
     return _InfoCard(
-      title: 'رد الطرف الآخر',
+      title: tr('رد الطرف الآخر'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(response),
           if (urls > 0) ...[
             const SizedBox(height: 8),
-            Text('$urls ملف دليل',
+            Text(tr('{0} ملف دليل', [urls]),
                 style:
                     TextStyle(color: Colors.grey[500], fontSize: 12)),
           ],
@@ -450,7 +455,7 @@ class _ResolutionResultCard extends StatelessWidget {
     final refund = (dispute['refundAmount'] as num?)?.toDouble();
 
     return _InfoCard(
-      title: 'قرار الإدارة',
+      title: tr('قرار الإدارة'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -458,7 +463,7 @@ class _ResolutionResultCard extends StatelessWidget {
           if (refund != null && refund > 0) ...[
             const SizedBox(height: 8),
             Text(
-              'مبلغ الاسترداد: ${refund.toStringAsFixed(0)} جنيه',
+              tr('مبلغ الاسترداد: {0} جنيه', [refund.toStringAsFixed(0)]),
               style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary),
@@ -487,15 +492,15 @@ class _NotifyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _InfoCard(
-      title: 'إرسال رسالة',
+      title: tr('إرسال رسالة'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'opener', label: Text('مقدم الشكوى')),
-              ButtonSegment(value: 'other_party', label: Text('الطرف الآخر')),
-              ButtonSegment(value: 'both', label: Text('الاثنان')),
+            segments: [
+              ButtonSegment(value: 'opener', label: Text(tr('مقدم الشكوى'))),
+              ButtonSegment(value: 'other_party', label: Text(tr('الطرف الآخر'))),
+              ButtonSegment(value: 'both', label: Text(tr('الاثنان'))),
             ],
             selected: {target},
             onSelectionChanged: (s) => onTargetChanged(s.first),
@@ -503,16 +508,16 @@ class _NotifyCard extends StatelessWidget {
           const SizedBox(height: 12),
           TextField(
             controller: ctrl,
-            decoration: const InputDecoration(
-              hintText: 'اكتب رسالتك هنا...',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: tr('اكتب رسالتك هنا...'),
+              border: const OutlineInputBorder(),
             ),
             maxLines: 3,
             maxLength: 500,
           ),
           const SizedBox(height: 8),
           AppButton(
-            label: 'إرسال إشعار',
+            label: tr('إرسال إشعار'),
             loading: sending,
             onPressed: onSend,
           ),
@@ -550,15 +555,15 @@ class _ResolveCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _InfoCard(
-      title: 'القرار النهائي',
+      title: tr('القرار النهائي'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextField(
             controller: notesCtrl,
-            decoration: const InputDecoration(
-              labelText: 'ملاحظات القرار (مرئية لكلا الطرفين)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: tr('ملاحظات القرار (مرئية لكلا الطرفين)'),
+              border: const OutlineInputBorder(),
               alignLabelWithHint: true,
             ),
             maxLines: 3,
@@ -567,29 +572,29 @@ class _ResolveCard extends StatelessWidget {
           const SizedBox(height: 12),
           TextField(
             controller: refundCtrl,
-            decoration: const InputDecoration(
-              labelText: 'مبلغ الاسترداد الجزئي (للتقسيم فقط)',
-              border: OutlineInputBorder(),
-              suffixText: 'جنيه',
+            decoration: InputDecoration(
+              labelText: tr('مبلغ الاسترداد الجزئي (للتقسيم فقط)'),
+              border: const OutlineInputBorder(),
+              suffixText: tr('جنيه'),
             ),
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 16),
           // Block options
-          const Text('إجراءات الحظر (اختياري)',
-              style: TextStyle(fontWeight: FontWeight.w600)),
+          Text(tr('إجراءات الحظر (اختياري)'),
+              style: const TextStyle(fontWeight: FontWeight.w600)),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             value: blockPassenger,
             onChanged: (v) => onBlockPassengerChanged(v ?? false),
-            title: const Text('حظر الراكب'),
+            title: Text(tr('حظر الراكب')),
             controlAffinity: ListTileControlAffinity.leading,
           ),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             value: blockDriver,
             onChanged: (v) => onBlockDriverChanged(v ?? false),
-            title: const Text('حظر السائق'),
+            title: Text(tr('حظر السائق')),
             controlAffinity: ListTileControlAffinity.leading,
           ),
           if (blockPassenger || blockDriver)
@@ -598,7 +603,7 @@ class _ResolveCard extends StatelessWidget {
               value: banInstead,
               onChanged: onBanChanged,
               title: Text(
-                banInstead ? 'حظر دائم (بان)' : 'إيقاف مؤقت (سوسبند)',
+                banInstead ? tr('حظر دائم (بان)') : tr('إيقاف مؤقت (سوسبند)'),
                 style: TextStyle(
                     color: banInstead ? Colors.red : Colors.orange),
               ),
@@ -608,7 +613,7 @@ class _ResolveCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _ActionButton(
-                  label: 'استرداد كامل\nللراكب',
+                  label: tr('استرداد كامل\nللراكب'),
                   color: Colors.green,
                   icon: Icons.undo_rounded,
                   loading: resolving,
@@ -618,7 +623,7 @@ class _ResolveCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _ActionButton(
-                  label: 'إفراج كامل\nللسائق',
+                  label: tr('إفراج كامل\nللسائق'),
                   color: Colors.blue,
                   icon: Icons.check_circle_outline_rounded,
                   loading: resolving,
@@ -628,7 +633,7 @@ class _ResolveCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _ActionButton(
-                  label: 'تقسيم\nالمبلغ',
+                  label: tr('تقسيم\nالمبلغ'),
                   color: Colors.purple,
                   icon: Icons.call_split_rounded,
                   loading: resolving,

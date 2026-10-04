@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
+import '../../../core/i18n/tr.dart';
 
 class TripLocationPoint {
   final double latitude;
@@ -86,9 +87,9 @@ class DriverLocationNotifier extends StateNotifier<bool> {
         accuracy: LocationAccuracy.high,
         distanceFilter: 30,
         intervalDuration: const Duration(seconds: 15),
-        foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: 'يلا نسافر — رحلة جارية',
-          notificationText: 'يتم مشاركة موقعك مع ركاب الرحلة',
+        foregroundNotificationConfig: ForegroundNotificationConfig(
+          notificationTitle: tr('يلا نسافر — رحلة جارية'),
+          notificationText: tr('يتم مشاركة موقعك مع ركاب الرحلة'),
           enableWakeLock: true,
           setOngoing: true,
         ),

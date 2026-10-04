@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../core/i18n/tr.dart';
+import '../../../../core/settings/app_settings.dart';
 import '../../../../core/theme/app_theme.dart';
 
 /// Shared frame for the sign-in steps: a branded gradient header with the logo mark,
@@ -30,14 +32,23 @@ class AuthScaffold extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(24, topInset + 12, 24, 44),
             child: Column(
               children: [
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: showBack
-                      ? IconButton(
-                          onPressed: () => Navigator.of(context).maybePop(),
-                          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                        )
-                      : const SizedBox(height: 48),
+                Row(
+                  children: [
+                    showBack
+                        ? IconButton(
+                            onPressed: () => Navigator.of(context).maybePop(),
+                            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                          )
+                        : const SizedBox(height: 48),
+                    const Spacer(),
+                    // Language switch, available before signing in
+                    TextButton.icon(
+                      onPressed: () => AppSettings.setLanguage(isEnglish ? 'ar' : 'en'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.white),
+                      icon: const Icon(Icons.translate_rounded, size: 18),
+                      label: Text(isEnglish ? 'العربية' : 'English'),
+                    ),
+                  ],
                 ),
                 const _LogoMark(),
                 const SizedBox(height: 18),

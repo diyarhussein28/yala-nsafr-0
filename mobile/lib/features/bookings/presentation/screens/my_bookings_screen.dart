@@ -9,6 +9,7 @@ import '../../../../core/utils/format.dart';
 import '../../../../shared/widgets/ui.dart';
 import '../../providers/bookings_provider.dart';
 import '../../../../shared/widgets/skeletons.dart';
+import '../../../../core/i18n/tr.dart';
 
 // ── Cancel booking dialog ─────────────────────────────────────────────────────
 
@@ -44,12 +45,12 @@ Future<bool> _showCancelDialog(
 
         if (fetchError != null || preview == null) {
           return AlertDialog(
-            title: const Text('خطأ'),
-            content: Text(fetchError ?? 'تعذّر جلب تفاصيل الإلغاء'),
+            title: Text(tr('خطأ')),
+            content: Text(fetchError ?? tr('تعذّر جلب تفاصيل الإلغاء')),
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('حسناً')),
+                  child: Text(tr('حسناً'))),
             ],
           );
         }
@@ -63,66 +64,65 @@ Future<bool> _showCancelDialog(
 
         if (!canCancel) {
           return AlertDialog(
-            title: const Text('لا يمكن الإلغاء'),
+            title: Text(tr('لا يمكن الإلغاء')),
             content:
-                const Text('لا يمكن إلغاء هذا الحجز في الوقت الحالي.'),
+                Text(tr('لا يمكن إلغاء هذا الحجز في الوقت الحالي.')),
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('حسناً')),
+                  child: Text(tr('حسناً'))),
             ],
           );
         }
 
         Widget refundInfo;
         if (isCash) {
-          refundInfo = const _RefundBanner(
+          refundInfo = _RefundBanner(
             color: Colors.green,
             icon: Icons.check_circle_outline_rounded,
-            title: 'إلغاء مجاني',
-            body: 'دفع نقدي — لا توجد رسوم إلغاء',
+            title: tr('إلغاء مجاني'),
+            body: tr('دفع نقدي — لا توجد رسوم إلغاء'),
           );
         } else if (policy == 'free_cancel') {
           refundInfo = _RefundBanner(
             color: Colors.green,
             icon: Icons.check_circle_outline_rounded,
-            title: 'استرداد كامل',
-            body: 'ستسترد ${total.toStringAsFixed(0)} جنيه كاملاً',
+            title: tr('استرداد كامل'),
+            body: tr('ستسترد {0} جنيه كاملاً', [total.toStringAsFixed(0)]),
           );
         } else if (policy == 'late_cancel') {
           refundInfo = _RefundBanner(
             color: Colors.orange,
             icon: Icons.info_outline_rounded,
-            title: 'إلغاء متأخر',
-            body: 'ستسترد ${refund.toStringAsFixed(0)} جنيه'
-                '\nرسوم الإلغاء: ${fee.toStringAsFixed(0)} جنيه',
+            title: tr('إلغاء متأخر'),
+            body: tr('ستسترد {0} جنيه\nرسوم الإلغاء: {1} جنيه', [refund.toStringAsFixed(0), fee.toStringAsFixed(0)]),
           );
         } else {
-          refundInfo = const _RefundBanner(
+          refundInfo = _RefundBanner(
             color: Colors.red,
             icon: Icons.cancel_outlined,
-            title: 'لا يوجد استرداد',
-            body: 'أقل من ساعتين من انطلاق الرحلة\nلن تسترد أي مبلغ',
+            title: tr('لا يوجد استرداد'),
+            body: tr('أقل من ساعتين من انطلاق الرحلة\nلن تسترد أي مبلغ'),
           );
         }
 
         bool confirming = false;
         return StatefulBuilder(builder: (ctx2, setState2) {
           return AlertDialog(
-            title: const Text('إلغاء الحجز'),
+            title: Text(tr('إلغاء الحجز')),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 refundInfo,
                 const SizedBox(height: 8),
-                const Text('هل أنت متأكد أنك تريد إلغاء هذا الحجز؟',
-                    style: TextStyle(fontSize: 14)),
+                Text(tr('هل أنت متأكد أنك تريد إلغاء هذا الحجز؟'),
+                    style: const TextStyle(fontSize: 14)),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: confirming ? null : () => Navigator.pop(ctx),
-                child: const Text('تراجع'),
+                child: Text(tr('تراجع')),
               ),
               FilledButton(
                 style:
@@ -150,7 +150,7 @@ Future<bool> _showCancelDialog(
                         height: 16,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Text('تأكيد الإلغاء'),
+                    : Text(tr('تأكيد الإلغاء')),
               ),
             ],
           );
@@ -228,24 +228,24 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('حجوزاتي')),
+      appBar: AppBar(title: Text(tr('حجوزاتي'))),
       body: _initialLoad
           ? SkeletonCardList(itemBuilder: () => const ListCardSkeleton())
           : _error != null && _bookings.isEmpty
               ? EmptyState(
                   icon: Icons.cloud_off_rounded,
-                  title: 'تعذّر تحميل حجوزاتك',
+                  title: tr('تعذّر تحميل حجوزاتك'),
                   message: _error,
                   color: AppColors.error,
-                  actionLabel: 'إعادة المحاولة',
+                  actionLabel: tr('إعادة المحاولة'),
                   onAction: () => _load(reset: true),
                 )
               : _bookings.isEmpty
                   ? EmptyState(
                       icon: Icons.confirmation_number_outlined,
-                      title: 'لا توجد حجوزات بعد',
-                      message: 'ابحث عن رحلة واحجز مقعدك في دقيقة.',
-                      actionLabel: 'ابحث عن رحلة',
+                      title: tr('لا توجد حجوزات بعد'),
+                      message: tr('ابحث عن رحلة واحجز مقعدك في دقيقة.'),
+                      actionLabel: tr('ابحث عن رحلة'),
                       onAction: () => context.go('/search'),
                     )
                   : RefreshIndicator(
@@ -270,7 +270,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
                                         setState(() => _page++);
                                         _load();
                                       },
-                                      child: const Text('تحميل المزيد'),
+                                      child: Text(tr('تحميل المزيد')),
                                     ),
                                   );
                           }
@@ -355,15 +355,15 @@ class _BookingCard extends ConsumerWidget {
       };
 
   String get _statusLabel => switch (booking.status) {
-        'pending_driver_approval' => 'بانتظار السائق',
-        'pending' || 'pending_payment' => 'قيد الانتظار',
-        'in_progress' => 'الرحلة جارية',
-        'confirmed' when _tripIsActive => 'الرحلة جارية',
-        'confirmed' => 'مؤكد',
-        'completed' || 'trip_completed' => 'مكتملة',
-        'cancelled' || 'cancelled_by_passenger' || 'cancelled_by_driver' => 'ملغى',
-        'refunded' => 'مسترد',
-        'disputed' => 'نزاع',
+        'pending_driver_approval' => tr('بانتظار السائق'),
+        'pending' || 'pending_payment' => tr('قيد الانتظار'),
+        'in_progress' => tr('الرحلة جارية'),
+        'confirmed' when _tripIsActive => tr('الرحلة جارية'),
+        'confirmed' => tr('مؤكد'),
+        'completed' || 'trip_completed' => tr('مكتملة'),
+        'cancelled' || 'cancelled_by_passenger' || 'cancelled_by_driver' => tr('ملغى'),
+        'refunded' => tr('مسترد'),
+        'disputed' => tr('نزاع'),
         _ => booking.status,
       };
 
@@ -377,21 +377,21 @@ class _BookingCard extends ConsumerWidget {
       if (booking.isActive)
         _CardAction(
           icon: Icons.location_on_rounded,
-          label: 'تتبع السائق',
+          label: tr('تتبع السائق'),
           color: Theme.of(context).colorScheme.primary,
           onTap: () => context.push('/trips/${booking.tripId}/live', extra: {'isDriver': false}),
         ),
       if (booking.canRate)
         _CardAction(
           icon: Icons.star_rounded,
-          label: 'قيّم الرحلة',
+          label: tr('قيّم الرحلة'),
           color: AppColors.secondary,
           onTap: () => context.push('/bookings/rate', extra: booking),
         ),
       if (booking.canCancel)
         _CardAction(
           icon: Icons.close_rounded,
-          label: 'إلغاء الحجز',
+          label: tr('إلغاء الحجز'),
           color: AppColors.error,
           onTap: () async {
             final didCancel = await _showCancelDialog(context, ref, booking);
@@ -424,10 +424,10 @@ class _BookingCard extends ConsumerWidget {
                   if (booking.canDispute)
                     PopupMenuButton<String>(
                       icon: Icon(Icons.more_vert_rounded, color: context.textMuted),
-                      tooltip: 'المزيد',
+                      tooltip: tr('المزيد'),
                       onSelected: (_) => context.push('/disputes/open?bookingId=${booking.id}'),
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'dispute', child: Text('الإبلاغ عن مشكلة / فتح نزاع')),
+                      itemBuilder: (_) => [
+                        PopupMenuItem(value: 'dispute', child: Text(tr('الإبلاغ عن مشكلة / فتح نزاع'))),
                       ],
                     )
                   else
@@ -445,7 +445,7 @@ class _BookingCard extends ConsumerWidget {
                       fromDetail: trip.originAddress,
                       toDetail: trip.destinationAddress,
                     )
-                  : Text('رحلة #${booking.tripId.substring(0, 8)}', style: t.titleSmall),
+                  : Text(tr('رحلة #{0}', [booking.tripId.substring(0, 8)]), style: t.titleSmall),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -454,7 +454,7 @@ class _BookingCard extends ConsumerWidget {
                 children: [
                   Icon(Icons.event_seat_rounded, size: 16, color: context.textMuted),
                   const SizedBox(width: 4),
-                  Text('${booking.seatsCount} ${booking.seatsCount == 1 ? 'مقعد' : 'مقاعد'}', style: t.bodySmall),
+                  Text(Fmt.seats(booking.seatsCount), style: t.bodySmall),
                   const SizedBox(width: 14),
                   Icon(
                     booking.paymentMethod == 'cash' ? Icons.payments_rounded : Icons.credit_card_rounded,
@@ -462,7 +462,7 @@ class _BookingCard extends ConsumerWidget {
                     color: context.textMuted,
                   ),
                   const SizedBox(width: 4),
-                  Text(booking.paymentMethod == 'cash' ? 'كاش' : 'بطاقة', style: t.bodySmall),
+                  Text(booking.paymentMethod == 'cash' ? tr('كاش') : tr('بطاقة'), style: t.bodySmall),
                   const Spacer(),
                   Text(Fmt.money(booking.totalAmount), style: t.titleMedium),
                 ],

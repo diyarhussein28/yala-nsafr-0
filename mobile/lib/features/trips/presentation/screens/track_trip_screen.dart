@@ -13,6 +13,7 @@ import '../../providers/trips_provider.dart';
 import '../../../../core/constants/egypt_cities.dart';
 import '../../../../core/utils/format.dart';
 import '../../../../shared/widgets/ui.dart';
+import '../../../../core/i18n/tr.dart';
 
 class TrackTripScreen extends ConsumerWidget {
   final String tripId;
@@ -56,7 +57,7 @@ class _DriverViewState extends ConsumerState<_DriverView> {
     final isPosting = ref.watch(driverLocationProvider(widget.tripId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('مشاركة الموقع')),
+      appBar: AppBar(title: Text(tr('مشاركة الموقع'))),
       floatingActionButton: _SosFab(tripId: widget.tripId),
       body: Center(
         child: Padding(
@@ -74,15 +75,15 @@ class _DriverViewState extends ConsumerState<_DriverView> {
               const SizedBox(height: 24),
               Text(
                 isPosting
-                    ? 'موقعك يُشارك مع الركاب'
-                    : 'جاري تفعيل مشاركة الموقع…',
+                    ? tr('موقعك يُشارك مع الركاب')
+                    : tr('جاري تفعيل مشاركة الموقع…'),
                 style:
                     const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
               Text(
-                'يستمر الإرسال حتى لو أغلقت الشاشة أو انتقلت لتطبيق آخر،\nويتوقف تلقائياً عند إنهاء الرحلة.',
+                tr('يستمر الإرسال حتى لو أغلقت الشاشة أو انتقلت لتطبيق آخر،\nويتوقف تلقائياً عند إنهاء الرحلة.'),
                 style: TextStyle(
                     color: Colors.grey[600], fontSize: 14, height: 1.6),
                 textAlign: TextAlign.center,
@@ -98,13 +99,13 @@ class _DriverViewState extends ConsumerState<_DriverView> {
                     border:
                         Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.circle, color: AppColors.primary, size: 10),
-                      SizedBox(width: 8),
-                      Text('بث مباشر',
-                          style: TextStyle(
+                      const Icon(Icons.circle, color: AppColors.primary, size: 10),
+                      const SizedBox(width: 8),
+                      Text(tr('بث مباشر'),
+                          style: const TextStyle(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold)),
                     ],
@@ -192,9 +193,9 @@ class _PassengerMapState extends ConsumerState<_PassengerMap> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(trip != null ? '${trip.originCity} ← ${trip.destinationCity}' : 'تتبع الرحلة'),
+        title: Text(trip != null ? routeLabel(trip.originCity, trip.destinationCity) : tr('تتبع الرحلة')),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), tooltip: 'تحديث الآن', onPressed: _refresh),
+          IconButton(icon: const Icon(Icons.refresh_rounded), tooltip: tr('تحديث الآن'), onPressed: _refresh),
         ],
       ),
       floatingActionButton: _SosFab(tripId: widget.tripId),
@@ -203,16 +204,16 @@ class _PassengerMapState extends ConsumerState<_PassengerMap> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => EmptyState(
           icon: Icons.wifi_off_rounded,
-          title: 'تعذّر تحميل الموقع',
-          actionLabel: 'إعادة المحاولة',
+          title: tr('تعذّر تحميل الموقع'),
+          actionLabel: tr('إعادة المحاولة'),
           onAction: _refresh,
         ),
         data: (location) {
           if (location == null) {
-            return const EmptyState(
+            return EmptyState(
               icon: Icons.location_searching_rounded,
-              title: 'في انتظار موقع السائق',
-              message: 'سيظهر موقع السيارة هنا فور بدء السائق مشاركة موقعه. يتم التحديث تلقائياً.',
+              title: tr('في انتظار موقع السائق'),
+              message: tr('سيظهر موقع السيارة هنا فور بدء السائق مشاركة موقعه. يتم التحديث تلقائياً.'),
             );
           }
 
@@ -283,9 +284,9 @@ class _PassengerMapState extends ConsumerState<_PassengerMap> {
                     children: [
                       Row(
                         children: [
-                          const StatusPill(label: 'مباشر', color: AppColors.success, icon: Icons.circle),
+                          StatusPill(label: tr('مباشر'), color: AppColors.success, icon: Icons.circle),
                           const SizedBox(width: 8),
-                          Expanded(child: Text('آخر تحديث ${Fmt.ago(location.recordedAt)}', style: t.bodySmall)),
+                          Expanded(child: Text(tr('آخر تحديث {0}', [Fmt.ago(location.recordedAt)]), style: t.bodySmall)),
                         ],
                       ),
                       if (remainingKm != null) ...[
@@ -294,12 +295,12 @@ class _PassengerMapState extends ConsumerState<_PassengerMap> {
                           children: [
                             Expanded(
                               child: _MapStat(
-                                label: 'المتبقي تقريباً',
-                                value: '${(remainingKm * 1.3).round()} كم',
+                                label: tr('المتبقي تقريباً'),
+                                value: tr('{0} كم', [(remainingKm * 1.3).round()]),
                               ),
                             ),
                             Expanded(
-                              child: _MapStat(label: 'الوصول المتوقع', value: Fmt.time(eta!)),
+                              child: _MapStat(label: tr('الوصول المتوقع'), value: Fmt.time(eta!)),
                             ),
                           ],
                         ),
@@ -308,7 +309,7 @@ class _PassengerMapState extends ConsumerState<_PassengerMap> {
                         const SizedBox(height: 12),
                         OutlinedButton.icon(
                           icon: const Icon(Icons.map_rounded),
-                          label: const Text('عرض الطريق في خرائط جوجل'),
+                          label: Text(tr('عرض الطريق في خرائط جوجل')),
                           onPressed: () => launchUrl(
                             Uri.parse('https://www.google.com/maps/dir/?api=1'
                                 '&origin=${car.latitude},${car.longitude}'
@@ -413,8 +414,7 @@ class _SosFabState extends ConsumerState<_SosFab>
       }
     } catch (_) {}
 
-    final smsBody = 'أحتاج مساعدة عاجلة! أنا في رحلة يلا نسافر.'
-        '${mapsLink != null ? '\nموقعي: $mapsLink' : ''}';
+    final smsBody = tr('أحتاج مساعدة عاجلة! أنا في رحلة يلا نسافر.{0}', [mapsLink != null ? tr('\nموقعي: {0}', [mapsLink]) : '']);
 
     // Open emergency contact dialer immediately
     if (contactPhone != null && mounted) {
@@ -442,9 +442,9 @@ class _SosFabState extends ConsumerState<_SosFab>
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('اضغط مطولاً 3 ثوانٍ لتفعيل الطوارئ'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(tr('اضغط مطولاً 3 ثوانٍ لتفعيل الطوارئ')),
+          duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
         ),
       ),
@@ -548,14 +548,14 @@ class _SosModal extends StatelessWidget {
                   const Icon(Icons.sos_rounded, color: Colors.white, size: 40),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'تم إرسال تنبيه الطوارئ',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              tr('تم إرسال تنبيه الطوارئ'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'فريق يلا نسافر تم إخطاره',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+            Text(
+              tr('فريق يلا نسافر تم إخطاره'),
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),
             const SizedBox(height: 24),
 
@@ -564,27 +564,27 @@ class _SosModal extends StatelessWidget {
               _SosButton(
                 icon: Icons.phone_rounded,
                 label:
-                    'اتصل بـ ${contactName?.isNotEmpty == true ? contactName! : contactPhone!}',
+                    tr('اتصل بـ {0}', [contactName?.isNotEmpty == true ? contactName! : contactPhone!]),
                 color: Colors.green,
                 onTap: () => _call(contactPhone!),
               ),
               const SizedBox(height: 8),
               _SosButton(
                 icon: Icons.sms_rounded,
-                label: 'إرسال SMS مع الموقع',
+                label: tr('إرسال SMS مع الموقع'),
                 color: Colors.teal,
                 onTap: () => _sms(contactPhone!),
               ),
               const SizedBox(height: 16),
-              const Row(
+              Row(
                 children: [
-                  Expanded(child: Divider()),
+                  const Expanded(child: Divider()),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10),
-                    child: Text('أرقام الطوارئ',
-                        style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(tr('أرقام الطوارئ'),
+                        style: const TextStyle(color: Colors.grey, fontSize: 12)),
                   ),
-                  Expanded(child: Divider()),
+                  const Expanded(child: Divider()),
                 ],
               ),
               const SizedBox(height: 12),
@@ -596,7 +596,7 @@ class _SosModal extends StatelessWidget {
                 Expanded(
                   child: _SosButton(
                     icon: Icons.local_police_rounded,
-                    label: 'الشرطة\n123',
+                    label: tr('الشرطة\n123'),
                     color: Colors.blue[700]!,
                     onTap: () => _call('123'),
                   ),
@@ -605,7 +605,7 @@ class _SosModal extends StatelessWidget {
                 Expanded(
                   child: _SosButton(
                     icon: Icons.emergency_rounded,
-                    label: 'الإسعاف\n122',
+                    label: tr('الإسعاف\n122'),
                     color: Colors.orange[800]!,
                     onTap: () => _call('122'),
                   ),
@@ -615,7 +615,7 @@ class _SosModal extends StatelessWidget {
             const SizedBox(height: 8),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('إغلاق'),
+              child: Text(tr('إغلاق')),
             ),
           ],
         ),

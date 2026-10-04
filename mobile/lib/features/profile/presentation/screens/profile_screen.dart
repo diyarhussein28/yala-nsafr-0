@@ -7,6 +7,8 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../../../../shared/widgets/ui.dart';
+import '../../../../core/i18n/tr.dart';
+import '../../../../core/settings/app_settings.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -16,6 +18,68 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  String _themeLabel(ThemeMode mode) => switch (mode) {
+        ThemeMode.light => tr('فاتح'),
+        ThemeMode.dark => tr('داكن'),
+        ThemeMode.system => tr('حسب إعدادات الهاتف'),
+      };
+
+  Future<void> _pickLanguage() async {
+    final code = await showModalBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (value, label) in const [('ar', 'العربية'), ('en', 'English')])
+              ListTile(
+                title: Text(label),
+                trailing: appLocale.value.languageCode == value
+                    ? const Icon(Icons.check_rounded, color: AppColors.primary)
+                    : null,
+                onTap: () => Navigator.pop(ctx, value),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (code == null || code == appLocale.value.languageCode) return;
+    await AppSettings.setLanguage(code);
+    // Remember it on the account too (best effort), so it follows the user.
+    ref.read(authProvider.notifier).updateProfile({'preferredLanguage': code}).ignore();
+  }
+
+  Future<void> _pickTheme() async {
+    final mode = await showModalBottomSheet<ThemeMode>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (value, icon) in const [
+              (ThemeMode.light, Icons.light_mode_rounded),
+              (ThemeMode.dark, Icons.dark_mode_rounded),
+              (ThemeMode.system, Icons.brightness_auto_rounded),
+            ])
+              ListTile(
+                leading: Icon(icon),
+                title: Text(_themeLabel(value)),
+                trailing: appThemeMode.value == value
+                    ? const Icon(Icons.check_rounded, color: AppColors.primary)
+                    : null,
+                onTap: () => Navigator.pop(ctx, value),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (mode != null) await AppSettings.setThemeMode(mode);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -30,14 +94,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('تسجيل الخروج'),
-        content: const Text('هل تريد تسجيل الخروج من حسابك؟'),
+        title: Text(tr('تسجيل الخروج')),
+        content: Text(tr('هل تريد تسجيل الخروج من حسابك؟')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text(tr('إلغاء'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('خروج'),
+            child: Text(tr('خروج')),
           ),
         ],
       ),
@@ -53,10 +117,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final isDriver = user.role == 'both' || user.role == 'driver' || user.canDrive;
 
     (String, Color) verifState(bool verified, bool pending) => verified
-        ? ('موثّق', AppColors.success)
+        ? (tr('موثّق'), AppColors.success)
         : pending
-            ? ('قيد المراجعة', AppColors.warning)
-            : ('غير موثّق', AppColors.textSecondary);
+            ? (tr('قيد المراجعة'), AppColors.warning)
+            : (tr('غير موثّق'), AppColors.textSecondary);
     final id = verifState(user.idVerified, user.idVerificationPending);
     final drv = verifState(user.driverVerified, user.driverVerificationPending);
 
@@ -73,10 +137,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   Row(
                     children: [
-                      Text('حسابي', style: t.titleLarge?.copyWith(color: Colors.white)),
+                      Text(tr('حسابي'), style: t.titleLarge?.copyWith(color: Colors.white)),
                       const Spacer(),
                       IconButton(
-                        tooltip: 'تعديل الملف',
+                        tooltip: tr('تعديل الملف'),
                         icon: const Icon(Icons.edit_outlined, color: Colors.white),
                         onPressed: () => context.push('/profile/edit'),
                       ),
@@ -117,11 +181,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     children: [
                       _HeaderStat(
                         value: user.ratingCount > 0 ? user.ratingAverage.toStringAsFixed(1) : '—',
-                        label: 'التقييم',
+                        label: tr('التقييم'),
                         icon: Icons.star_rounded,
                       ),
-                      _HeaderStat(value: '${user.completedTripsAsPassenger}', label: 'رحلة كراكب'),
-                      _HeaderStat(value: '${user.completedTripsAsDriver}', label: 'رحلة كسائق'),
+                      _HeaderStat(value: '${user.completedTripsAsPassenger}', label: tr('رحلة كراكب')),
+                      _HeaderStat(value: '${user.completedTripsAsDriver}', label: tr('رحلة كسائق')),
                     ],
                   ),
                 ],
@@ -132,11 +196,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _MenuGroup(title: 'التوثيق', children: [
+                  _MenuGroup(title: tr('التوثيق'), children: [
                     _MenuTile(
                       icon: Icons.badge_rounded,
                       color: AppColors.info,
-                      title: 'البطاقة الشخصية',
+                      title: tr('البطاقة الشخصية'),
                       subtitle: id.$1,
                       subtitleColor: id.$2,
                       onTap: user.idVerified || user.idVerificationPending
@@ -146,8 +210,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     _MenuTile(
                       icon: Icons.drive_eta_rounded,
                       color: AppColors.primary,
-                      title: isDriver ? 'توثيق السائق' : 'كن سائقاً على يلا نسافر',
-                      subtitle: isDriver ? drv.$1 : 'انشر رحلاتك وشارك تكلفة الطريق',
+                      title: isDriver ? tr('توثيق السائق') : tr('كن سائقاً على يلا نسافر'),
+                      subtitle: isDriver ? drv.$1 : tr('انشر رحلاتك وشارك تكلفة الطريق'),
                       subtitleColor: isDriver ? drv.$2 : null,
                       onTap: user.driverVerified || user.driverVerificationPending
                           ? null
@@ -156,12 +220,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ]),
                   if (isDriver) ...[
                     const SizedBox(height: 16),
-                    _MenuGroup(title: 'السائق', children: [
+                    _MenuGroup(title: tr('السائق'), children: [
                       _MenuTile(
                         icon: Icons.account_balance_wallet_rounded,
                         color: AppColors.success,
-                        title: 'أرباحي',
-                        subtitle: 'الرصيد والسحب وسجل الرحلات',
+                        title: tr('أرباحي'),
+                        subtitle: tr('الرصيد والسحب وسجل الرحلات'),
                         onTap: () => context.push('/drivers/earnings'),
                       ),
                     ]),
@@ -173,30 +237,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     _ReferralCard(code: user.referralCode!, promoBalance: user.promoBalance),
                   ],
                   const SizedBox(height: 16),
-                  _MenuGroup(title: 'المساعدة', children: [
+                  _MenuGroup(title: tr('الإعدادات'), children: [
+                    _MenuTile(
+                      icon: Icons.translate_rounded,
+                      color: AppColors.info,
+                      title: tr('اللغة'),
+                      subtitle: isEnglish ? 'English' : 'العربية',
+                      onTap: _pickLanguage,
+                    ),
+                    _MenuTile(
+                      icon: Icons.dark_mode_rounded,
+                      color: AppColors.secondary,
+                      title: tr('المظهر'),
+                      subtitle: _themeLabel(appThemeMode.value),
+                      onTap: _pickTheme,
+                    ),
+                  ]),
+                  const SizedBox(height: 16),
+                  _MenuGroup(title: tr('المساعدة'), children: [
                     _MenuTile(
                       icon: Icons.notifications_rounded,
                       color: AppColors.secondary,
-                      title: 'الإشعارات',
+                      title: tr('الإشعارات'),
                       onTap: () => context.push('/notifications'),
                     ),
                     _MenuTile(
                       icon: Icons.gavel_rounded,
                       color: AppColors.womenOnly,
-                      title: 'نزاعاتي',
-                      subtitle: 'متابعة البلاغات والنزاعات المفتوحة',
+                      title: tr('نزاعاتي'),
+                      subtitle: tr('متابعة البلاغات والنزاعات المفتوحة'),
                       onTap: () => context.push('/disputes'),
                     ),
                   ]),
                   if (user.role == 'admin') ...[
                     const SizedBox(height: 16),
-                    _MenuGroup(title: 'الإدارة', children: [
-                      _MenuTile(icon: Icons.dashboard_rounded, color: AppColors.primary, title: 'لوحة التحكم', onTap: () => context.push('/admin')),
-                      _MenuTile(icon: Icons.people_alt_rounded, color: AppColors.info, title: 'المستخدمون والتوثيق', onTap: () => context.push('/admin/users')),
-                      _MenuTile(icon: Icons.route_rounded, color: AppColors.primary, title: 'الرحلات', onTap: () => context.push('/admin/trips')),
-                      _MenuTile(icon: Icons.gavel_rounded, color: AppColors.womenOnly, title: 'النزاعات', onTap: () => context.push('/admin/disputes')),
-                      _MenuTile(icon: Icons.payments_rounded, color: AppColors.success, title: 'طلبات السحب', onTap: () => context.push('/admin/withdrawals')),
-                      _MenuTile(icon: Icons.tune_rounded, color: AppColors.secondary, title: 'إعدادات المنصة', onTap: () => context.push('/admin/config')),
+                    _MenuGroup(title: tr('الإدارة'), children: [
+                      _MenuTile(icon: Icons.dashboard_rounded, color: AppColors.primary, title: tr('لوحة التحكم'), onTap: () => context.push('/admin')),
+                      _MenuTile(icon: Icons.people_alt_rounded, color: AppColors.info, title: tr('المستخدمون والتوثيق'), onTap: () => context.push('/admin/users')),
+                      _MenuTile(icon: Icons.route_rounded, color: AppColors.primary, title: tr('الرحلات'), onTap: () => context.push('/admin/trips')),
+                      _MenuTile(icon: Icons.gavel_rounded, color: AppColors.womenOnly, title: tr('النزاعات'), onTap: () => context.push('/admin/disputes')),
+                      _MenuTile(icon: Icons.payments_rounded, color: AppColors.success, title: tr('طلبات السحب'), onTap: () => context.push('/admin/withdrawals')),
+                      _MenuTile(icon: Icons.tune_rounded, color: AppColors.secondary, title: tr('إعدادات المنصة'), onTap: () => context.push('/admin/config')),
                     ]),
                   ],
                   const SizedBox(height: 24),
@@ -206,11 +287,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       side: BorderSide(color: AppColors.error.withValues(alpha: 0.4)),
                     ),
                     icon: const Icon(Icons.logout_rounded),
-                    label: const Text('تسجيل الخروج'),
+                    label: Text(tr('تسجيل الخروج')),
                     onPressed: _confirmSignOut,
                   ),
                   const SizedBox(height: 12),
-                  Text('يلا نسافر', textAlign: TextAlign.center, style: t.labelSmall),
+                  Text(tr('يلا نسافر'), textAlign: TextAlign.center, style: t.labelSmall),
                 ],
               ),
             ),
@@ -348,7 +429,7 @@ class _ReferralCard extends StatelessWidget {
                 const Icon(Icons.card_giftcard_rounded, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Text(
-                  'دعوة الأصدقاء',
+                  tr('دعوة الأصدقاء'),
                   style: theme.textTheme.titleMedium?.copyWith(
                       color: AppColors.primary, fontWeight: FontWeight.w700),
                 ),
@@ -356,7 +437,7 @@ class _ReferralCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'شارك كودك واحصل على 30 جنيه لكل صديق يكمل أول رحلة',
+              tr('شارك كودك واحصل على 30 جنيه لكل صديق يكمل أول رحلة'),
               style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -366,9 +447,9 @@ class _ReferralCard extends StatelessWidget {
                 await Clipboard.setData(ClipboardData(text: code));
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('تم نسخ الكود!'),
-                      duration: Duration(seconds: 2),
+                    SnackBar(
+                      content: Text(tr('تم نسخ الكود!')),
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                 }
@@ -409,7 +490,7 @@ class _ReferralCard extends StatelessWidget {
                       size: 16, color: Colors.green),
                   const SizedBox(width: 6),
                   Text(
-                    'رصيدك الترحيبي: ${promoBalance.toStringAsFixed(0)} جنيه',
+                    tr('رصيدك الترحيبي: {0} جنيه', [promoBalance.toStringAsFixed(0)]),
                     style: theme.textTheme.bodySmall?.copyWith(
                         color: Colors.green, fontWeight: FontWeight.w600),
                   ),
@@ -450,20 +531,20 @@ class _SubscriptionTile extends ConsumerWidget {
           bgColor = Colors.green.shade50;
           borderColor = Colors.green.shade300;
           icon = Icons.verified_rounded;
-          title = 'الاشتراك المجاني';
-          subtitle = 'متبقي $trialDaysLeft يوم من الفترة المجانية';
+          title = tr('الاشتراك المجاني');
+          subtitle = tr('متبقي {0} يوم من الفترة المجانية', [trialDaysLeft]);
         } else if (isActive) {
           bgColor = AppColors.primary.withValues(alpha: 0.06);
           borderColor = AppColors.primary.withValues(alpha: 0.3);
           icon = Icons.workspace_premium_rounded;
-          title = 'مشترك Pro';
-          subtitle = 'اشتراك نشط — $price ج/شهر';
+          title = tr('مشترك Pro');
+          subtitle = tr('اشتراك نشط — {0} ج/شهر', [price]);
         } else {
           bgColor = Colors.orange.shade50;
           borderColor = Colors.orange.shade300;
           icon = Icons.star_border_rounded;
-          title = 'اشترك في يلا Pro';
-          subtitle = 'انتهت الفترة المجانية — $price ج/شهر لنشر الرحلات';
+          title = tr('اشترك في يلا Pro');
+          subtitle = tr('انتهت الفترة المجانية — {0} ج/شهر لنشر الرحلات', [price]);
         }
 
         return GestureDetector(

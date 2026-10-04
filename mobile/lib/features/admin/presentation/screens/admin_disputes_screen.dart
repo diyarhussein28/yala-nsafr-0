@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../widgets/admin_scaffold.dart';
+import '../../../../core/i18n/tr.dart';
 
 final _adminDisputesProvider =
     FutureProvider.autoDispose.family<List<dynamic>, String?>(
@@ -32,13 +33,13 @@ class _AdminDisputesScreenState
     extends ConsumerState<AdminDisputesScreen> {
   String? _filterStatus;
 
-  static const _filters = [
-    (null, 'الكل'),
-    ('open', 'مفتوح'),
-    ('under_review', 'تحت المراجعة'),
-    ('resolved_refund', 'استرداد'),
-    ('resolved_release', 'إفراج'),
-    ('resolved_split', 'تقسيم'),
+  static List<(String?, String)> get _filters => [
+    (null, tr('الكل')),
+    ('open', tr('مفتوح')),
+    ('under_review', tr('تحت المراجعة')),
+    ('resolved_refund', tr('استرداد')),
+    ('resolved_release', tr('إفراج')),
+    ('resolved_split', tr('تقسيم')),
   ];
 
   @override
@@ -46,7 +47,7 @@ class _AdminDisputesScreenState
     final disputesAsync = ref.watch(_adminDisputesProvider(_filterStatus));
 
     return AdminScaffold(
-      title: 'النزاعات',
+      title: tr('النزاعات'),
       body: Column(
         children: [
           SizedBox(
@@ -75,9 +76,9 @@ class _AdminDisputesScreenState
               error: (e, _) => Center(child: Text('$e')),
               data: (disputes) {
                 if (disputes.isEmpty) {
-                  return const Center(
-                    child: Text('لا توجد نزاعات',
-                        style: TextStyle(color: Colors.grey)),
+                  return Center(
+                    child: Text(tr('لا توجد نزاعات'),
+                        style: const TextStyle(color: Colors.grey)),
                   );
                 }
                 return RefreshIndicator(
@@ -116,23 +117,23 @@ class _DisputeRow extends StatelessWidget {
     'closed': Colors.grey,
   };
 
-  static const _reasonLabels = {
-    'no_show_driver': 'السائق غائب',
-    'no_show_passenger': 'الراكب غائب',
-    'unsafe_driving': 'قيادة خطرة',
-    'wrong_route': 'مسار خاطئ',
-    'payment_mismatch': 'خلاف مبلغ',
-    'harassment': 'تحرش',
-    'other': 'أخرى',
+  static Map<String, String> get _reasonLabels => {
+    'no_show_driver': tr('السائق غائب'),
+    'no_show_passenger': tr('الراكب غائب'),
+    'unsafe_driving': tr('قيادة خطرة'),
+    'wrong_route': tr('مسار خاطئ'),
+    'payment_mismatch': tr('خلاف مبلغ'),
+    'harassment': tr('تحرش'),
+    'other': tr('أخرى'),
   };
 
-  static const _statusLabels = {
-    'open': 'مفتوح',
-    'under_review': 'قيد المراجعة',
-    'resolved_refund': 'استرداد',
-    'resolved_release': 'إفراج',
-    'resolved_split': 'تقسيم',
-    'closed': 'مغلق',
+  static Map<String, String> get _statusLabels => {
+    'open': tr('مفتوح'),
+    'under_review': tr('قيد المراجعة'),
+    'resolved_refund': tr('استرداد'),
+    'resolved_release': tr('إفراج'),
+    'resolved_split': tr('تقسيم'),
+    'closed': tr('مغلق'),
   };
 
   @override
@@ -171,7 +172,7 @@ class _DisputeRow extends StatelessWidget {
                     Text(_reasonLabels[reason] ?? reason,
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
-                    Text('فتحه: $openerName',
+                    Text(tr('فتحه: {0}', [openerName]),
                         style: TextStyle(
                             color: Colors.grey[600], fontSize: 12)),
                     if (createdAt != null)

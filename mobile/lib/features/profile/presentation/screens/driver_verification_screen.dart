@@ -7,6 +7,7 @@ import '../../../../features/auth/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/document_upload_tile.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/i18n/tr.dart';
 
 class DriverVerificationScreen extends ConsumerStatefulWidget {
   const DriverVerificationScreen({super.key});
@@ -56,7 +57,7 @@ class _DriverVerificationScreenState
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_licenceRef == null) {
-      setState(() => _error = 'ارفع صورة رخصة القيادة');
+      setState(() => _error = tr('ارفع صورة رخصة القيادة'));
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -84,7 +85,7 @@ class _DriverVerificationScreenState
   Widget build(BuildContext context) {
     if (_submitted) {
       return Scaffold(
-        appBar: AppBar(title: const Text('تحقق السائق')),
+        appBar: AppBar(title: Text(tr('تحقق السائق'))),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32),
@@ -94,14 +95,14 @@ class _DriverVerificationScreenState
                 const Icon(Icons.hourglass_top_rounded,
                     size: 72, color: Colors.orange),
                 const SizedBox(height: 16),
-                const Text(
-                  'تم إرسال بيانات السيارة\nسيتم مراجعتها خلال 48 ساعة',
+                Text(
+                  tr('تم إرسال بيانات السيارة\nسيتم مراجعتها خلال 48 ساعة'),
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18),
+                  style: const TextStyle(fontSize: 18),
                 ),
                 const SizedBox(height: 24),
                 AppButton(
-                  label: 'العودة للملف الشخصي',
+                  label: tr('العودة للملف الشخصي'),
                   onPressed: () => context.go('/profile'),
                 ),
               ],
@@ -112,7 +113,7 @@ class _DriverVerificationScreenState
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('تحقق السائق')),
+      appBar: AppBar(title: Text(tr('تحقق السائق'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -120,9 +121,9 @@ class _DriverVerificationScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'أدخل بيانات سيارتك ليتمكن الفريق من التحقق منها',
-                style: TextStyle(fontSize: 15),
+              Text(
+                tr('أدخل بيانات سيارتك ليتمكن الفريق من التحقق منها'),
+                style: const TextStyle(fontSize: 15),
               ),
               const SizedBox(height: 20),
               Row(
@@ -130,18 +131,18 @@ class _DriverVerificationScreenState
                   Expanded(
                     child: TextFormField(
                       controller: _makeCtrl,
-                      decoration: const InputDecoration(labelText: 'الماركة'),
+                      decoration: InputDecoration(labelText: tr('الماركة')),
                       validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'مطلوب' : null,
+                          v == null || v.trim().isEmpty ? tr('مطلوب') : null,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextFormField(
                       controller: _modelCtrl,
-                      decoration: const InputDecoration(labelText: 'الموديل'),
+                      decoration: InputDecoration(labelText: tr('الموديل')),
                       validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'مطلوب' : null,
+                          v == null || v.trim().isEmpty ? tr('مطلوب') : null,
                     ),
                   ),
                 ],
@@ -152,12 +153,12 @@ class _DriverVerificationScreenState
                   Expanded(
                     child: TextFormField(
                       controller: _yearCtrl,
-                      decoration: const InputDecoration(labelText: 'سنة الصنع'),
+                      decoration: InputDecoration(labelText: tr('سنة الصنع')),
                       keyboardType: TextInputType.number,
                       validator: (v) {
                         final y = int.tryParse(v ?? '');
                         if (y == null || y < 2000 || y > DateTime.now().year) {
-                          return 'سنة غير صحيحة';
+                          return tr('سنة غير صحيحة');
                         }
                         return null;
                       },
@@ -167,9 +168,9 @@ class _DriverVerificationScreenState
                   Expanded(
                     child: TextFormField(
                       controller: _colorCtrl,
-                      decoration: const InputDecoration(labelText: 'اللون'),
+                      decoration: InputDecoration(labelText: tr('اللون')),
                       validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'مطلوب' : null,
+                          v == null || v.trim().isEmpty ? tr('مطلوب') : null,
                     ),
                   ),
                 ],
@@ -177,27 +178,27 @@ class _DriverVerificationScreenState
               const SizedBox(height: 12),
               TextFormField(
                 controller: _plateCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'رقم اللوحة',
-                  prefixIcon: Icon(Icons.confirmation_number_rounded),
+                decoration: InputDecoration(
+                  labelText: tr('رقم اللوحة'),
+                  prefixIcon: const Icon(Icons.confirmation_number_rounded),
                 ),
                 textCapitalization: TextCapitalization.characters,
                 validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'مطلوب' : null,
+                    v == null || v.trim().isEmpty ? tr('مطلوب') : null,
               ),
               const SizedBox(height: 24),
-              Text('المستندات', style: Theme.of(context).textTheme.titleSmall),
+              Text(tr('المستندات'), style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 10),
               DocumentUploadTile(
-                label: 'رخصة القيادة',
-                hint: 'صورة واضحة للرخصة سارية المفعول',
+                label: tr('رخصة القيادة'),
+                hint: tr('صورة واضحة للرخصة سارية المفعول'),
                 icon: Icons.card_membership_rounded,
                 onUploaded: (r) => setState(() => _licenceRef = r),
               ),
               const SizedBox(height: 12),
               DocumentUploadTile(
-                label: 'صورة السيارة (اختياري)',
-                hint: 'تظهر للركاب ليتعرّفوا على السيارة',
+                label: tr('صورة السيارة (اختياري)'),
+                hint: tr('تظهر للركاب ليتعرّفوا على السيارة'),
                 icon: Icons.directions_car_rounded,
                 private: false,
                 onUploaded: (r) => setState(() => _carPhotoRef = r),
@@ -209,7 +210,7 @@ class _DriverVerificationScreenState
               ],
               const SizedBox(height: 28),
               AppButton(
-                label: 'إرسال للمراجعة',
+                label: tr('إرسال للمراجعة'),
                 loading: _loading,
                 onPressed: _submit,
               ),

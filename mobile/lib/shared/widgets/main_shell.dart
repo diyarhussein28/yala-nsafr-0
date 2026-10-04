@@ -7,6 +7,7 @@ import '../../core/services/update_checker.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/notifications/providers/notifications_provider.dart';
 import '../widgets/verified_badge.dart';
+import '../../core/i18n/tr.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -47,16 +48,16 @@ class _MainShellState extends ConsumerState<MainShell> {
       final nowOnline = next.valueOrNull == true;
       if (wasOffline && nowOnline) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                Icon(Icons.wifi_rounded, color: Colors.white, size: 16),
-                SizedBox(width: 8),
-                Text('عاد الاتصال بالإنترنت'),
+                const Icon(Icons.wifi_rounded, color: Colors.white, size: 16),
+                const SizedBox(width: 8),
+                Text(tr('عاد الاتصال بالإنترنت')),
               ],
             ),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
         // Refresh the bell badge — individual screens use pull-to-refresh
@@ -73,14 +74,14 @@ class _MainShellState extends ConsumerState<MainShell> {
               curve: Curves.easeInOut,
               height: isOnline ? 0 : 36,
               color: Colors.red.shade700,
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.wifi_off_rounded, size: 14, color: Colors.white),
-                  SizedBox(width: 6),
+                  const Icon(Icons.wifi_off_rounded, size: 14, color: Colors.white),
+                  const SizedBox(width: 6),
                   Text(
-                    'لا يوجد اتصال بالإنترنت',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
+                    tr('لا يوجد اتصال بالإنترنت'),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
               ),
@@ -108,27 +109,27 @@ class _MainShellState extends ConsumerState<MainShell> {
             }
           },
           destinations: [
-            const NavigationDestination(
-              icon: Icon(Icons.search_rounded),
-              selectedIcon: Icon(Icons.travel_explore_rounded),
-              label: 'بحث',
+            NavigationDestination(
+              icon: const Icon(Icons.search_rounded),
+              selectedIcon: const Icon(Icons.travel_explore_rounded),
+              label: tr('بحث'),
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.confirmation_number_outlined),
-              selectedIcon: Icon(Icons.confirmation_number_rounded),
-              label: 'حجوزاتي',
+            NavigationDestination(
+              icon: const Icon(Icons.confirmation_number_outlined),
+              selectedIcon: const Icon(Icons.confirmation_number_rounded),
+              label: tr('حجوزاتي'),
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.directions_car_outlined),
-              selectedIcon: Icon(Icons.directions_car_rounded),
-              label: 'رحلاتي',
+            NavigationDestination(
+              icon: const Icon(Icons.directions_car_outlined),
+              selectedIcon: const Icon(Icons.directions_car_rounded),
+              label: tr('رحلاتي'),
             ),
             NavigationDestination(
               icon: user?.idVerified == false
                   ? const VerifiedBadge(child: Icon(Icons.person_outline_rounded))
                   : const Icon(Icons.person_outline_rounded),
               selectedIcon: const Icon(Icons.person_rounded),
-              label: 'حسابي',
+              label: tr('حسابي'),
             ),
           ],
         ),

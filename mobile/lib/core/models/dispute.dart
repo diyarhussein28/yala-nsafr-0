@@ -1,3 +1,4 @@
+import '../../core/i18n/tr.dart';
 class Dispute {
   final String id;
   final String bookingId;
@@ -40,12 +41,12 @@ class Dispute {
       status == 'resolved_refund' || status == 'resolved_release' || status == 'resolved_split';
 
   String get statusLabel => switch (status) {
-        'open' => 'مفتوح',
-        'under_review' => 'تحت المراجعة',
-        'resolved_refund' => 'تم الاسترداد',
-        'resolved_release' => 'تم الإفراج',
-        'resolved_split' => 'تقسيم المبلغ',
-        'closed' => 'مغلق',
+        'open' => tr('مفتوح'),
+        'under_review' => tr('تحت المراجعة'),
+        'resolved_refund' => tr('تم الاسترداد'),
+        'resolved_release' => tr('تم الإفراج'),
+        'resolved_split' => tr('تقسيم المبلغ'),
+        'closed' => tr('مغلق'),
         _ => status,
       };
 

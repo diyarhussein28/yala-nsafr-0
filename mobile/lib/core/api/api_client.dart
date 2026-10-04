@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../core/i18n/tr.dart';
 
 // Set per build: flutter build apk --dart-define=API_BASE_URL=https://api.example.com/api/v1
 // The default is for local development over `adb reverse tcp:3000 tcp:3000`; a release
@@ -198,10 +199,10 @@ class ApiException implements Exception {
         e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.sendTimeout ||
         e.type == DioExceptionType.receiveTimeout) {
-      return ApiException('لا يوجد اتصال بالإنترنت');
+      return ApiException(tr('لا يوجد اتصال بالإنترنت'));
     }
     final data = e.response?.data;
-    String message = 'حدث خطأ غير متوقع';
+    String message = tr('حدث خطأ غير متوقع');
     if (data is Map && data['message'] != null) {
       final msg = data['message'];
       message = msg is List ? msg.first.toString() : msg.toString();

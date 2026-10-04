@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
+import '../../../../core/i18n/tr.dart';
 
 enum _PayState { waiting, confirmed, failed, timeout }
 
@@ -113,9 +114,9 @@ class _PaymentProcessingScreenState
   Future<void> _retryPoll() async {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('جاري التحقق من حالة الدفع...'),
-          duration: Duration(seconds: 3),
+        SnackBar(
+          content: Text(tr('جاري التحقق من حالة الدفع...')),
+          duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -137,16 +138,16 @@ class _PaymentProcessingScreenState
         final leave = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('هل تريد المغادرة؟'),
-            content: const Text(
-                'الدفع لم يكتمل بعد. يمكنك مراجعة حجوزاتك لاحقاً.'),
+            title: Text(tr('هل تريد المغادرة؟')),
+            content: Text(
+                tr('الدفع لم يكتمل بعد. يمكنك مراجعة حجوزاتك لاحقاً.')),
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('متابعة الدفع')),
+                  child: Text(tr('متابعة الدفع'))),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('مغادرة'),
+                child: Text(tr('مغادرة')),
               ),
             ],
           ),
@@ -155,7 +156,7 @@ class _PaymentProcessingScreenState
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('تأكيد الدفع'),
+          title: Text(tr('تأكيد الدفع')),
           automaticallyImplyLeading: false,
         ),
         body: SafeArea(
@@ -202,7 +203,7 @@ class _WaitingView extends StatelessWidget {
         ),
         const SizedBox(height: 32),
         Text(
-          'في انتظار تأكيد الدفع',
+          tr('في انتظار تأكيد الدفع'),
           style: Theme.of(context)
               .textTheme
               .titleLarge
@@ -211,7 +212,7 @@ class _WaitingView extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          'أكمل عملية الدفع في المتصفح وسيتم تأكيد حجزك تلقائياً.',
+          tr('أكمل عملية الدفع في المتصفح وسيتم تأكيد حجزك تلقائياً.'),
           style: TextStyle(color: Colors.grey.shade600, height: 1.5),
           textAlign: TextAlign.center,
         ),
@@ -220,7 +221,7 @@ class _WaitingView extends StatelessWidget {
           width: double.infinity,
           child: OutlinedButton.icon(
             icon: const Icon(Icons.open_in_browser_rounded),
-            label: const Text('إعادة فتح صفحة الدفع'),
+            label: Text(tr('إعادة فتح صفحة الدفع')),
             onPressed: onReopen,
           ),
         ),
@@ -229,7 +230,7 @@ class _WaitingView extends StatelessWidget {
           width: double.infinity,
           child: TextButton(
             onPressed: onCheckNow,
-            child: const Text('تحققت من الدفع — تحقق الآن'),
+            child: Text(tr('تحققت من الدفع — تحقق الآن')),
           ),
         ),
       ],
@@ -256,7 +257,7 @@ class _ConfirmedView extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         Text(
-          'تم الحجز بنجاح!',
+          tr('تم الحجز بنجاح!'),
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Colors.green,
@@ -264,7 +265,7 @@ class _ConfirmedView extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'جاري الانتقال إلى حجوزاتك...',
+          tr('جاري الانتقال إلى حجوزاتك...'),
           style: TextStyle(color: Colors.grey.shade600),
         ),
       ],
@@ -290,7 +291,7 @@ class _TimeoutView extends StatelessWidget {
             size: 72, color: Colors.orange.shade400),
         const SizedBox(height: 24),
         Text(
-          'لم يتم تأكيد الدفع بعد',
+          tr('لم يتم تأكيد الدفع بعد'),
           style: Theme.of(context)
               .textTheme
               .titleLarge
@@ -299,7 +300,7 @@ class _TimeoutView extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          'إذا أتممت الدفع، قد يستغرق التأكيد بضع دقائق. تحقق من حجوزاتك.',
+          tr('إذا أتممت الدفع، قد يستغرق التأكيد بضع دقائق. تحقق من حجوزاتك.'),
           style: TextStyle(color: Colors.grey.shade600, height: 1.5),
           textAlign: TextAlign.center,
         ),
@@ -308,7 +309,7 @@ class _TimeoutView extends StatelessWidget {
           width: double.infinity,
           child: FilledButton.icon(
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('تحقق مجدداً'),
+            label: Text(tr('تحقق مجدداً')),
             onPressed: onRetry,
           ),
         ),
@@ -317,14 +318,14 @@ class _TimeoutView extends StatelessWidget {
           width: double.infinity,
           child: OutlinedButton.icon(
             icon: const Icon(Icons.open_in_browser_rounded),
-            label: const Text('إعادة فتح صفحة الدفع'),
+            label: Text(tr('إعادة فتح صفحة الدفع')),
             onPressed: onReopen,
           ),
         ),
         const SizedBox(height: 12),
         TextButton(
           onPressed: onGoBookings,
-          child: const Text('عرض حجوزاتي'),
+          child: Text(tr('عرض حجوزاتي')),
         ),
       ],
     );
@@ -343,7 +344,7 @@ class _FailedView extends StatelessWidget {
         const Icon(Icons.cancel_rounded, size: 72, color: Colors.red),
         const SizedBox(height: 24),
         Text(
-          'تم إلغاء الدفع',
+          tr('تم إلغاء الدفع'),
           style: Theme.of(context)
               .textTheme
               .titleLarge
@@ -351,7 +352,7 @@ class _FailedView extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          'لم يتم الحجز. يمكنك المحاولة مجدداً من شاشة البحث.',
+          tr('لم يتم الحجز. يمكنك المحاولة مجدداً من شاشة البحث.'),
           style: TextStyle(color: Colors.grey.shade600, height: 1.5),
           textAlign: TextAlign.center,
         ),
@@ -360,7 +361,7 @@ class _FailedView extends StatelessWidget {
           width: double.infinity,
           child: FilledButton(
             onPressed: onGoBookings,
-            child: const Text('عرض حجوزاتي'),
+            child: Text(tr('عرض حجوزاتي')),
           ),
         ),
       ],

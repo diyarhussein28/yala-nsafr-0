@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/api/api_client.dart';
 import '../widgets/admin_scaffold.dart';
+import '../../../../core/i18n/tr.dart';
+import '../../../../core/constants/egypt_cities.dart';
 
 class AdminTripsScreen extends ConsumerStatefulWidget {
   const AdminTripsScreen({super.key});
@@ -73,7 +75,7 @@ class _AdminTripsScreenState extends ConsumerState<AdminTripsScreen> {
     final hasMore = _page * _limit < _total;
 
     return AdminScaffold(
-      title: 'الرحلات${_total > 0 ? ' ($_total)' : ''}',
+      title: tr('الرحلات{0}', [_total > 0 ? ' ($_total)' : '']),
       body: Column(
         children: [
           SizedBox(
@@ -82,23 +84,23 @@ class _AdminTripsScreenState extends ConsumerState<AdminTripsScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               children: [
-                _chip('الكل', _status == null, () {
+                _chip(tr('الكل'), _status == null, () {
                   setState(() => _status = null);
                   _load(reset: true);
                 }),
-                _chip('مجدولة', _status == 'scheduled', () {
+                _chip(tr('مجدولة'), _status == 'scheduled', () {
                   setState(() => _status = _status == 'scheduled' ? null : 'scheduled');
                   _load(reset: true);
                 }),
-                _chip('جارية', _status == 'active', () {
+                _chip(tr('جارية'), _status == 'active', () {
                   setState(() => _status = _status == 'active' ? null : 'active');
                   _load(reset: true);
                 }),
-                _chip('مكتملة', _status == 'completed', () {
+                _chip(tr('مكتملة'), _status == 'completed', () {
                   setState(() => _status = _status == 'completed' ? null : 'completed');
                   _load(reset: true);
                 }),
-                _chip('ملغاة', _status == 'cancelled', () {
+                _chip(tr('ملغاة'), _status == 'cancelled', () {
                   setState(() => _status = _status == 'cancelled' ? null : 'cancelled');
                   _load(reset: true);
                 }),
@@ -129,7 +131,7 @@ class _AdminTripsScreenState extends ConsumerState<AdminTripsScreen> {
                                       setState(() => _page++);
                                       _load();
                                     },
-                                    child: const Text('تحميل المزيد'),
+                                    child: Text(tr('تحميل المزيد')),
                                   ),
                                 );
                         }
@@ -161,10 +163,10 @@ class _TripCard extends StatelessWidget {
       };
 
   String get _statusLabel => switch (trip['status'] as String? ?? '') {
-        'scheduled' => 'مجدولة',
-        'active' || 'ongoing' => 'جارية',
-        'completed' => 'مكتملة',
-        'cancelled' => 'ملغاة',
+        'scheduled' => tr('مجدولة'),
+        'active' || 'ongoing' => tr('جارية'),
+        'completed' => tr('مكتملة'),
+        'cancelled' => tr('ملغاة'),
         _ => trip['status'] as String? ?? '',
       };
 
@@ -182,7 +184,7 @@ class _TripCard extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         title: Text(
-          '${trip['originCity'] ?? '-'} ← ${trip['destinationCity'] ?? '-'}',
+          routeLabel(trip['originCity'] as String?, trip['destinationCity'] as String?),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
@@ -204,7 +206,7 @@ class _TripCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Icon(Icons.attach_money_rounded, size: 13, color: Colors.grey[600]),
                 Text(
-                  '${trip['pricePerSeat'] ?? '-'} ج',
+                  tr('{0} ج', [trip['pricePerSeat'] ?? '-']),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

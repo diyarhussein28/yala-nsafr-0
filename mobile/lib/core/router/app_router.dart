@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../i18n/tr.dart';
+import '../../shared/widgets/ui.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/phone_screen.dart';
 import '../../features/auth/presentation/screens/otp_screen.dart';
@@ -75,6 +77,17 @@ final routerProvider = Provider<GoRouter>((ref) {
     navigatorKey: appNavigatorKey,
     initialLocation: '/search',
     refreshListenable: notifier,
+    // Unknown links (old notifications, mistyped deep links) land on a friendly page
+    errorBuilder: (context, state) => Scaffold(
+      appBar: AppBar(),
+      body: EmptyState(
+        icon: Icons.explore_off_rounded,
+        title: tr('الصفحة غير موجودة'),
+        message: tr('ربما تم نقل هذه الصفحة أو أن الرابط غير صحيح.'),
+        actionLabel: tr('العودة للرئيسية'),
+        onAction: () => context.go('/search'),
+      ),
+    ),
     redirect: (context, state) {
       final status = notifier.auth.status;
       final location = state.uri.path;

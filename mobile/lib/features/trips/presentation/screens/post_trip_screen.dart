@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/models/trip.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../providers/trips_provider.dart';
+import '../../../../core/i18n/tr.dart';
 
 const _cities = [
   'القاهرة',
@@ -128,7 +129,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
         const LatLng(30.0444, 31.2357);
     final point = await Navigator.of(context).push<LatLng>(MaterialPageRoute(
       builder: (_) => MapPointPicker(
-        title: pickup ? 'نقطة التجمع' : 'نقطة النزول',
+        title: pickup ? tr('نقطة التجمع') : tr('نقطة النزول'),
         initial: initial,
       ),
     ));
@@ -216,6 +217,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
         .where((c) => c != _from && c != _to && !_stops.contains(c))
         .toList();
     final picked = await showModalBottomSheet<String>(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       builder: (ctx) => SizedBox(
@@ -223,7 +225,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
         child: Column(
           children: [
             Text(
-              'أضف محطة على الطريق',
+              tr('أضف محطة على الطريق'),
               style: Theme.of(ctx).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
@@ -280,7 +282,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
       });
       if (!mounted || count == null) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم نشر $count رحلة ضمن السلسلة الأسبوعية')),
+        SnackBar(content: Text(tr('تم نشر {0} رحلة ضمن السلسلة الأسبوعية', [count]))),
       );
       ref.read(tripsRefreshTokenProvider.notifier).state++;
       context.go('/my-trips');
@@ -316,13 +318,13 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEditing ? 'تعديل الرحلة' : 'نشر رحلة جديدة'),
+        title: Text(widget.isEditing ? tr('تعديل الرحلة') : tr('نشر رحلة جديدة')),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
           child: AppButton(
-            label: widget.isEditing ? 'حفظ التعديلات' : 'نشر الرحلة',
+            label: widget.isEditing ? tr('حفظ التعديلات') : tr('نشر الرحلة'),
             loading: loading,
             onPressed: _submit,
           ),
@@ -338,10 +340,10 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _SectionLabel('المسار', Icons.route_rounded),
+                _SectionLabel(tr('المسار'), Icons.route_rounded),
                 DropdownButtonFormField<String>(
                   initialValue: _from,
-                  decoration: const InputDecoration(labelText: 'من'),
+                  decoration: InputDecoration(labelText: tr('من')),
                   items: _cities
                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                       .toList(),
@@ -352,7 +354,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                           _fromArea = null;
                           _fromAreaCtrl.clear();
                         }),
-                  validator: (v) => v == null ? 'مطلوب' : null,
+                  validator: (v) => v == null ? tr('مطلوب') : null,
                 ),
                 if (_from != null && !widget.isEditing) ...[
                   const SizedBox(height: 8),
@@ -366,7 +368,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _to,
-                  decoration: const InputDecoration(labelText: 'إلى'),
+                  decoration: InputDecoration(labelText: tr('إلى')),
                   items: _cities
                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                       .toList(),
@@ -377,7 +379,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                           _toArea = null;
                           _toAreaCtrl.clear();
                         }),
-                  validator: (v) => v == null ? 'مطلوب' : null,
+                  validator: (v) => v == null ? tr('مطلوب') : null,
                 ),
                 if (_to != null && !widget.isEditing) ...[
                   const SizedBox(height: 8),
@@ -396,7 +398,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(minimumSize: const Size(0, 46)),
                           icon: Icon(_pickupPoint != null ? Icons.check_circle_rounded : Icons.add_location_rounded),
-                          label: Text(_pickupPoint != null ? 'تم تحديد التجمع' : 'نقطة التجمع على الخريطة'),
+                          label: Text(_pickupPoint != null ? tr('تم تحديد التجمع') : tr('نقطة التجمع على الخريطة')),
                           onPressed: () => _pickPoint(pickup: true),
                         ),
                       ),
@@ -405,7 +407,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(minimumSize: const Size(0, 46)),
                           icon: Icon(_dropoffPoint != null ? Icons.check_circle_rounded : Icons.flag_rounded),
-                          label: Text(_dropoffPoint != null ? 'تم تحديد النزول' : 'نقطة النزول'),
+                          label: Text(_dropoffPoint != null ? tr('تم تحديد النزول') : tr('نقطة النزول')),
                           onPressed: () => _pickPoint(pickup: false),
                         ),
                       ),
@@ -413,12 +415,12 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'محطات على الطريق (اختياري)',
+                    tr('محطات على الطريق (اختياري)'),
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'يقدر الركاب يركبوا أو ينزلوا في أي محطة منها',
+                    tr('يقدر الركاب يركبوا أو ينزلوا في أي محطة منها'),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 8),
@@ -437,13 +439,13 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                             Icons.add_location_alt_rounded,
                             size: 18,
                           ),
-                          label: const Text('إضافة محطة'),
+                          label: Text(tr('إضافة محطة')),
                           onPressed: _addStop,
                         ),
                     ],
                   ),
                 ],
-                const _SectionLabel('الموعد', Icons.schedule_rounded),
+                _SectionLabel(tr('الموعد'), Icons.schedule_rounded),
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.event_rounded),
@@ -466,9 +468,9 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                         _repeatDays.add(_departure.weekday % 7);
                       }
                     }),
-                    title: const Text('كرّر الرحلة أسبوعياً'),
-                    subtitle: const Text(
-                      'نفس المسار والموعد في الأيام التي تختارها',
+                    title: Text(tr('كرّر الرحلة أسبوعياً')),
+                    subtitle: Text(
+                      tr('نفس المسار والموعد في الأيام التي تختارها'),
                     ),
                     secondary: const Icon(Icons.event_repeat_rounded),
                   ),
@@ -477,14 +479,14 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                       spacing: 6,
                       runSpacing: 6,
                       children: [
-                        for (final (day, label) in const [
-                          (6, 'السبت'),
-                          (0, 'الأحد'),
-                          (1, 'الاثنين'),
-                          (2, 'الثلاثاء'),
-                          (3, 'الأربعاء'),
-                          (4, 'الخميس'),
-                          (5, 'الجمعة'),
+                        for (final (day, label) in [
+                          (6, tr('السبت')),
+                          (0, tr('الأحد')),
+                          (1, tr('الاثنين')),
+                          (2, tr('الثلاثاء')),
+                          (3, tr('الأربعاء')),
+                          (4, tr('الخميس')),
+                          (5, tr('الجمعة')),
                         ])
                           FilterChip(
                             label: Text(label),
@@ -499,7 +501,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                     ),
                     Row(
                       children: [
-                        const Expanded(child: Text('لمدة')),
+                        Expanded(child: Text(tr('لمدة'))),
                         IconButton(
                           icon: const Icon(Icons.remove_circle_outline_rounded),
                           onPressed: _repeatWeeks > 1
@@ -507,7 +509,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                               : null,
                         ),
                         Text(
-                          '$_repeatWeeks ${_repeatWeeks <= 2 ? 'أسبوع' : 'أسابيع'}',
+                          Fmt.weeks(_repeatWeeks),
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                         IconButton(
@@ -520,24 +522,24 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                     ),
                   ],
                 ],
-                const _SectionLabel('السعر والمقاعد', Icons.payments_rounded),
+                _SectionLabel(tr('السعر والمقاعد'), Icons.payments_rounded),
                 TextFormField(
                   controller: _priceCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'سعر المقعد (جنيه)',
-                    prefixIcon: Icon(Icons.payments_rounded),
+                  decoration: InputDecoration(
+                    labelText: tr('سعر المقعد (جنيه)'),
+                    prefixIcon: const Icon(Icons.payments_rounded),
                   ),
                   keyboardType: TextInputType.number,
                   validator: (v) {
                     final n = double.tryParse(v ?? '');
-                    if (n == null || n <= 0) return 'أدخل سعراً صحيحاً';
+                    if (n == null || n <= 0) return tr('أدخل سعراً صحيحاً');
                     return null;
                   },
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Text('عدد المقاعد المتاحة'),
+                    Text(tr('عدد المقاعد المتاحة')),
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.remove_circle_outline_rounded),
@@ -560,29 +562,29 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                     ),
                   ],
                 ),
-                const _SectionLabel('تفضيلات الرحلة', Icons.tune_rounded),
+                _SectionLabel(tr('تفضيلات الرحلة'), Icons.tune_rounded),
                 Card(
                   child: Column(
                     children: [
                       SwitchListTile(
                         value: _womenOnly,
                         onChanged: (v) => setState(() => _womenOnly = v),
-                        title: const Text('رحلة نساء فقط'),
+                        title: Text(tr('رحلة نساء فقط')),
                       ),
                       SwitchListTile(
                         value: _smoking,
                         onChanged: (v) => setState(() => _smoking = v),
-                        title: const Text('التدخين مسموح'),
+                        title: Text(tr('التدخين مسموح')),
                       ),
                       SwitchListTile(
                         value: _pets,
                         onChanged: (v) => setState(() => _pets = v),
-                        title: const Text('حيوانات أليفة مسموح'),
+                        title: Text(tr('حيوانات أليفة مسموح')),
                       ),
                       SwitchListTile(
                         value: _ac,
                         onChanged: (v) => setState(() => _ac = v),
-                        title: const Text('تكييف هواء'),
+                        title: Text(tr('تكييف هواء')),
                         secondary: const Icon(
                           Icons.ac_unit_rounded,
                           color: Colors.lightBlue,
@@ -591,14 +593,14 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                     ],
                   ),
                 ),
-                const _SectionLabel('ملاحظات', Icons.sticky_note_2_rounded),
+                _SectionLabel(tr('ملاحظات'), Icons.sticky_note_2_rounded),
                 TextFormField(
                   controller: _notesCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'ملاحظات للركاب (اختياري)',
+                  decoration: InputDecoration(
+                    labelText: tr('ملاحظات للركاب (اختياري)'),
                     hintText:
-                        'مثال: سأنطلق من مطار القاهرة الترمينال 2 الساعة 12 ظهراً',
-                    prefixIcon: Icon(Icons.notes_rounded),
+                        tr('مثال: سأنطلق من مطار القاهرة الترمينال 2 الساعة 12 ظهراً'),
+                    prefixIcon: const Icon(Icons.notes_rounded),
                     alignLabelWithHint: true,
                   ),
                   maxLines: 3,
@@ -645,7 +647,7 @@ class _AreaPicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'نقطة الانطلاق/التحميل (اختياري)',
+          tr('نقطة الانطلاق/التحميل (اختياري)'),
           style: Theme.of(
             context,
           ).textTheme.labelSmall?.copyWith(color: Colors.grey[600]),
@@ -659,7 +661,7 @@ class _AreaPicker extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.only(left: 6),
                 child: ChoiceChip(
-                  label: Text(chip, style: const TextStyle(fontSize: 12)),
+                  label: Text(chip == _otherChip ? tr('أخرى') : placeName(chip), style: const TextStyle(fontSize: 12)),
                   selected: isSelected,
                   onSelected: (_) => onChanged(isSelected ? null : chip),
                   selectedColor: Theme.of(context).colorScheme.primaryContainer,
@@ -678,9 +680,9 @@ class _AreaPicker extends StatelessWidget {
           const SizedBox(height: 8),
           TextFormField(
             controller: customCtrl,
-            decoration: const InputDecoration(
-              hintText: 'اكتب نقطة الانطلاق/التحميل',
-              prefixIcon: Icon(Icons.edit_location_alt_rounded, size: 20),
+            decoration: InputDecoration(
+              hintText: tr('اكتب نقطة الانطلاق/التحميل'),
+              prefixIcon: const Icon(Icons.edit_location_alt_rounded, size: 20),
               isDense: true,
             ),
             maxLength: 100,

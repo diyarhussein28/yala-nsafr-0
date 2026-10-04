@@ -7,6 +7,8 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../../providers/bookings_provider.dart';
 import '../../../../core/services/analytics_service.dart';
+import '../../../../core/i18n/tr.dart';
+import '../../../../core/constants/egypt_cities.dart';
 
 class BookingConfirmScreen extends ConsumerStatefulWidget {
   final Trip trip;
@@ -44,19 +46,18 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
         final proceed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('رحلة للسيدات فقط'),
-            content: const Text(
-              'هذه الرحلة مخصصة للسيدات فقط. جنسك المُسجَّل ليس أنثى. '
-              'هل تريد المتابعة على مسؤوليتك الخاصة؟',
+            title: Text(tr('رحلة للسيدات فقط')),
+            content: Text(
+              tr('هذه الرحلة مخصصة للسيدات فقط. جنسك المُسجَّل ليس أنثى. هل تريد المتابعة على مسؤوليتك الخاصة؟'),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('إلغاء'),
+                child: Text(tr('إلغاء')),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('متابعة'),
+                child: Text(tr('متابعة')),
               ),
             ],
           ),
@@ -94,7 +95,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
 
     // Cash: go straight to my bookings
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم إرسال طلب الحجز! سيردّ السائق خلال 30 دقيقة')),
+      SnackBar(content: Text(tr('تم إرسال طلب الحجز! سيردّ السائق خلال 30 دقيقة'))),
     );
     context.go('/my-bookings');
   }
@@ -107,7 +108,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
     if (state is AsyncError) error = state.error.toString();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('تأكيد الحجز')),
+      appBar: AppBar(title: Text(tr('تأكيد الحجز'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -120,7 +121,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${widget.trip.originCity} ← ${widget.trip.destinationCity}',
+                      routeLabel(widget.trip.originCity, widget.trip.destinationCity),
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
@@ -129,7 +130,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                       style: TextStyle(color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 8),
-                    Text('السائق: ${widget.trip.driver.fullName}'),
+                    Text(tr('السائق: {0}', [widget.trip.driver.fullName])),
                     Text(widget.trip.driver.vehicleLabel),
                   ],
                 ),
@@ -143,7 +144,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                   children: [
                     Row(
                       children: [
-                        const Text('عدد المقاعد', style: TextStyle(fontSize: 16)),
+                        Text(tr('عدد المقاعد'), style: const TextStyle(fontSize: 16)),
                         const Spacer(),
                         IconButton(
                           icon: const Icon(Icons.remove_circle_outline_rounded),
@@ -165,13 +166,13 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('الإجمالي', style: TextStyle(fontSize: 16)),
+                        Text(tr('الإجمالي'), style: const TextStyle(fontSize: 16)),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             if (_usePromo && _promoDiscount > 0)
                               Text(
-                                '${_grossTotal.toStringAsFixed(0)} جنيه',
+                                tr('{0} جنيه', [_grossTotal.toStringAsFixed(0)]),
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.grey[500],
@@ -179,7 +180,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                                 ),
                               ),
                             Text(
-                              '${_total.toStringAsFixed(0)} جنيه',
+                              tr('{0} جنيه', [_total.toStringAsFixed(0)]),
                               style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
@@ -213,14 +214,14 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'رصيد العروض: ${promoBalance.toStringAsFixed(0)} جنيه',
+                                  tr('رصيد العروض: {0} جنيه', [promoBalance.toStringAsFixed(0)]),
                                   style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: Colors.green.shade800),
                                 ),
                                 if (_usePromo && _promoDiscount > 0)
                                   Text(
-                                    'خصم: ${_promoDiscount.toStringAsFixed(0)} جنيه',
+                                    tr('خصم: {0} جنيه', [_promoDiscount.toStringAsFixed(0)]),
                                     style: TextStyle(
                                         fontSize: 12, color: Colors.green.shade700),
                                   ),
@@ -241,7 +242,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
               );
             }),
             // Payment method selector
-            const Text('طريقة الدفع', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+            Text(tr('طريقة الدفع'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
             const SizedBox(height: 8),
             _PaymentMethodPicker(
               selected: _paymentMethod,
@@ -260,9 +261,9 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                 const SizedBox(width: 8),
                 Expanded(child: Text(
                   switch (_paymentMethod) {
-                    'cash' => 'تدفع للسائق نقداً عند الصعود. السائق لديه 30 دقيقة للموافقة على طلبك.',
-                    'vodafone_cash' => 'يُخصم المبلغ من محفظتك فور الدفع، ويُسترد إليها تلقائياً إذا رفض السائق أو أُلغيت الرحلة، ووفق سياسة الإلغاء إن ألغيت أنت.',
-                    _ => 'يُحجز المبلغ على بطاقتك ولا يُخصم إلا بعد انتهاء الرحلة.',
+                    'cash' => tr('تدفع للسائق نقداً عند الصعود. السائق لديه 30 دقيقة للموافقة على طلبك.'),
+                    'vodafone_cash' => tr('يُخصم المبلغ من محفظتك فور الدفع، ويُسترد إليها تلقائياً إذا رفض السائق أو أُلغيت الرحلة، ووفق سياسة الإلغاء إن ألغيت أنت.'),
+                    _ => tr('يُحجز المبلغ على بطاقتك ولا يُخصم إلا بعد انتهاء الرحلة.'),
                   },
                   style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
                 )),
@@ -281,7 +282,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
             ],
             const SizedBox(height: 24),
             AppButton(
-              label: _paymentMethod == 'cash' ? 'طلب حجز' : 'المتابعة للدفع',
+              label: _paymentMethod == 'cash' ? tr('طلب حجز') : tr('المتابعة للدفع'),
               loading: loading,
               onPressed: _confirm,
             ),
@@ -306,7 +307,7 @@ class _PaymentMethodPicker extends StatelessWidget {
     return Row(
       children: [
         _Chip(
-          label: 'كاش',
+          label: tr('كاش'),
           icon: Icons.payments_outlined,
           value: 'cash',
           selected: selected,
@@ -314,7 +315,7 @@ class _PaymentMethodPicker extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         _Chip(
-          label: 'فودافون كاش',
+          label: tr('فودافون كاش'),
           icon: Icons.phone_android_rounded,
           value: 'vodafone_cash',
           selected: selected,
@@ -322,7 +323,7 @@ class _PaymentMethodPicker extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         _Chip(
-          label: 'بطاقة',
+          label: tr('بطاقة'),
           icon: Icons.credit_card_rounded,
           value: 'card',
           selected: selected,
@@ -406,23 +407,23 @@ class _CancellationPolicyNotice extends ConsumerWidget {
                 Icon(Icons.policy_outlined,
                     size: 18, color: Colors.amber.shade900),
                 const SizedBox(width: 8),
-                Text('سياسة الإلغاء والاسترداد',
+                Text(tr('سياسة الإلغاء والاسترداد'),
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: Colors.amber.shade900)),
               ]),
               const SizedBox(height: 8),
-              _PolicyRow(text: 'الإلغاء قبل $free ساعة من الموعد: استرداد كامل المبلغ.'),
+              _PolicyRow(text: tr('الإلغاء قبل {0} ساعة من الموعد: استرداد كامل المبلغ.', [free])),
               _PolicyRow(
                   text:
-                      'الإلغاء بين $late و$free ساعة: استرداد المبلغ بعد خصم ${p.feePercent}% رسوم إلغاء.'),
+                      tr('الإلغاء بين {0} و{1} ساعة: استرداد المبلغ بعد خصم {2}% رسوم إلغاء.', [late, free, p.feePercent])),
               _PolicyRow(
                   text:
-                      'الإلغاء خلال أقل من $late ساعة أو بعد بدء الرحلة: لا يوجد استرداد.'),
+                      tr('الإلغاء خلال أقل من {0} ساعة أو بعد بدء الرحلة: لا يوجد استرداد.', [late])),
               const SizedBox(height: 6),
               Text(
-                'سيظهر لك المبلغ المسترد بالضبط قبل تأكيد الإلغاء.',
+                tr('سيظهر لك المبلغ المسترد بالضبط قبل تأكيد الإلغاء.'),
                 style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
               ),
             ],

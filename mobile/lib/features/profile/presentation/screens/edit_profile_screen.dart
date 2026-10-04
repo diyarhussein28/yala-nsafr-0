@@ -9,6 +9,7 @@ import '../../../../core/services/upload_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../core/i18n/tr.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -53,6 +54,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   Future<void> _pickPhoto() async {
     final source = await showModalBottomSheet<ImageSource>(
+      useRootNavigator: true,
       context: context,
       builder: (ctx) => SafeArea(
         child: Column(
@@ -61,12 +63,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             const SizedBox(height: 8),
             ListTile(
               leading: const Icon(Icons.photo_library_rounded),
-              title: const Text('من المعرض'),
+              title: Text(tr('من المعرض')),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt_rounded),
-              title: const Text('الكاميرا'),
+              title: Text(tr('الكاميرا')),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
           ],
@@ -94,7 +96,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل رفع الصورة: $e')),
+          SnackBar(content: Text(tr('فشل رفع الصورة: {0}', [e]))),
         );
         setState(() => _pickedFile = null);
       }
@@ -131,7 +133,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تعديل الملف الشخصي')),
+      appBar: AppBar(title: Text(tr('تعديل الملف الشخصي'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -208,28 +210,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               // ── Name ────────────────────────────────────────────────────────
               TextFormField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'الاسم الكامل',
-                  prefixIcon: Icon(Icons.person_outline_rounded),
+                decoration: InputDecoration(
+                  labelText: tr('الاسم الكامل'),
+                  prefixIcon: const Icon(Icons.person_outline_rounded),
                 ),
                 validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'الاسم مطلوب' : null,
+                    v == null || v.trim().isEmpty ? tr('الاسم مطلوب') : null,
               ),
               const SizedBox(height: 24),
 
               // ── Gender ──────────────────────────────────────────────────────
-              Text('الجنس', style: Theme.of(context).textTheme.titleMedium),
+              Text(tr('الجنس'), style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               SegmentedButton<String>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                       value: 'male',
-                      label: Text('ذكر'),
-                      icon: Icon(Icons.male_rounded)),
+                      label: Text(tr('ذكر')),
+                      icon: const Icon(Icons.male_rounded)),
                   ButtonSegment(
                       value: 'female',
-                      label: Text('أنثى'),
-                      icon: Icon(Icons.female_rounded)),
+                      label: Text(tr('أنثى')),
+                      icon: const Icon(Icons.female_rounded)),
                 ],
                 selected: {_gender},
                 onSelectionChanged: (s) => setState(() => _gender = s.first),
@@ -237,22 +239,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               const SizedBox(height: 24),
 
               // ── Emergency contact ───────────────────────────────────────────
-              Text('جهة الطوارئ',
+              Text(tr('جهة الطوارئ'),
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _emergencyNameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'الاسم',
-                  prefixIcon: Icon(Icons.emergency_rounded),
+                decoration: InputDecoration(
+                  labelText: tr('الاسم'),
+                  prefixIcon: const Icon(Icons.emergency_rounded),
                 ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _emergencyPhoneCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'رقم الهاتف',
-                  prefixIcon: Icon(Icons.phone_rounded),
+                decoration: InputDecoration(
+                  labelText: tr('رقم الهاتف'),
+                  prefixIcon: const Icon(Icons.phone_rounded),
                 ),
                 keyboardType: TextInputType.phone,
               ),
@@ -265,7 +267,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ],
               const SizedBox(height: 32),
               AppButton(
-                label: 'حفظ',
+                label: tr('حفظ'),
                 loading: _loading || _uploading,
                 onPressed: _save,
               ),

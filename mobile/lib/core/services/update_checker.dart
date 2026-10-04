@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dio/dio.dart';
+import '../../core/i18n/tr.dart';
 
 /// Compares the installed version with the server's version policy (/health/app-config).
 /// Below the minimum: a blocking dialog with only "update". Below the latest: a one-time
@@ -55,17 +56,17 @@ class UpdateChecker {
         canPop: !force,
         child: AlertDialog(
           icon: const Icon(Icons.system_update_rounded, size: 40),
-          title: Text(force ? 'يلزم تحديث التطبيق' : 'تحديث جديد متاح'),
+          title: Text(force ? tr('يلزم تحديث التطبيق') : tr('تحديث جديد متاح')),
           content: Text(force
-              ? 'هذا الإصدار لم يعد مدعوماً. حدّث التطبيق للمتابعة.'
-              : 'نسخة أحدث من يلا نسافر متاحة بتحسينات وإصلاحات جديدة.'),
+              ? tr('هذا الإصدار لم يعد مدعوماً. حدّث التطبيق للمتابعة.')
+              : tr('نسخة أحدث من يلا نسافر متاحة بتحسينات وإصلاحات جديدة.')),
           actions: [
-            if (!force) TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('لاحقاً')),
+            if (!force) TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('لاحقاً'))),
             FilledButton(
               onPressed: storeUrl.isEmpty
                   ? null
                   : () => launchUrl(Uri.parse(storeUrl), mode: LaunchMode.externalApplication),
-              child: const Text('تحديث الآن'),
+              child: Text(tr('تحديث الآن')),
             ),
           ],
         ),

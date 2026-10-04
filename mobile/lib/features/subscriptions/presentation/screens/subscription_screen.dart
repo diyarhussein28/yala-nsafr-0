@@ -5,6 +5,7 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/kashier_checkout_screen.dart';
+import '../../../../core/i18n/tr.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -54,8 +55,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(paid == true
-            ? 'تم تفعيل اشتراكك ✅'
-            : 'لم يكتمل الدفع. إن تم خصم المبلغ سيُفعَّل الاشتراك تلقائياً خلال دقائق.'),
+            ? tr('تم تفعيل اشتراكك ✅')
+            : tr('لم يكتمل الدفع. إن تم خصم المبلغ سيُفعَّل الاشتراك تلقائياً خلال دقائق.')),
       ));
       setState(() => _loading = true);
       await _loadStatus();
@@ -80,11 +81,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final hasSub = _status?['isActive'] as bool? ?? false;
     final price = (_status?['priceEgp'] as num?)?.toStringAsFixed(0) ?? '200';
     final periodDays = (_status?['periodDays'] as num?)?.toInt() ?? 30;
-    final periodLabel = periodDays == 30 ? 'شهر' : '$periodDays يوم';
+    final periodLabel = periodDays == 30 ? tr('شهر') : tr('{0} يوم', [periodDays]);
     final periodEnd = DateTime.tryParse(_status?['currentPeriodEnd'] as String? ?? '')?.toLocal();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('النسخة المدفوعة')),
+      appBar: AppBar(title: Text(tr('النسخة المدفوعة'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -102,12 +103,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            const Center(
-              child: Text('يلا نسافر Pro', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Center(
+              child: Text(tr('يلا نسافر Pro'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 4),
             Center(
-              child: Text('$price جنيه / $periodLabel', style: const TextStyle(fontSize: 16, color: Colors.grey)),
+              child: Text(tr('{0} جنيه / {1}', [price, periodLabel]), style: const TextStyle(fontSize: 16, color: Colors.grey)),
             ),
             const SizedBox(height: 24),
 
@@ -124,7 +125,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                   Icon(Icons.check_circle_rounded, color: Colors.green.shade600),
                   const SizedBox(width: 10),
                   Expanded(child: Text(
-                    'أنت في الفترة المجانية — متبقي $trialDaysLeft يوم',
+                    tr('أنت في الفترة المجانية — متبقي {0} يوم', [trialDaysLeft]),
                     style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600),
                   )),
                 ]),
@@ -142,8 +143,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                   Expanded(
                     child: Text(
                       periodEnd != null
-                          ? 'اشتراكك نشط ✅ حتى ${periodEnd.day}/${periodEnd.month}/${periodEnd.year}'
-                          : 'اشتراكك نشط ✅',
+                          ? tr('اشتراكك نشط ✅ حتى {0}/{1}/{2}', [periodEnd.day, periodEnd.month, periodEnd.year])
+                          : tr('اشتراكك نشط ✅'),
                       style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary),
                     ),
                   ),
@@ -160,9 +161,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 child: Row(children: [
                   Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
                   const SizedBox(width: 10),
-                  const Expanded(child: Text(
-                    'انتهت فترتك المجانية. اشترك للاستمرار في نشر الرحلات.',
-                    style: TextStyle(color: Colors.orange),
+                  Expanded(child: Text(
+                    tr('انتهت فترتك المجانية. اشترك للاستمرار في نشر الرحلات.'),
+                    style: const TextStyle(color: Colors.orange),
                   )),
                 ]),
               ),
@@ -170,10 +171,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             const SizedBox(height: 24),
 
             // Features list
-            const _Feature(Icons.add_road_rounded, 'نشر رحلات غير محدودة'),
-            const _Feature(Icons.workspace_premium_rounded, 'شارة Pro على ملفك الشخصي'),
-            const _Feature(Icons.priority_high_rounded, 'ظهور متميز في نتائج البحث'),
-            const _Feature(Icons.support_agent_rounded, 'دعم أولوية'),
+            _Feature(Icons.add_road_rounded, tr('نشر رحلات غير محدودة')),
+            _Feature(Icons.workspace_premium_rounded, tr('شارة Pro على ملفك الشخصي')),
+            _Feature(Icons.priority_high_rounded, tr('ظهور متميز في نتائج البحث')),
+            _Feature(Icons.support_agent_rounded, tr('دعم أولوية')),
 
             const SizedBox(height: 32),
 
@@ -184,10 +185,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.payment_rounded),
                 label: Text(_subscribing
-                    ? 'جاري التوجيه...'
+                    ? tr('جاري التوجيه...')
                     : hasSub
-                        ? 'جدّد الاشتراك — $price جنيه'
-                        : 'اشترك الآن — $price جنيه/$periodLabel'),
+                        ? tr('جدّد الاشتراك — {0} جنيه', [price])
+                        : tr('اشترك الآن — {0} جنيه/{1}', [price, periodLabel])),
                 onPressed: _subscribing ? null : _subscribe,
                 style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
               ),

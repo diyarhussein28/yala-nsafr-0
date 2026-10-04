@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../providers/disputes_provider.dart';
+import '../../../../core/i18n/tr.dart';
 
 class DisputeDetailScreen extends ConsumerStatefulWidget {
   final String disputeId;
@@ -42,7 +43,7 @@ class _DisputeDetailScreenState extends ConsumerState<DisputeDetailScreen> {
     final myId = ref.watch(authProvider).user?.id;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('تفاصيل النزاع')),
+      appBar: AppBar(title: Text(tr('تفاصيل النزاع'))),
       body: disputeAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
@@ -114,14 +115,14 @@ class _Body extends StatelessWidget {
           const SizedBox(height: 20),
 
           _Card(
-            title: 'تفاصيل الشكوى',
+            title: tr('تفاصيل الشكوى'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(dispute.description),
                 if (dispute.evidenceUrls.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  Text('الأدلة المقدمة: ${dispute.evidenceUrls.length} ملف',
+                  Text(tr('الأدلة المقدمة: {0} ملف', [dispute.evidenceUrls.length]),
                       style: const TextStyle(color: Colors.grey, fontSize: 13)),
                 ],
               ],
@@ -131,14 +132,14 @@ class _Body extends StatelessWidget {
 
           if (dispute.otherPartyResponse != null)
             _Card(
-              title: isOpener ? 'رد الطرف الآخر' : 'ردك',
+              title: isOpener ? tr('رد الطرف الآخر') : tr('ردك'),
               child: Text(dispute.otherPartyResponse!),
             ),
 
           if (dispute.isResolved && dispute.resolutionNotes != null) ...[
             const SizedBox(height: 12),
             _Card(
-              title: 'قرار الإدارة',
+              title: tr('قرار الإدارة'),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -146,7 +147,7 @@ class _Body extends StatelessWidget {
                   if (dispute.refundAmount != null) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'المبلغ المسترد: ${dispute.refundAmount!.toStringAsFixed(0)} جنيه',
+                      tr('المبلغ المسترد: {0} جنيه', [dispute.refundAmount!.toStringAsFixed(0)]),
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary),
@@ -161,29 +162,29 @@ class _Body extends StatelessWidget {
             const SizedBox(height: 20),
             if (!showReply)
               AppButton(
-                label: 'الرد على النزاع',
+                label: tr('الرد على النزاع'),
                 outlined: true,
                 onPressed: onToggleReply,
               )
             else ...[
               TextFormField(
                 controller: responseCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'ردك على الشكوى',
-                  hintText: 'اشرح وجهة نظرك...',
+                decoration: InputDecoration(
+                  labelText: tr('ردك على الشكوى'),
+                  hintText: tr('اشرح وجهة نظرك...'),
                 ),
                 maxLines: 4,
                 maxLength: 1000,
               ),
               const SizedBox(height: 12),
               AppButton(
-                label: 'إرسال الرد',
+                label: tr('إرسال الرد'),
                 loading: respondState is AsyncLoading,
                 onPressed: onSendResponse,
               ),
               const SizedBox(height: 8),
               AppButton(
-                label: 'إلغاء',
+                label: tr('إلغاء'),
                 outlined: true,
                 onPressed: onToggleReply,
               ),

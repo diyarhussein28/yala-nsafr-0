@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/api/api_client.dart';
 import '../widgets/admin_scaffold.dart';
+import '../../../../core/i18n/tr.dart';
 
 class AdminUsersScreen extends ConsumerStatefulWidget {
   const AdminUsersScreen({super.key});
@@ -104,7 +105,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     final hasMore = _page * _limit < _total;
 
     return AdminScaffold(
-      title: 'المستخدمون${_total > 0 ? ' ($_total)' : ''}',
+      title: tr('المستخدمون{0}', [_total > 0 ? ' ($_total)' : '']),
       body: Column(
         children: [
           // ── Filters ───────────────────────────────────────────────────────
@@ -113,7 +114,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
             child: TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
-                hintText: 'بحث بالاسم أو الهاتف...',
+                hintText: tr('بحث بالاسم أو الهاتف...'),
                 prefixIcon: const Icon(Icons.search_rounded),
                 suffixIcon: _searchCtrl.text.isNotEmpty
                     ? IconButton(
@@ -139,27 +140,27 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
-                _chip('الكل', _status == null && _pendingId != true && _pendingDriver != true, () {
+                _chip(tr('الكل'), _status == null && _pendingId != true && _pendingDriver != true, () {
                   setState(() { _status = null; _pendingId = null; _pendingDriver = null; });
                   _load(reset: true);
                 }),
-                _chip('نشط', _status == 'active', () {
+                _chip(tr('نشط'), _status == 'active', () {
                   setState(() => _status = _status == 'active' ? null : 'active');
                   _load(reset: true);
                 }),
-                _chip('موقوف', _status == 'suspended', () {
+                _chip(tr('موقوف'), _status == 'suspended', () {
                   setState(() => _status = _status == 'suspended' ? null : 'suspended');
                   _load(reset: true);
                 }),
-                _chip('محظور', _status == 'banned', () {
+                _chip(tr('محظور'), _status == 'banned', () {
                   setState(() => _status = _status == 'banned' ? null : 'banned');
                   _load(reset: true);
                 }),
-                _chip('هوية معلقة', _pendingId == true, () {
+                _chip(tr('هوية معلقة'), _pendingId == true, () {
                   setState(() => _pendingId = _pendingId == true ? null : true);
                   _load(reset: true);
                 }),
-                _chip('سائق معلق', _pendingDriver == true, () {
+                _chip(tr('سائق معلق'), _pendingDriver == true, () {
                   setState(() => _pendingDriver = _pendingDriver == true ? null : true);
                   _load(reset: true);
                 }),
@@ -197,7 +198,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                       setState(() => _page++);
                                       _load();
                                     },
-                                    child: const Text('تحميل المزيد'),
+                                    child: Text(tr('تحميل المزيد')),
                                   ),
                                 );
                         }
@@ -256,9 +257,9 @@ class _UserCard extends StatelessWidget {
 
   String get _statusLabel {
     return switch (user['status'] as String? ?? '') {
-      'active' => 'نشط',
-      'suspended' => 'موقوف',
-      'banned' => 'محظور',
+      'active' => tr('نشط'),
+      'suspended' => tr('موقوف'),
+      'banned' => tr('محظور'),
       _ => user['status'] as String? ?? '',
     };
   }
@@ -301,17 +302,17 @@ class _UserCard extends StatelessWidget {
                 ),
                 PopupMenuButton<String>(
                   itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'view', child: Text('عرض الملف')),
+                    PopupMenuItem(value: 'view', child: Text(tr('عرض الملف'))),
                     if (onApproveId != null)
-                      const PopupMenuItem(value: 'id', child: Text('✅ تأكيد الهوية')),
+                      PopupMenuItem(value: 'id', child: Text(tr('✅ تأكيد الهوية'))),
                     if (onApproveDriver != null)
-                      const PopupMenuItem(value: 'driver', child: Text('✅ تأكيد السائق')),
+                      PopupMenuItem(value: 'driver', child: Text(tr('✅ تأكيد السائق'))),
                     if (status != 'active')
-                      const PopupMenuItem(value: 'activate', child: Text('تنشيط')),
+                      PopupMenuItem(value: 'activate', child: Text(tr('تنشيط'))),
                     if (status != 'suspended')
-                      const PopupMenuItem(value: 'suspend', child: Text('إيقاف مؤقت')),
+                      PopupMenuItem(value: 'suspend', child: Text(tr('إيقاف مؤقت'))),
                     if (status != 'banned')
-                      const PopupMenuItem(value: 'ban', child: Text('حظر')),
+                      PopupMenuItem(value: 'ban', child: Text(tr('حظر'))),
                   ],
                   onSelected: (v) {
                     switch (v) {
@@ -339,9 +340,9 @@ class _UserCard extends StatelessWidget {
                 spacing: 6,
                 children: [
                   if (user['idVerificationPending'] == true)
-                    const _Pill(label: 'هوية معلقة', color: Colors.purple),
+                    _Pill(label: tr('هوية معلقة'), color: Colors.purple),
                   if (user['driverVerificationPending'] == true)
-                    const _Pill(label: 'سائق معلق', color: Colors.teal),
+                    _Pill(label: tr('سائق معلق'), color: Colors.teal),
                 ],
               ),
             ],

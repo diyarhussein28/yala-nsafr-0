@@ -9,6 +9,8 @@ import '../../providers/trips_provider.dart';
 import '../../../../shared/widgets/skeletons.dart';
 import '../../../../shared/widgets/trip_badge_row.dart';
 import '../widgets/post_trip_guard.dart';
+import '../../../../core/i18n/tr.dart';
+import '../../../../core/constants/egypt_cities.dart';
 
 class MyTripsScreen extends ConsumerStatefulWidget {
   const MyTripsScreen({super.key});
@@ -91,7 +93,7 @@ class _MyTripsScreenState extends ConsumerState<MyTripsScreen>
     final confirmed = await showDialog<Object>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('إلغاء الرحلة'),
+        title: Text(tr('إلغاء الرحلة')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,37 +106,37 @@ class _MyTripsScreenState extends ConsumerState<MyTripsScreen>
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.red),
-                  SizedBox(width: 10),
+                  const Icon(Icons.warning_amber_rounded, color: Colors.red),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'سيتم استرداد المبلغ كاملاً لجميع الركاب المحجوزين فوراً.',
-                      style: TextStyle(fontSize: 13),
+                      tr('سيتم استرداد المبلغ كاملاً لجميع الركاب المحجوزين فوراً.'),
+                      style: const TextStyle(fontSize: 13),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
-            const Text('هل أنت متأكد أنك تريد إلغاء هذه الرحلة؟'),
+            Text(tr('هل أنت متأكد أنك تريد إلغاء هذه الرحلة؟')),
           ],
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('تراجع')),
+              child: Text(tr('تراجع'))),
           if (trip.seriesId != null)
             TextButton(
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               onPressed: () => Navigator.pop(ctx, 'series'),
-              child: const Text('إلغاء كل رحلات السلسلة القادمة'),
+              child: Text(tr('إلغاء كل رحلات السلسلة القادمة')),
             ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('إلغاء هذه الرحلة'),
+            child: Text(tr('إلغاء هذه الرحلة')),
           ),
         ],
       ),
@@ -146,15 +148,15 @@ class _MyTripsScreenState extends ConsumerState<MyTripsScreen>
       if (confirmed == 'series') {
         await ref.read(dioProvider).patch(
           '/trips/series/${trip.seriesId}/cancel',
-          data: {'reason': 'إلغاء من قِبل السائق'},
+          data: {'reason': tr('إلغاء من قِبل السائق')},
         );
       } else {
-        await cancelTrip(ref, trip.id, reason: 'إلغاء من قِبل السائق');
+        await cancelTrip(ref, trip.id, reason: tr('إلغاء من قِبل السائق'));
       }
       if (mounted) {
         _load(reset: true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إلغاء الرحلة وإخطار الركاب')),
+          SnackBar(content: Text(tr('تم إلغاء الرحلة وإخطار الركاب'))),
         );
       }
     } catch (e) {
@@ -173,7 +175,7 @@ class _MyTripsScreenState extends ConsumerState<MyTripsScreen>
     });
     return Scaffold(
       appBar: AppBar(
-        title: const Text('رحلاتي'),
+        title: Text(tr('رحلاتي')),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
@@ -182,9 +184,9 @@ class _MyTripsScreenState extends ConsumerState<MyTripsScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'القادمة'),
-            Tab(text: 'السابقة'),
+          tabs: [
+            Tab(text: tr('القادمة')),
+            Tab(text: tr('السابقة')),
           ],
         ),
       ),
@@ -202,7 +204,7 @@ class _MyTripsScreenState extends ConsumerState<MyTripsScreen>
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: () => _load(reset: true),
-                        child: const Text('إعادة المحاولة'),
+                        child: Text(tr('إعادة المحاولة')),
                       ),
                     ],
                   ),
@@ -221,11 +223,11 @@ class _MyTripsScreenState extends ConsumerState<MyTripsScreen>
                       onRefresh: () => _load(reset: true),
                       onCancel: _cancelTrip,
                       emptyIcon: Icons.directions_car_outlined,
-                      emptyMessage: 'لا توجد رحلات قادمة',
-                      emptySubMessage: 'انشر رحلتك وشارك التكلفة مع مسافرين على طريقك',
+                      emptyMessage: tr('لا توجد رحلات قادمة'),
+                      emptySubMessage: tr('انشر رحلتك وشارك التكلفة مع مسافرين على طريقك'),
                       emptyAction: FilledButton.icon(
                         icon: const Icon(Icons.add_rounded),
-                        label: const Text('انشر رحلتك الأولى'),
+                        label: Text(tr('انشر رحلتك الأولى')),
                         onPressed: () => guardedPostTrip(context, ref),
                       ),
                     ),
@@ -240,8 +242,8 @@ class _MyTripsScreenState extends ConsumerState<MyTripsScreen>
                       onRefresh: () => _load(reset: true),
                       onCancel: _cancelTrip,
                       emptyIcon: Icons.history_rounded,
-                      emptyMessage: 'لا توجد رحلات سابقة',
-                      emptySubMessage: 'ستظهر هنا رحلاتك المكتملة والملغاة',
+                      emptyMessage: tr('لا توجد رحلات سابقة'),
+                      emptySubMessage: tr('ستظهر هنا رحلاتك المكتملة والملغاة'),
                     ),
                   ],
                 ),
@@ -321,7 +323,7 @@ class _TripList extends StatelessWidget {
                 : Center(
                     child: TextButton(
                       onPressed: onLoadMore,
-                      child: const Text('تحميل المزيد'),
+                      child: Text(tr('تحميل المزيد')),
                     ),
                   );
           }
@@ -350,10 +352,10 @@ class _MyTripCard extends ConsumerWidget {
       _ => Colors.grey,
     };
     final statusLabel = switch (trip.status) {
-      'scheduled' => 'مجدولة',
-      'active' || 'ongoing' => 'جارية',
-      'completed' => 'مكتملة',
-      'cancelled' => 'ملغاة',
+      'scheduled' => tr('مجدولة'),
+      'active' || 'ongoing' => tr('جارية'),
+      'completed' => tr('مكتملة'),
+      'cancelled' => tr('ملغاة'),
       _ => trip.status,
     };
 
@@ -373,7 +375,7 @@ class _MyTripCard extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${trip.originCity} ← ${trip.destinationCity}',
+                          routeLabel(trip.originCity, trip.destinationCity),
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16),
                         ),
@@ -420,12 +422,12 @@ class _MyTripCard extends ConsumerWidget {
                   const Icon(Icons.event_seat_rounded,
                       size: 14, color: Colors.grey),
                   const SizedBox(width: 4),
-                  Text('${trip.availableSeats}/${trip.totalSeats} متاح',
+                  Text(tr('{0}/{1} متاح', [trip.availableSeats, trip.totalSeats]),
                       style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(width: 12),
                   const Icon(Icons.attach_money_rounded,
                       size: 14, color: Colors.grey),
-                  Text('${trip.pricePerSeat} جنيه',
+                  Text(tr('{0} جنيه', [trip.pricePerSeat]),
                       style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
@@ -455,7 +457,7 @@ class _MyTripCard extends ConsumerWidget {
                     if (trip.status == 'scheduled') ...[
                       TextButton.icon(
                         icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: const Text('تعديل'),
+                        label: Text(tr('تعديل')),
                         style: TextButton.styleFrom(
                             foregroundColor: AppColors.primary),
                         onPressed: () =>
@@ -463,7 +465,7 @@ class _MyTripCard extends ConsumerWidget {
                       ),
                       TextButton.icon(
                         icon: const Icon(Icons.cancel_outlined, size: 16),
-                        label: const Text('إلغاء'),
+                        label: Text(tr('إلغاء')),
                         style:
                             TextButton.styleFrom(foregroundColor: Colors.red),
                         onPressed: onCancel,
@@ -473,7 +475,7 @@ class _MyTripCard extends ConsumerWidget {
                       TextButton.icon(
                         icon:
                             const Icon(Icons.location_on_rounded, size: 16),
-                        label: const Text('مشاركة الموقع'),
+                        label: Text(tr('مشاركة الموقع')),
                         style: TextButton.styleFrom(
                             foregroundColor: AppColors.primary),
                         onPressed: () => context.push(
@@ -485,7 +487,7 @@ class _MyTripCard extends ConsumerWidget {
                       TextButton.icon(
                         icon:
                             const Icon(Icons.star_outline_rounded, size: 16),
-                        label: const Text('قيّم الركاب'),
+                        label: Text(tr('قيّم الركاب')),
                         style: TextButton.styleFrom(
                             foregroundColor: AppColors.secondary),
                         onPressed: () =>

@@ -10,6 +10,7 @@ import '../../../../features/auth/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/document_upload_tile.dart';
 import '../../../../shared/widgets/ui.dart';
+import '../../../../core/i18n/tr.dart';
 
 /// National ID verification: the 14-digit number plus photos of both sides of the card.
 /// Photos are uploaded privately — only the admin reviewing them can open them.
@@ -65,20 +66,20 @@ class _IdVerificationScreenState extends ConsumerState<IdVerificationScreen> {
 
     if (_submitted) {
       return Scaffold(
-        appBar: AppBar(title: const Text('توثيق الهوية')),
+        appBar: AppBar(title: Text(tr('توثيق الهوية'))),
         body: EmptyState(
           icon: Icons.hourglass_top_rounded,
           color: AppColors.warning,
-          title: 'تم إرسال طلب التوثيق',
-          message: 'سيراجع فريقنا بياناتك خلال 24 ساعة، وسيصلك إشعار بالنتيجة.',
-          actionLabel: 'العودة للحساب',
+          title: tr('تم إرسال طلب التوثيق'),
+          message: tr('سيراجع فريقنا بياناتك خلال 24 ساعة، وسيصلك إشعار بالنتيجة.'),
+          actionLabel: tr('العودة للحساب'),
           onAction: () => context.go('/profile'),
         ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('توثيق الهوية')),
+      appBar: AppBar(title: Text(tr('توثيق الهوية'))),
       body: ListView(
         padding: EdgeInsets.fromLTRB(20, 8, 20, 24 + MediaQuery.of(context).padding.bottom),
         children: [
@@ -90,7 +91,7 @@ class _IdVerificationScreenState extends ConsumerState<IdVerificationScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'التوثيق يبني الثقة بين الركاب والسائقين، ويفتح لك الرحلات النسائية إن كانت البطاقة لسيدة.',
+                    tr('التوثيق يبني الثقة بين الركاب والسائقين، ويفتح لك الرحلات النسائية إن كانت البطاقة لسيدة.'),
                     style: t.bodyMedium,
                   ),
                 ),
@@ -98,7 +99,7 @@ class _IdVerificationScreenState extends ConsumerState<IdVerificationScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          Text('الرقم القومي', style: t.titleSmall),
+          Text(tr('الرقم القومي'), style: t.titleSmall),
           const SizedBox(height: 8),
           TextField(
             controller: _nationalIdCtrl,
@@ -106,28 +107,28 @@ class _IdVerificationScreenState extends ConsumerState<IdVerificationScreen> {
             textDirection: TextDirection.ltr,
             maxLength: 14,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(
-              hintText: '14 رقماً كما في البطاقة',
-              prefixIcon: Icon(Icons.badge_rounded),
+            decoration: InputDecoration(
+              hintText: tr('14 رقماً كما في البطاقة'),
+              prefixIcon: const Icon(Icons.badge_rounded),
               counterText: '',
             ),
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 20),
-          Text('صورة البطاقة', style: t.titleSmall),
+          Text(tr('صورة البطاقة'), style: t.titleSmall),
           const SizedBox(height: 4),
-          Text('صورة واضحة بالكامل، بدون انعكاس ضوء', style: t.bodySmall),
+          Text(tr('صورة واضحة بالكامل، بدون انعكاس ضوء'), style: t.bodySmall),
           const SizedBox(height: 10),
           DocumentUploadTile(
-            label: 'الوجه الأمامي',
-            hint: 'الجهة التي بها الصورة والاسم',
+            label: tr('الوجه الأمامي'),
+            hint: tr('الجهة التي بها الصورة والاسم'),
             icon: Icons.credit_card_rounded,
             onUploaded: (r) => setState(() => _frontRef = r),
           ),
           const SizedBox(height: 12),
           DocumentUploadTile(
-            label: 'الوجه الخلفي',
-            hint: 'الجهة التي بها العنوان',
+            label: tr('الوجه الخلفي'),
+            hint: tr('الجهة التي بها العنوان'),
             icon: Icons.flip_rounded,
             onUploaded: (r) => setState(() => _backRef = r),
           ),
@@ -138,7 +139,7 @@ class _IdVerificationScreenState extends ConsumerState<IdVerificationScreen> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'صورك محفوظة بشكل خاص ولا يراها إلا فريق المراجعة.',
+                  tr('صورك محفوظة بشكل خاص ولا يراها إلا فريق المراجعة.'),
                   style: t.bodySmall,
                 ),
               ),
@@ -150,7 +151,7 @@ class _IdVerificationScreenState extends ConsumerState<IdVerificationScreen> {
           ],
           const SizedBox(height: 24),
           AppButton(
-            label: 'إرسال للمراجعة',
+            label: tr('إرسال للمراجعة'),
             loading: _loading,
             onPressed: _canSubmit ? _submit : null,
           ),

@@ -8,21 +8,22 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/upload_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/i18n/tr.dart';
 
-const _passengerReasons = [
-  ('no_show_driver', 'السائق لم يحضر'),
-  ('unsafe_driving', 'قيادة غير آمنة'),
-  ('wrong_route', 'مسار خاطئ'),
-  ('payment_mismatch', 'خلاف في المبلغ'),
-  ('harassment', 'تحرش أو إزعاج'),
-  ('other', 'أخرى'),
+List<(String, String)> get _passengerReasons => [
+  ('no_show_driver', tr('السائق لم يحضر')),
+  ('unsafe_driving', tr('قيادة غير آمنة')),
+  ('wrong_route', tr('مسار خاطئ')),
+  ('payment_mismatch', tr('خلاف في المبلغ')),
+  ('harassment', tr('تحرش أو إزعاج')),
+  ('other', tr('أخرى')),
 ];
 
-const _driverReasons = [
-  ('no_show_passenger', 'الراكب لم يحضر'),
-  ('payment_mismatch', 'خلاف في المبلغ'),
-  ('harassment', 'تحرش أو إزعاج'),
-  ('other', 'أخرى'),
+List<(String, String)> get _driverReasons => [
+  ('no_show_passenger', tr('الراكب لم يحضر')),
+  ('payment_mismatch', tr('خلاف في المبلغ')),
+  ('harassment', tr('تحرش أو إزعاج')),
+  ('other', tr('أخرى')),
 ];
 
 class OpenDisputeScreen extends ConsumerStatefulWidget {
@@ -56,7 +57,7 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذّر رفع الصورة، حاول مرة أخرى')),
+          SnackBar(content: Text(tr('تعذّر رفع الصورة، حاول مرة أخرى'))),
         );
       }
     } finally {
@@ -103,7 +104,7 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isDriver ? 'فتح نزاع على راكب' : 'فتح نزاع'),
+        title: Text(isDriver ? tr('فتح نزاع على راكب') : tr('فتح نزاع')),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -124,8 +125,8 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
                       Expanded(
                         child: Text(
                           isDriver
-                              ? 'سيتم إخطار الراكب وأمامه $slaHours ساعة للرد، ثم يُراجع فريق يلا نسافر طلبك.'
-                              : 'يمكن فتح النزاع خلال $windowHours ساعة من انتهاء الرحلة، وأمام السائق $slaHours ساعة للرد. سيُراجع فريق يلا نسافر طلبك.',
+                              ? tr('سيتم إخطار الراكب وأمامه {0} ساعة للرد، ثم يُراجع فريق يلا نسافر طلبك.', [slaHours])
+                              : tr('يمكن فتح النزاع خلال {0} ساعة من انتهاء الرحلة، وأمام السائق {1} ساعة للرد. سيُراجع فريق يلا نسافر طلبك.', [windowHours, slaHours]),
                           style: const TextStyle(fontSize: 13),
                         ),
                       ),
@@ -136,37 +137,37 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
                 initialValue: _reason,
-                decoration: const InputDecoration(
-                  labelText: 'سبب النزاع',
-                  prefixIcon: Icon(Icons.flag_outlined),
+                decoration: InputDecoration(
+                  labelText: tr('سبب النزاع'),
+                  prefixIcon: const Icon(Icons.flag_outlined),
                 ),
                 items: _reasons
                     .map((r) => DropdownMenuItem(value: r.$1, child: Text(r.$2)))
                     .toList(),
                 onChanged: (v) => setState(() => _reason = v),
-                validator: (v) => v == null ? 'اختر السبب' : null,
+                validator: (v) => v == null ? tr('اختر السبب') : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _descCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'وصف المشكلة',
-                  hintText: 'اشرح ما حدث بالتفصيل...',
+                decoration: InputDecoration(
+                  labelText: tr('وصف المشكلة'),
+                  hintText: tr('اشرح ما حدث بالتفصيل...'),
                   alignLabelWithHint: true,
                 ),
                 maxLines: 5,
                 maxLength: 1000,
                 validator: (v) {
                   if (v == null || v.trim().length < 20) {
-                    return 'اكتب وصفاً لا يقل عن 20 حرفاً';
+                    return tr('اكتب وصفاً لا يقل عن 20 حرفاً');
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 8),
-              Text('صور داعمة (اختياري)', style: Theme.of(context).textTheme.titleSmall),
+              Text(tr('صور داعمة (اختياري)'), style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 4),
-              Text('لقطات شاشة أو صور تساعد فريقنا على فهم ما حدث — حتى 5 صور.',
+              Text(tr('لقطات شاشة أو صور تساعد فريقنا على فهم ما حدث — حتى 5 صور.'),
                   style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(height: 10),
               Wrap(
@@ -220,7 +221,7 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
               ],
               const SizedBox(height: 24),
               AppButton(
-                label: 'إرسال النزاع',
+                label: tr('إرسال النزاع'),
                 loading: loading,
                 onPressed: _submit,
               ),

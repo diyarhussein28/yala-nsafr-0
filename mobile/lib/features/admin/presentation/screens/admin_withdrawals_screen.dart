@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../widgets/admin_scaffold.dart';
+import '../../../../core/i18n/tr.dart';
 
 final _withdrawalsProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
@@ -18,21 +19,21 @@ class AdminWithdrawalsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(_withdrawalsProvider);
     return AdminScaffold(
-      title: 'طلبات السحب',
+      title: tr('طلبات السحب'),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
         data: (items) {
           if (items.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check_circle_rounded,
+                  const Icon(Icons.check_circle_rounded,
                       size: 64, color: Colors.green),
-                  SizedBox(height: 12),
-                  Text('لا توجد طلبات معلقة',
-                      style: TextStyle(color: Colors.grey, fontSize: 15)),
+                  const SizedBox(height: 12),
+                  Text(tr('لا توجد طلبات معلقة'),
+                      style: const TextStyle(color: Colors.grey, fontSize: 15)),
                 ],
               ),
             );
@@ -85,7 +86,7 @@ class _WithdrawalCard extends StatelessWidget {
 
   String _payoutLabel(String? method) => switch (method) {
         'instapay' => 'InstaPay',
-        'bank_transfer' => 'تحويل بنكي',
+        'bank_transfer' => tr('تحويل بنكي'),
         'vodafone_cash' => 'Vodafone Cash',
         _ => method ?? '-',
       };
@@ -96,18 +97,18 @@ class _WithdrawalCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('$actionLabel الطلب'),
+        title: Text(tr('{0} الطلب', [actionLabel])),
         content: TextField(
           controller: noteCtrl,
-          decoration: const InputDecoration(
-            labelText: 'ملاحظة (اختياري)',
+          decoration: InputDecoration(
+            labelText: tr('ملاحظة (اختياري)'),
           ),
           maxLines: 2,
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
+              child: Text(tr('إلغاء'))),
           FilledButton(
             style: action == 'reject'
                 ? FilledButton.styleFrom(backgroundColor: Colors.red)
@@ -161,7 +162,7 @@ class _WithdrawalCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${item['amount'] ?? '-'} جنيه',
+                      tr('{0} جنيه', [item['amount'] ?? '-']),
                       style: const TextStyle(
                           fontSize: 20, fontWeight: FontWeight.bold),
                     ),
@@ -181,19 +182,19 @@ class _WithdrawalCard extends StatelessWidget {
                   children: [
                     FilledButton.icon(
                       icon: const Icon(Icons.check_rounded, size: 16),
-                      label: const Text('صرف'),
+                      label: Text(tr('صرف')),
                       onPressed: () =>
-                          _showNoteDialog(context, 'pay', 'صرف'),
+                          _showNoteDialog(context, 'pay', tr('صرف')),
                     ),
                     const SizedBox(height: 6),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.close_rounded, size: 16),
-                      label: const Text('رفض'),
+                      label: Text(tr('رفض')),
                       style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
                           side: const BorderSide(color: Colors.red)),
                       onPressed: () =>
-                          _showNoteDialog(context, 'reject', 'رفض'),
+                          _showNoteDialog(context, 'reject', tr('رفض')),
                     ),
                   ],
                 ),

@@ -11,6 +11,8 @@ import '../../../../core/utils/format.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../notifications/providers/notifications_provider.dart';
 import '../widgets/post_trip_guard.dart';
+import '../../../../core/i18n/tr.dart';
+import '../../../../core/constants/egypt_cities.dart';
 
 // Egyptian cities list
 const _cities = [
@@ -63,7 +65,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void _search() {
     if (_from == null || _to == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اختر نقطة الانطلاق والوجهة')),
+        SnackBar(content: Text(tr('اختر نقطة الانطلاق والوجهة'))),
       );
       return;
     }
@@ -81,10 +83,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   Future<void> _pickCity({required bool origin}) async {
     final picked = await showModalBottomSheet<String>(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       builder: (_) => _CityPicker(
-        title: origin ? 'من أين تنطلق؟' : 'إلى أين تذهب؟',
+        title: origin ? tr('من أين تنطلق؟') : tr('إلى أين تذهب؟'),
         exclude: origin ? _to : _from,
       ),
     );
@@ -101,9 +104,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   String get _greeting {
     final h = DateTime.now().hour;
-    if (h < 12) return 'صباح الخير';
-    if (h < 18) return 'نهارك سعيد';
-    return 'مساء الخير';
+    if (h < 12) return tr('صباح الخير');
+    if (h < 18) return tr('نهارك سعيد');
+    return tr('مساء الخير');
   }
 
   @override
@@ -146,17 +149,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    firstName.isEmpty ? _greeting : '$_greeting، $firstName',
+                                    firstName.isEmpty ? _greeting : tr('{0}، {1}', [_greeting, firstName]),
                                     style: t.titleMedium?.copyWith(color: Colors.white.withValues(alpha: 0.85)),
                                   ),
-                                  Text('على فين النهارده؟', style: t.headlineMedium?.copyWith(color: Colors.white)),
+                                  Text(tr('على فين النهارده؟'), style: t.headlineMedium?.copyWith(color: Colors.white)),
                                 ],
                               ),
                             ),
                             const _BellButton(),
                             IconButton(
                               icon: const Icon(Icons.add_road_rounded, color: Colors.white),
-                              tooltip: 'انشر رحلة',
+                              tooltip: tr('انشر رحلة'),
                               onPressed: () => guardedPostTrip(context, ref),
                             ),
                           ],
@@ -172,9 +175,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                   Column(
                                     children: [
                                       _RouteField(
-                                        label: 'من',
+                                        label: tr('من'),
                                         value: _from,
-                                        hint: 'مدينة الانطلاق',
+                                        hint: tr('مدينة الانطلاق'),
                                         icon: Icons.trip_origin_rounded,
                                         onTap: () => _pickCity(origin: true),
                                       ),
@@ -183,9 +186,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                         child: Divider(color: context.dividerColor),
                                       ),
                                       _RouteField(
-                                        label: 'إلى',
+                                        label: tr('إلى'),
                                         value: _to,
-                                        hint: 'مدينة الوصول',
+                                        hint: tr('مدينة الوصول'),
                                         icon: Icons.location_on_rounded,
                                         onTap: () => _pickCity(origin: false),
                                       ),
@@ -202,7 +205,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                         child: IconButton(
                                           icon: Icon(Icons.swap_vert_rounded,
                                               color: Theme.of(context).colorScheme.primary),
-                                          tooltip: 'عكس الاتجاه',
+                                          tooltip: tr('عكس الاتجاه'),
                                           onPressed: (_from != null || _to != null)
                                               ? () => setState(() {
                                                     final tmp = _from;
@@ -222,19 +225,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 child: Row(
                                   children: [
                                     _DateChip(
-                                      label: 'اليوم',
+                                      label: tr('اليوم'),
                                       selected: selected == today,
                                       onTap: () => setState(() => _date = today),
                                     ),
                                     const SizedBox(width: 8),
                                     _DateChip(
-                                      label: 'غداً',
+                                      label: tr('غداً'),
                                       selected: selected == tomorrow,
                                       onTap: () => setState(() => _date = tomorrow),
                                     ),
                                     const SizedBox(width: 8),
                                     _DateChip(
-                                      label: isCustomDate ? Fmt.dayLong(_date) : 'تاريخ آخر',
+                                      label: isCustomDate ? Fmt.dayLong(_date) : tr('تاريخ آخر'),
                                       icon: Icons.calendar_month_rounded,
                                       selected: isCustomDate,
                                       onTap: _pickDate,
@@ -262,7 +265,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               ),
                               const SizedBox(height: 16),
                               AppButton(
-                                label: 'ابحث عن رحلة',
+                                label: tr('ابحث عن رحلة'),
                                 icon: const Icon(Icons.search_rounded, color: Colors.white),
                                 onPressed: _search,
                               ),
@@ -276,9 +279,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ],
             ),
           ),
-          const SliverPadding(
-            padding: EdgeInsets.fromLTRB(20, 24, 20, 8),
-            sliver: SliverToBoxAdapter(child: SectionHeader(title: 'وجهات شائعة')),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+            sliver: SliverToBoxAdapter(child: SectionHeader(title: tr('وجهات شائعة'))),
           ),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -298,7 +301,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('${r.$1} ← ${r.$2}', style: t.titleSmall),
+                            Text(routeLabel(r.$1, r.$2), style: t.titleSmall),
                             Text(r.$4, style: t.bodySmall),
                           ],
                         ),
@@ -318,12 +321,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 }
 
 // (from, to, icon, hint)
-const _popularRoutes = [
-  ('القاهرة', 'الإسكندرية', Icons.waves_rounded, 'حوالي 3 ساعات على الطريق الصحراوي'),
-  ('الإسكندرية', 'القاهرة', Icons.location_city_rounded, 'رحلات يومية من الصبح بدري'),
-  ('القاهرة', 'المنصورة', Icons.park_rounded, 'حوالي ساعتين'),
-  ('القاهرة', 'الغردقة', Icons.beach_access_rounded, 'رحلات المصيف والإجازات'),
-  ('القاهرة', 'أسيوط', Icons.train_rounded, 'بديل مريح للقطار'),
+List<(String, String, IconData, String)> get _popularRoutes => [
+  ('القاهرة', 'الإسكندرية', Icons.waves_rounded, tr('حوالي 3 ساعات على الطريق الصحراوي')),
+  ('الإسكندرية', 'القاهرة', Icons.location_city_rounded, tr('رحلات يومية من الصبح بدري')),
+  ('القاهرة', 'المنصورة', Icons.park_rounded, tr('حوالي ساعتين')),
+  ('القاهرة', 'الغردقة', Icons.beach_access_rounded, tr('رحلات المصيف والإجازات')),
+  ('القاهرة', 'أسيوط', Icons.train_rounded, tr('بديل مريح للقطار')),
 ];
 
 class _RouteField extends StatelessWidget {
@@ -359,7 +362,7 @@ class _RouteField extends StatelessWidget {
                 children: [
                   Text(label, style: t.labelSmall),
                   Text(
-                    value ?? hint,
+                    value != null ? placeName(value) : hint,
                     style: value == null
                         ? t.titleMedium?.copyWith(color: context.textMuted, fontWeight: FontWeight.w500)
                         : t.titleMedium,
@@ -439,7 +442,7 @@ class _Stepper extends StatelessWidget {
           Icon(Icons.event_seat_rounded, size: 18, color: context.textMuted),
           const SizedBox(width: 6),
           Expanded(
-            child: Text('$value ${value == 1 ? 'مقعد' : 'مقاعد'}',
+            child: Text(Fmt.seats(value),
                 style: Theme.of(context).textTheme.titleSmall),
           ),
           btn(Icons.remove_rounded, value > 1 ? () => onChanged(value - 1) : null),
@@ -471,7 +474,7 @@ class _WomenOnlyToggle extends StatelessWidget {
                   size: 18, color: value ? AppColors.womenOnly : context.textMuted),
               const SizedBox(width: 6),
               Expanded(
-                child: Text('نساء فقط',
+                child: Text(tr('نساء فقط'),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           color: value ? AppColors.womenOnly : null,
                         )),
@@ -500,7 +503,7 @@ class _CityPickerState extends State<_CityPicker> {
   @override
   Widget build(BuildContext context) {
     final cities = _cities
-        .where((c) => c != widget.exclude && (_query.isEmpty || c.contains(_query)))
+        .where((c) => c != widget.exclude && (_query.isEmpty || c.contains(_query) || placeName(c).toLowerCase().contains(_query.toLowerCase())))
         .toList();
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.75,
@@ -513,9 +516,9 @@ class _CityPickerState extends State<_CityPicker> {
             const SizedBox(height: 14),
             TextField(
               autofocus: false,
-              decoration: const InputDecoration(
-                hintText: 'ابحث عن مدينة',
-                prefixIcon: Icon(Icons.search_rounded),
+              decoration: InputDecoration(
+                hintText: tr('ابحث عن مدينة'),
+                prefixIcon: const Icon(Icons.search_rounded),
               ),
               onChanged: (v) => setState(() => _query = v.trim()),
             ),
@@ -525,7 +528,7 @@ class _CityPickerState extends State<_CityPicker> {
                 itemCount: cities.length,
                 itemBuilder: (_, i) => ListTile(
                   leading: const Icon(Icons.location_city_rounded),
-                  title: Text(cities[i], style: Theme.of(context).textTheme.titleSmall),
+                  title: Text(placeName(cities[i]), style: Theme.of(context).textTheme.titleSmall),
                   onTap: () => Navigator.of(context).pop(cities[i]),
                 ),
               ),
@@ -545,7 +548,7 @@ class _BellButton extends ConsumerWidget {
     final count = ref.watch(unreadCountProvider).valueOrNull ?? 0;
 
     return IconButton(
-      tooltip: 'الإشعارات',
+      tooltip: tr('الإشعارات'),
       icon: Badge(
         isLabelVisible: count > 0,
         label: Text(count > 9 ? '9+' : '$count'),
