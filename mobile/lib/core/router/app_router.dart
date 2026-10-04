@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -228,8 +229,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) {
           final extra = state.extra as Map<String, dynamic>;
           final paymentUrl = extra['paymentUrl'] as String;
-          // Mock payments still use the old polling screen; real Kashier uses WebView
-          if (paymentUrl.startsWith('mock://')) {
+          // Real Kashier checkouts run in a WebView on phones. Mock payments, and the web
+          // build (no WebView there), use the polling screen, which opens the checkout in
+          // a browser tab and waits for the server to confirm the booking.
+          if (paymentUrl.startsWith('mock://') || kIsWeb) {
             return PaymentProcessingScreen(
               bookingId: extra['bookingId'] as String,
               paymentUrl: paymentUrl,

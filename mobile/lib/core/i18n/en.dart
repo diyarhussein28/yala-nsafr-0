@@ -700,4 +700,5 @@ const Map<String, String> enStrings = {
   'ستظهر هنا تحديثات حجوزاتك ورحلاتك.': 'Updates about your bookings and trips will appear here.',
   'تعذّر تحميل النزاعات': 'Couldn\'t load disputes',
   'إن واجهتك مشكلة في رحلة، يمكنك فتح نزاع من صفحة الحجز.': 'If something goes wrong on a trip, you can open a dispute from the booking.',
+  'أكمل الدفع في النافذة التي فُتحت، ثم عُد إلى هنا واضغط "تحقق الآن".': 'Complete the payment in the tab that opened, then come back here and tap "Check now".',
 };

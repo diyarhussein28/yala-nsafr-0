@@ -27,7 +27,7 @@ class OnboardingScreen extends ConsumerWidget {
                   width: 88,
                   height: 88,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    gradient: AppColors.heroGradient,
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
@@ -37,11 +37,8 @@ class OnboardingScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.directions_car_rounded,
-                    size: 48,
-                    color: Colors.white,
-                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset('assets/images/app_mark.png'),
                 ),
               ),
               const SizedBox(height: 20),

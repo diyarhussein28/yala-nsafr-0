@@ -100,7 +100,8 @@ class _LogoMark extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
       ),
-      child: const Icon(Icons.directions_car_filled_rounded, color: Colors.white, size: 40),
+      padding: const EdgeInsets.all(10),
+      child: Image.asset('assets/images/app_mark.png'),
     );
   }
 }
