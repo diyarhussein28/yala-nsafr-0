@@ -7,7 +7,22 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Yala Nsafr</string>
+	<string>يلا نسافر</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>نستخدم موقعك لمشاركة مكان السيارة مع الركاب أثناء الرحلة ولإرسال موقعك مع طلب الطوارئ.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>يستمر السائق في مشاركة موقع الرحلة مع الركاب حتى عندما يكون التطبيق في الخلفية.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>لالتقاط صورة البطاقة الشخصية أو رخصة القيادة أو صورة الملف الشخصي.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>لاختيار صورة البطاقة الشخصية أو الرخصة أو صورة الملف الشخصي أو أدلة النزاع.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>remote-notification</string>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
