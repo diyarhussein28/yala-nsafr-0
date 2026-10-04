@@ -5,6 +5,8 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/document_upload_tile.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class DriverVerificationScreen extends ConsumerStatefulWidget {
   const DriverVerificationScreen({super.key});
@@ -25,6 +27,8 @@ class _DriverVerificationScreenState
   bool _loading = false;
   String? _error;
   bool _submitted = false;
+  String? _licenceRef;
+  String? _carPhotoRef;
 
   @override
   void initState() {
@@ -51,6 +55,10 @@ class _DriverVerificationScreenState
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_licenceRef == null) {
+      setState(() => _error = 'ارفع صورة رخصة القيادة');
+      return;
+    }
     setState(() { _loading = true; _error = null; });
     try {
       final dio = ref.read(dioProvider);
@@ -60,6 +68,8 @@ class _DriverVerificationScreenState
         'vehicleYear': int.parse(_yearCtrl.text.trim()),
         'vehicleColor': _colorCtrl.text.trim(),
         'vehiclePlate': _plateCtrl.text.trim().toUpperCase(),
+        'drivingLicencePhotoUrl': _licenceRef,
+        if (_carPhotoRef != null) 'vehiclePhotoUrl': _carPhotoRef,
       });
       await ref.read(authProvider.notifier).refreshUser();
       setState(() => _submitted = true);
@@ -175,12 +185,29 @@ class _DriverVerificationScreenState
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'مطلوب' : null,
               ),
+              const SizedBox(height: 24),
+              Text('المستندات', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 10),
+              DocumentUploadTile(
+                label: 'رخصة القيادة',
+                hint: 'صورة واضحة للرخصة سارية المفعول',
+                icon: Icons.card_membership_rounded,
+                onUploaded: (r) => setState(() => _licenceRef = r),
+              ),
+              const SizedBox(height: 12),
+              DocumentUploadTile(
+                label: 'صورة السيارة (اختياري)',
+                hint: 'تظهر للركاب ليتعرّفوا على السيارة',
+                icon: Icons.directions_car_rounded,
+                private: false,
+                onUploaded: (r) => setState(() => _carPhotoRef = r),
+              ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Text(_error!,
-                    style: const TextStyle(color: Colors.red, fontSize: 13)),
+                    style: const TextStyle(color: AppColors.error, fontSize: 13)),
               ],
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
               AppButton(
                 label: 'إرسال للمراجعة',
                 loading: _loading,

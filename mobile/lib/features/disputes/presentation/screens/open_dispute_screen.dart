@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../bookings/providers/bookings_provider.dart';
 import '../../providers/disputes_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../core/services/upload_service.dart';
+import '../../../../core/theme/app_theme.dart';
 
 const _passengerReasons = [
   ('no_show_driver', 'السائق لم يحضر'),
@@ -38,6 +42,27 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _reason;
   final _descCtrl = TextEditingController();
+  // Evidence photos, uploaded privately as they are picked
+  final List<UploadedImage> _evidence = [];
+  bool _uploadingEvidence = false;
+
+  Future<void> _addEvidence() async {
+    final file = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
+    if (file == null || !mounted) return;
+    setState(() => _uploadingEvidence = true);
+    try {
+      final uploaded = await uploadImage(ref, file, private: true);
+      if (mounted) setState(() => _evidence.add(uploaded));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذّر رفع الصورة، حاول مرة أخرى')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingEvidence = false);
+    }
+  }
 
   List<(String, String)> get _reasons =>
       widget.role == 'driver' ? _driverReasons : _passengerReasons;
@@ -54,6 +79,7 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
       'bookingId': widget.bookingId,
       'reason': _reason,
       'description': _descCtrl.text.trim(),
+      if (_evidence.isNotEmpty) 'evidenceUrls': _evidence.map((e) => e.ref).toList(),
     });
     if (!mounted) return;
     if (dispute != null) {
@@ -137,10 +163,60 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
                   return null;
                 },
               ),
+              const SizedBox(height: 8),
+              Text('صور داعمة (اختياري)', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 4),
+              Text('لقطات شاشة أو صور تساعد فريقنا على فهم ما حدث — حتى 5 صور.',
+                  style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final (i, e) in _evidence.indexed)
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          child: CachedNetworkImage(imageUrl: e.previewUrl, width: 84, height: 84, fit: BoxFit.cover),
+                        ),
+                        PositionedDirectional(
+                          top: 4,
+                          end: 4,
+                          child: InkWell(
+                            onTap: () => setState(() => _evidence.removeAt(i)),
+                            child: const CircleAvatar(
+                              radius: 11,
+                              backgroundColor: Colors.black54,
+                              child: Icon(Icons.close_rounded, size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (_evidence.length < 5)
+                    InkWell(
+                      onTap: _uploadingEvidence ? null : _addEvidence,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      child: Container(
+                        width: 84,
+                        height: 84,
+                        decoration: BoxDecoration(
+                          color: context.surfaceMuted,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: context.dividerColor),
+                        ),
+                        child: _uploadingEvidence
+                            ? const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)))
+                            : Icon(Icons.add_photo_alternate_rounded, color: Theme.of(context).colorScheme.primary),
+                      ),
+                    ),
+                ],
+              ),
               if (apiError != null) ...[
                 const SizedBox(height: 8),
                 Text(apiError,
-                    style: const TextStyle(color: Colors.red, fontSize: 13)),
+                    style: const TextStyle(color: AppColors.error, fontSize: 13)),
               ],
               const SizedBox(height: 24),
               AppButton(

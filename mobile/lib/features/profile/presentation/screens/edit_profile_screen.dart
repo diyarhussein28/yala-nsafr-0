@@ -1,13 +1,11 @@
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../../core/api/api_client.dart';
-import '../../../../core/api/api_endpoints.dart';
+import '../../../../core/services/upload_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
@@ -91,15 +89,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     });
 
     try {
-      final dio = ref.read(dioProvider);
-      final formData = FormData.fromMap({
-        'photo': await MultipartFile.fromFile(file.path, filename: 'photo.jpg'),
-      });
-      final resp = await dio.post<Map<String, dynamic>>(
-        Endpoints.uploadPhoto,
-        data: formData,
-      );
-      if (mounted) setState(() => _photoUrl = resp.data?['url'] as String?);
+      final uploaded = await uploadImage(ref, file);
+      if (mounted) setState(() => _photoUrl = uploaded.ref);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
