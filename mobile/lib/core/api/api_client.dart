@@ -12,6 +12,12 @@ const _baseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:3000/api/v1',
 );
 
+/// Public site origin for shared links (https://<host>/t/<tripId>), derived from the API
+/// address unless SHARE_BASE_URL is given.
+final String shareBaseUrl = const String.fromEnvironment('SHARE_BASE_URL').isNotEmpty
+    ? const String.fromEnvironment('SHARE_BASE_URL')
+    : Uri.parse(_baseUrl).replace(path: '').toString().replaceAll(RegExp(r'/$'), '');
+
 const _tokenKey = 'auth_token';
 const _refreshTokenKey = 'refresh_token';
 const _onboardingKey = 'onboarding_seen';

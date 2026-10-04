@@ -147,7 +147,9 @@ describe('Security & integrity regressions', () => {
       imports: [AppModule],
     }).compile();
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api/v1');
+    app.setGlobalPrefix('api/v1', {
+      exclude: ['t/:id', '.well-known/assetlinks.json', '.well-known/apple-app-site-association'],
+    });
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
     await app.init();
 
@@ -242,6 +244,19 @@ describe('Security & integrity regressions', () => {
     expect(message).toContain('maps.google.com/?q=30.0444,31.2357');
     expect(message).toContain('ق ر ب 123');
     await dataSource.query('DELETE FROM sos_alerts WHERE trip_id = $1', [trip.id]);
+  });
+
+  it('a shared trip link renders a public page with escaped text and no private data', async () => {
+    const trip = await makeTrip({ originAddress: '<script>alert(1)</script>' });
+    const res = await request(app.getHttpServer()).get(`/t/${trip.id}`).expect(200);
+    expect(res.text).toContain('og:title');
+    expect(res.text).toContain('القاهرة ← الإسكندرية');
+    expect(res.text).toContain('yalansafr://app/trips/' + trip.id);
+    expect(res.text).not.toContain('<script>alert(1)</script>');
+    expect(res.text).not.toContain(driver.phoneNumber);
+    await request(app.getHttpServer()).get('/t/00000000-0000-4000-8000-000000000000').expect(404);
+    const links = await request(app.getHttpServer()).get('/.well-known/assetlinks.json').expect(200);
+    expect(Array.isArray(links.body)).toBe(true);
   });
 
   it('a banned user is rejected on every request, not just at login', async () => {

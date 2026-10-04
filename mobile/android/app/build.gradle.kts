@@ -31,6 +31,9 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Host of the API that serves shared trip links: -PappLinkHost=api.example.com
+        manifestPlaceholders["appLinkHost"] =
+            (project.findProperty("appLinkHost") as String?) ?: "api.yalansafr.app"
     }
 
     lint {

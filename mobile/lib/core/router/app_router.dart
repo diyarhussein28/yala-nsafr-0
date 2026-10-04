@@ -47,6 +47,13 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 GoRouter? _routerRef;
 
+String? _pendingDeepLink;
+String? _takePendingDeepLink() {
+  final p = _pendingDeepLink;
+  _pendingDeepLink = null;
+  return p;
+}
+
 /// Navigates using the app router without a BuildContext.
 /// Safe to call any time after the router has been created.
 void navigateFromNotification(String route, {Object? extra}) {
@@ -74,18 +81,26 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (status == AuthStatus.unknown) return null;
 
+      // Shared links: https://<api-host>/t/<id> and yalansafr://app/trips/<id>
+      if (location.startsWith('/t/')) return '/trips/${location.substring(3)}';
+
       final isOnAuth = location.startsWith('/auth');
 
       if (status == AuthStatus.unauthenticated && !isOnAuth) {
+        // Remember where a shared link was taking the user, and go there after sign-in
+        // instead of dropping them on the home screen.
+        if (location.startsWith('/trips/')) _pendingDeepLink = location;
         return '/auth/phone';
       }
 
       if (status == AuthStatus.authenticated) {
         final seen = notifier.auth.onboardingSeen;
         // Leaving auth flow — go to onboarding if not yet seen, else search
-        if (isOnAuth) return seen ? '/search' : '/onboarding';
+        if (isOnAuth) return seen ? (_takePendingDeepLink() ?? '/search') : '/onboarding';
         // Already in app — ensure onboarding is seen before any other screen
         if (!seen && location != '/onboarding') return '/onboarding';
+        final pending = _takePendingDeepLink();
+        if (pending != null && pending != location) return pending;
         // Admin guard — non-admins cannot access /admin routes
         if (location.startsWith('/admin') &&
             notifier.auth.user?.role != 'admin') {

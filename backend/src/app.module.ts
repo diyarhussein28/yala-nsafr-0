@@ -28,6 +28,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { SosModule } from './modules/sos/sos.module';
 import { HealthController } from './health.controller';
 import { SmsModule } from './modules/sms/sms.module';
+import { ShareModule } from './modules/share/share.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuditInterceptor } from './modules/audit/audit.interceptor';
 import { JobLockRegistrar } from './common/jobs/exclusive';
@@ -71,6 +72,7 @@ import { JobLockRegistrar } from './common/jobs/exclusive';
     BlocksModule,
     SchedulerModule,
     SosModule,
+    ShareModule,
   ],
   controllers: [HealthController],
   providers: [

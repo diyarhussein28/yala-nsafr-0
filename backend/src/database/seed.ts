@@ -124,6 +124,10 @@ async function main() {
     }
   }
 
+  // The two demo bookings below take 3 of the first trip's 4 seats
+  await trips.update(upcoming[0].id, { availableSeats: 1 });
+  upcoming[0].availableSeats = 1;
+
   // A confirmed booking for the first passenger on the first trip
   const confirmed = await bookings.save(
     bookings.create({

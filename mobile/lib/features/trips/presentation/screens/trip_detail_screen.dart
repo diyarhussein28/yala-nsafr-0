@@ -196,28 +196,21 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
 
   Future<void> _shareTrip(Trip trip) async {
     AnalyticsService.logTripShared(tripId: trip.id).ignore();
-    final dt = trip.departureTime;
-    final date =
-        '${dt.day}/${dt.month}/${dt.year}';
-    final time =
-        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-
     final buf = StringBuffer()
-      ..writeln('🚗 رحلة يلا نسافر')
+      ..writeln('🚗 رحلة على يلا نسافر')
       ..writeln()
       ..writeln('${trip.originCity} ← ${trip.destinationCity}')
-      ..writeln('📅 $date - $time')
+      ..writeln('📅 ${Fmt.dayLong(trip.departureTime)} — ${Fmt.time(trip.departureTime)}')
       ..writeln('💺 ${trip.availableSeats} مقعد متاح')
-      ..writeln('💰 ${trip.pricePerSeat.toStringAsFixed(0)} جنيه/مقعد');
-
+      ..writeln('💰 ${Fmt.money(trip.pricePerSeat)} للمقعد');
     final vehicle = trip.driver.vehicleLabel;
     if (vehicle.isNotEmpty) buf.writeln('🚙 $vehicle');
-
     buf
-      ..writeln('👤 السائق: ${trip.driver.fullName}')
+      ..writeln('👤 ${trip.driver.fullName}${trip.driver.driverVerified ? ' (سائق موثّق)' : ''}')
       ..writeln()
-      ..writeln('احجز مقعدك الآن:')
-      ..write('https://yalansafr.app/trips/${trip.id}');
+      ..writeln('احجز مقعدك من هنا:')
+      // Served by the API (ShareController): a preview page that opens the app
+      ..write('$shareBaseUrl/t/${trip.id}');
 
     await Share.share(buf.toString());
   }

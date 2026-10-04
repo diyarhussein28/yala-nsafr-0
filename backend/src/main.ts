@@ -14,7 +14,10 @@ async function bootstrap() {
   });
   const logger = new Logger('Bootstrap');
 
-  app.setGlobalPrefix('api/v1');
+  // Shared-link pages and app-link verification files live at the site root
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['t/:id', '.well-known/assetlinks.json', '.well-known/apple-app-site-association'],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
