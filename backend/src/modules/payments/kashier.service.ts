@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'node:crypto';
 import * as querystring from 'node:querystring';
-import { Booking } from '../../database/entities/booking.entity';
+import { Booking, PaymentMethod } from '../../database/entities/booking.entity';
 
 const KASHIER_LIVE_API = 'https://api.kashier.io';
 const KASHIER_TEST_API = 'https://test-api.kashier.io';
@@ -135,14 +135,20 @@ export class KashierService {
   async createPaymentSession(
     booking: Booking,
   ): Promise<{ sessionUrl: string; orderId: string; sessionId: string | null }> {
-    // Requests authorize-only: the amount is held, not taken, and we capture on trip
-    // completion. Also requires Kashier to enable "Authorization Capture" on the
-    // account — without that the session charges outright. An authorized session
-    // reports AUTHORIZED and fires an "authorize" webhook.
+    // Cards: authorize-only — the amount is held, not taken, and captured on trip
+    // completion (requires Kashier's "Authorization Capture" on the account; an
+    // authorized session fires an "authorize" webhook).
+    //
+    // Mobile wallets (Vodafone Cash, Orange, Etisalat, WE Pay) cannot hold funds, so
+    // they are charged at once ("pay" webhook → CAPTURED) and every cancellation path
+    // returns the money as a refund instead of a void. This used to open a card-only
+    // authorize session for wallet bookings, putting wallet users on a card form.
+    const isWallet = booking.paymentMethod === PaymentMethod.VODAFONE_CASH;
     return this.createCheckoutSession({
       merchantOrderId: booking.id,
       amount: Number(booking.totalAmount),
-      manualCapture: true,
+      manualCapture: !isWallet,
+      allowedMethods: isWallet ? 'wallet' : 'card',
       customer: {
         name: booking.passenger?.fullName ?? 'Customer',
         phone: booking.passenger?.phoneNumber ?? '',
@@ -160,6 +166,8 @@ export class KashierService {
     merchantOrderId: string;
     amount: number;
     manualCapture: boolean;
+    /** Kashier checkout methods to offer, e.g. "card" or "wallet" (default: card) */
+    allowedMethods?: string;
     customer: { name: string; phone: string; reference: string };
   }): Promise<{ sessionUrl: string; orderId: string; sessionId: string | null }> {
     const orderId = params.merchantOrderId;
@@ -175,6 +183,7 @@ export class KashierService {
       merchantOrderId: orderId,
       merchantId: this.merchantId,
       manualCapture: params.manualCapture,
+      allowedMethods: params.allowedMethods ?? 'card',
       display: 'ar',
       merchantRedirect: `${this.appUrl}/api/v1/kashier/payment-done`,
       customer: {

@@ -401,6 +401,20 @@ describe('Security & integrity regressions', () => {
     });
   });
 
+  it('wallet bookings open a charged wallet checkout, card bookings an authorize-only card checkout', async () => {
+    const created: Array<Record<string, unknown>> = [];
+    jest.spyOn(kashier as any, 'post').mockImplementation(async (...args: unknown[]) => {
+      created.push(args[1] as Record<string, unknown>);
+      return { sessionUrl: 'https://payments.kashier.io/session/s9' };
+    });
+    jest.spyOn(kashier, 'isMock', 'get').mockReturnValue(false);
+    const base = { id: 'b', totalAmount: 100, passengerId: passenger.id } as any;
+    await kashier.createPaymentSession({ ...base, paymentMethod: PaymentMethod.VODAFONE_CASH });
+    await kashier.createPaymentSession({ ...base, paymentMethod: PaymentMethod.CARD });
+    expect(created[0]).toMatchObject({ allowedMethods: 'wallet', manualCapture: false });
+    expect(created[1]).toMatchObject({ allowedMethods: 'card', manualCapture: true });
+  });
+
   it('the payment redirect never stores an order id for an unpaid booking', async () => {
     const trip = await makeTrip();
     const { booking, payment } = await makeBooking(

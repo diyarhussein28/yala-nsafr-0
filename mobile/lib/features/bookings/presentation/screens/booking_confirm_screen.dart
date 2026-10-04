@@ -259,9 +259,11 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                 Icon(Icons.info_outline_rounded, color: Colors.blue.shade700, size: 18),
                 const SizedBox(width: 8),
                 Expanded(child: Text(
-                  _paymentMethod == 'cash'
-                      ? 'سيتم الدفع للسائق نقداً عند الصعود. السائق لديه 30 دقيقة للموافقة على طلبك.'
-                      : 'سيتم الحجز عند إتمام الدفع الإلكتروني.',
+                  switch (_paymentMethod) {
+                    'cash' => 'تدفع للسائق نقداً عند الصعود. السائق لديه 30 دقيقة للموافقة على طلبك.',
+                    'vodafone_cash' => 'يُخصم المبلغ من محفظتك فور الدفع، ويُسترد إليها تلقائياً إذا رفض السائق أو أُلغيت الرحلة، ووفق سياسة الإلغاء إن ألغيت أنت.',
+                    _ => 'يُحجز المبلغ على بطاقتك ولا يُخصم إلا بعد انتهاء الرحلة.',
+                  },
                   style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
                 )),
               ]),
