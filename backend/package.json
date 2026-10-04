@@ -41,6 +41,7 @@
     "@nestjs/throttler": "^6.7.1",
     "@nestjs/typeorm": "^11.0.3",
     "@nestjs/websockets": "^11.2.1",
+    "@sentry/nestjs": "^9.47.2",
     "bcryptjs": "^3.0.3",
     "cache-manager": "^7.2.9",
     "class-transformer": "^0.5.1",

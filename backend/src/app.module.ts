@@ -1,8 +1,10 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
+import { RequestLoggerMiddleware } from './common/http/request-logger.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv } from './config/validate-env';
 import databaseConfig from './config/database.config';
@@ -32,6 +34,7 @@ import { JobLockRegistrar } from './common/jobs/exclusive';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [databaseConfig, jwtConfig],
@@ -71,9 +74,16 @@ import { JobLockRegistrar } from './common/jobs/exclusive';
   ],
   controllers: [HealthController],
   providers: [
+    // Reports unhandled exceptions to Sentry (a no-op without SENTRY_DSN), then answers
+    // exactly as Nest's default filter would
+    { provide: APP_FILTER, useClass: SentryGlobalFilter },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     JobLockRegistrar,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+  }
+}

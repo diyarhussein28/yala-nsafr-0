@@ -1,0 +1,80 @@
+# Self-hosted production stack: API + PostgreSQL + Caddy (automatic HTTPS) + nightly
+# database backups. Usage:
+#   cp ../backend/.env.example .env   # fill in production values
+#   DOMAIN=api.example.com docker compose up -d --build
+name: yala-nsafr
+
+services:
+  api:
+    build: ../backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      TRUST_PROXY: "1"
+      APP_URL: https://${DOMAIN:?set DOMAIN}
+    volumes:
+      - uploads:/app/uploads
+      - uploads-private:/app/uploads-private
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-yala_nsafr}
+      POSTGRES_USER: ${DB_USER:-yala_user}
+      POSTGRES_PASSWORD: ${DB_PASS:?set DB_PASS}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-yala_user}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+
+  # Nightly compressed dump, 14 kept. Copy ./backups off the server as well.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: ${DB_USER:-yala_user}
+      PGPASSWORD: ${DB_PASS}
+      PGDATABASE: ${DB_NAME:-yala_nsafr}
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      sh -c 'while true; do
+        f=/backups/yala-$$(date +%Y%m%d-%H%M).sql.gz;
+        pg_dump --no-owner | gzip > "$$f" && echo "backup $$f";
+        ls -1t /backups/*.sql.gz | tail -n +15 | xargs -r rm --;
+        sleep 86400; done'
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  uploads:
+  uploads-private:
+  caddy-data:
+  caddy-config:

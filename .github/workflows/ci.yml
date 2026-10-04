@@ -66,3 +66,10 @@ jobs:
       # The codebase is lint-clean; keep it that way
       - run: flutter analyze
       - run: flutter test
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Production image builds
+        run: docker build -t yala-nsafr-api:ci backend

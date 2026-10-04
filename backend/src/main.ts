@@ -1,5 +1,6 @@
+import './instrument';
 import { NestFactory } from '@nestjs/core';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { ConsoleLogger, Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { join } from 'path';
 import { mkdirSync } from 'fs';
@@ -7,7 +8,10 @@ import * as express from 'express';
 import helmet from 'helmet';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Structured JSON logs in production, for log aggregation; readable lines in development
+  const app = await NestFactory.create(AppModule, {
+    logger: new ConsoleLogger({ json: process.env.NODE_ENV === 'production', colors: process.env.NODE_ENV !== 'production' }),
+  });
   const logger = new Logger('Bootstrap');
 
   app.setGlobalPrefix('api/v1');
