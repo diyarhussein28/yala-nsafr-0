@@ -129,9 +129,9 @@ class Trip {
       destinationCity: json['destinationCity'] as String? ?? '',
       destinationAddress: json['destinationAddress'] as String?,
       departureTime:
-          DateTime.tryParse(json['departureTime'] as String? ?? '') ?? DateTime.now(),
+          DateTime.tryParse(json['departureTime'] as String? ?? '')?.toLocal() ?? DateTime.now(),
       estimatedArrivalTime:
-          DateTime.tryParse(json['estimatedArrivalTime'] as String? ?? ''),
+          DateTime.tryParse(json['estimatedArrivalTime'] as String? ?? '')?.toLocal(),
       totalSeats: json['totalSeats'] as int? ?? 1,
       availableSeats: json['availableSeats'] as int? ?? 0,
       pricePerSeat: double.tryParse(json['pricePerSeat']?.toString() ?? '') ?? 0.0,
@@ -144,7 +144,7 @@ class Trip {
       chatPreference: json['chatPreference'] as String? ?? 'friendly',
       notes: json['notes'] as String?,
       preferences: json['preferences'] as Map<String, dynamic>?,
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ?? DateTime.now(),
     );
   }
 }

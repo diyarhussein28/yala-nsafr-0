@@ -92,6 +92,6 @@ class User {
         preferredLanguage: json['preferredLanguage'] as String? ?? 'ar',
         referralCode: json['referralCode'] as String?,
         promoBalance: double.tryParse(json['promoBalance']?.toString() ?? '') ?? 0.0,
-        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ?? DateTime.now(),
       );
 }

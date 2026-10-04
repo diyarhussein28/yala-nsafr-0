@@ -32,7 +32,7 @@ class TripComment {
       userPhone: user['phoneNumber'] as String? ?? '',
       userPhotoUrl: user['profilePhotoUrl'] as String?,
       body: json['body'] as String,
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ?? DateTime.now(),
     );
   }
 }

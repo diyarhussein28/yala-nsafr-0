@@ -67,8 +67,8 @@ class Dispute {
         assignedAdminId: json['assignedAdminId'] as String?,
         resolutionNotes: json['resolutionNotes'] as String?,
         refundAmount: (json['refundAmount'] as num?)?.toDouble(),
-        resolvedAt: DateTime.tryParse(json['resolvedAt'] as String? ?? ''),
-        slaDeadline: DateTime.tryParse(json['slaDeadline'] as String? ?? ''),
-        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+        resolvedAt: DateTime.tryParse(json['resolvedAt'] as String? ?? '')?.toLocal(),
+        slaDeadline: DateTime.tryParse(json['slaDeadline'] as String? ?? '')?.toLocal(),
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ?? DateTime.now(),
       );
 }

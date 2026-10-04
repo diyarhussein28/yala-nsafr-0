@@ -72,13 +72,13 @@ class TripEarning {
         tripId:             j['tripId'] as String? ?? '',
         originCity:         j['originCity'] as String? ?? '',
         destinationCity:    j['destinationCity'] as String? ?? '',
-        departureTime:      DateTime.tryParse(j['departureTime'] as String? ?? '') ?? DateTime.now(),
+        departureTime:      DateTime.tryParse(j['departureTime'] as String? ?? '')?.toLocal() ?? DateTime.now(),
         seatsCount:         (j['seatsCount'] as num?)?.toInt() ?? 1,
         totalAmount:        double.tryParse(j['totalAmount']?.toString() ?? '') ?? 0,
         commissionAmount:   double.tryParse(j['commissionAmount']?.toString() ?? '') ?? 0,
         driverPayoutAmount: double.tryParse(j['driverPayoutAmount']?.toString() ?? '') ?? 0,
         paymentMethod:      j['paymentMethod'] as String? ?? 'cash',
-        completedAt:        DateTime.tryParse(j['completedAt'] as String? ?? ''),
+        completedAt:        DateTime.tryParse(j['completedAt'] as String? ?? '')?.toLocal(),
       );
 }
 
@@ -115,7 +115,7 @@ class WithdrawalRequest {
         payoutAccount: j['payoutAccount'] as String? ?? '',
         status:        j['status'] as String? ?? 'pending',
         adminNote:     j['adminNote'] as String?,
-        paidAt:        DateTime.tryParse(j['paidAt'] as String? ?? ''),
-        createdAt:     DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
+        paidAt:        DateTime.tryParse(j['paidAt'] as String? ?? '')?.toLocal(),
+        createdAt:     DateTime.tryParse(j['createdAt'] as String? ?? '')?.toLocal() ?? DateTime.now(),
       );
 }

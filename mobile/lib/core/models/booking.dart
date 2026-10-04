@@ -80,16 +80,16 @@ class Booking {
         commissionRate: double.tryParse(json['commissionRate']?.toString() ?? '') ?? 0.10,
         paymentMethod: json['paymentMethod'] as String? ?? 'cash',
         status: json['status'] as String? ?? 'pending_payment',
-        confirmedAt: DateTime.tryParse(json['confirmedAt'] as String? ?? ''),
-        completedAt: DateTime.tryParse(json['completedAt'] as String? ?? ''),
+        confirmedAt: DateTime.tryParse(json['confirmedAt'] as String? ?? '')?.toLocal(),
+        completedAt: DateTime.tryParse(json['completedAt'] as String? ?? '')?.toLocal(),
         driverConfirmedCompletion: json['driverConfirmedCompletion'] as bool? ?? false,
         passengerConfirmedCompletion: json['passengerConfirmedCompletion'] as bool? ?? false,
-        cancelledAt: DateTime.tryParse(json['cancelledAt'] as String? ?? ''),
+        cancelledAt: DateTime.tryParse(json['cancelledAt'] as String? ?? '')?.toLocal(),
         cancellationReason: json['cancellationReason'] as String?,
         disputeId: json['disputeId'] as String?,
         paymentUrl: json['paymentUrl'] as String?,
         createdAt:
-            DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+            DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ?? DateTime.now(),
         hasRated: json['hasRated'] as bool? ?? false,
       );
 }

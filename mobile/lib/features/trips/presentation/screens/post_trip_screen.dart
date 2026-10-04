@@ -149,7 +149,10 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
     final body = {
       if (!widget.isEditing) 'originCity': _from,
       if (!widget.isEditing) 'destinationCity': _to,
-      'departureTime': _departure.toIso8601String(),
+      // Sent as UTC with an explicit "Z". A local time without an offset was read by
+      // the server in its own timezone (UTC in production), shifting every trip posted
+      // from Egypt by two to three hours.
+      'departureTime': _departure.toUtc().toIso8601String(),
       'totalSeats': _seats,
       'pricePerSeat': double.parse(_priceCtrl.text.trim()),
       'womenOnly': _womenOnly,

@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/models/trip.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/widgets/rating_stars.dart';
+import '../../../../core/utils/format.dart';
+import '../../../../shared/widgets/ui.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/skeletons.dart';
-import '../../../../shared/widgets/trip_badge_row.dart';
 import '../../providers/trips_provider.dart';
 import '../widgets/post_trip_guard.dart';
 import '../../../../core/services/analytics_service.dart';
-import '../../../../shared/widgets/seat_urgency_label.dart';
 
 // ── Sort / Filter state ───────────────────────────────────────────────────────
 
@@ -145,23 +145,28 @@ class _TripResultsScreenState extends ConsumerState<TripResultsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${p.from} ← ${p.to}'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(20),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(
-              '${p.seats} مقعد · ${_fmtDate(p.date)}',
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
+        toolbarHeight: 64,
+        title: Column(
+          children: [
+            Text('${p.from} ← ${p.to}'),
+            Text(
+              '${Fmt.relativeDay(p.date)} · ${p.seats} ${p.seats == 1 ? 'مقعد' : 'مقاعد'}',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
-          ),
+          ],
         ),
       ),
       body: state.when(
         loading: () =>
             SkeletonCardList(itemBuilder: () => const TripResultSkeleton()),
-        error: (e, _) =>
-            Center(child: Text('$e', style: const TextStyle(color: Colors.red))),
+        error: (e, _) => EmptyState(
+          icon: Icons.cloud_off_rounded,
+          title: 'تعذّر تحميل الرحلات',
+          message: '$e',
+          color: AppColors.error,
+          actionLabel: 'إعادة المحاولة',
+          onAction: () => ref.read(tripSearchProvider.notifier).search(widget.params),
+        ),
         data: (trips) {
           if (trips.isEmpty) {
             return _EmptySearch(
@@ -181,7 +186,6 @@ class _TripResultsScreenState extends ConsumerState<TripResultsScreen> {
                 onSort: (s) => setState(() => _sortBy = s),
                 onFilterTap: () => _showFilters(trips),
               ),
-              const Divider(height: 1),
               Expanded(
                 child: displayed.isEmpty
                     ? _EmptyFiltered(
@@ -194,10 +198,10 @@ class _TripResultsScreenState extends ConsumerState<TripResultsScreen> {
                             .read(tripSearchProvider.notifier)
                             .search(widget.params),
                         child: ListView.separated(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                           itemCount: displayed.length,
                           separatorBuilder: (_, __) =>
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 12),
                           itemBuilder: (_, i) =>
                               _TripCard(trip: displayed[i], seats: p.seats),
                         ),
@@ -210,7 +214,6 @@ class _TripResultsScreenState extends ConsumerState<TripResultsScreen> {
     );
   }
 
-  String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 }
 
 // ── Sort + Filter bar ─────────────────────────────────────────────────────────
@@ -238,7 +241,7 @@ class _SortFilterBar extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: 52,
+      height: 58,
       child: Row(
         children: [
           Expanded(
@@ -251,19 +254,20 @@ class _SortFilterBar extends StatelessWidget {
                 final s = sorts[i];
                 final selected = sortBy == s.$1;
                 return ChoiceChip(
-                  label: Text(s.$2, style: const TextStyle(fontSize: 12)),
+                  label: Text(s.$2),
                   selected: selected,
+                  showCheckmark: false,
                   onSelected: (_) => onSort(s.$1),
-                  selectedColor: AppColors.primary,
+                  selectedColor: Theme.of(context).colorScheme.primary,
                   labelStyle: TextStyle(
-                    color: selected ? Colors.white : null,
-                    fontSize: 12,
+                    color: selected ? Colors.white : context.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
                   ),
                 );
               },
             ),
           ),
-          const VerticalDivider(width: 1, indent: 8, endIndent: 8),
           Stack(
             alignment: Alignment.center,
             children: [
@@ -280,7 +284,7 @@ class _SortFilterBar extends StatelessWidget {
                     width: 16,
                     height: 16,
                     decoration: const BoxDecoration(
-                      color: Colors.orange,
+                      color: AppColors.secondary,
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -316,67 +320,36 @@ class _EmptySearch extends StatelessWidget {
     required this.onPostTrip,
   });
 
-  String get _dateLabel =>
-      '${params.date.day}/${params.date.month}/${params.date.year}';
-
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.directions_car_outlined,
-                size: 48,
-                color: AppColors.primary,
-              ),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          EmptyState(
+            icon: Icons.directions_car_outlined,
+            title: 'لا توجد رحلات ${Fmt.relativeDay(params.date)}',
+            message: 'لم يعلن أي سائق عن رحلة ${params.from} ← ${params.to} في هذا اليوم بعد. جرّب يوماً آخر، أو انشر رحلتك وشارك تكلفة الطريق.',
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              children: [
+                AppButton(
+                  label: 'ابحث في يوم آخر',
+                  icon: const Icon(Icons.calendar_month_rounded, color: Colors.white),
+                  onPressed: onChangeDate,
+                ),
+                const SizedBox(height: 10),
+                AppButton(
+                  label: 'انشر رحلتك',
+                  outlined: true,
+                  icon: const Icon(Icons.add_road_rounded),
+                  onPressed: onPostTrip,
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-            Text(
-              '${params.from} ← ${params.to}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _dateLabel,
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'لا توجد رحلات متاحة لهذا المسار في هذا اليوم',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                icon: const Icon(Icons.add_road_rounded),
-                label: const Text('انشر رحلتك وشارك التكلفة'),
-                onPressed: onPostTrip,
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.calendar_month_rounded),
-                label: const Text('ابحث في يوم آخر'),
-                onPressed: onChangeDate,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -391,28 +364,12 @@ class _EmptyFiltered extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.search_off_rounded, size: 56, color: Colors.grey),
-          const SizedBox(height: 12),
-          Text(
-            hasFilters
-                ? 'لا توجد رحلات بهذه الفلاتر'
-                : 'لا توجد رحلات متاحة لهذا اليوم',
-            style: const TextStyle(color: Colors.grey, fontSize: 15),
-          ),
-          if (hasFilters) ...[
-            const SizedBox(height: 12),
-            TextButton.icon(
-              icon: const Icon(Icons.filter_alt_off_rounded),
-              label: const Text('مسح الفلاتر'),
-              onPressed: onClear,
-            ),
-          ],
-        ],
-      ),
+    return EmptyState(
+      icon: Icons.filter_alt_off_rounded,
+      title: hasFilters ? 'لا توجد رحلات بهذه الفلاتر' : 'لا توجد رحلات متاحة',
+      message: hasFilters ? 'خفّف الفلاتر لرؤية رحلات أكثر.' : null,
+      actionLabel: hasFilters ? 'مسح الفلاتر' : null,
+      onAction: hasFilters ? onClear : null,
     );
   }
 }
@@ -629,109 +586,121 @@ class _TripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          AnalyticsService.logViewTrip(
-            tripId: trip.id,
-            origin: trip.originCity,
-            destination: trip.destinationCity,
-            price: trip.pricePerSeat,
-          );
-          context.push('/trips/${trip.id}', extra: trip);
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 22,
-                    child: Text(
-                      trip.driver.fullName.isNotEmpty
-                          ? trip.driver.fullName[0]
-                          : '?',
-                      style: const TextStyle(fontSize: 18),
-                    ),
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final d = trip.driver;
+    final seatsLeft = trip.availableSeats;
+    final (seatText, seatColor) = switch (seatsLeft) {
+      <= 0 => ('مكتملة', context.textMuted),
+      1 => ('آخر مقعد', AppColors.error),
+      2 => ('مقعدان متبقيان', AppColors.warning),
+      _ => ('$seatsLeft مقاعد متاحة', AppColors.success),
+    };
+
+    return AppCard(
+      padding: EdgeInsets.zero,
+      onTap: () {
+        AnalyticsService.logViewTrip(
+          tripId: trip.id,
+          origin: trip.originCity,
+          destination: trip.destinationCity,
+          price: trip.pricePerSeat,
+        );
+        context.push('/trips/${trip.id}', extra: trip);
+      },
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: RouteTimeline(
+                    fromCity: trip.originCity,
+                    toCity: trip.destinationCity,
+                    fromDetail: trip.originAddress,
+                    toDetail: trip.destinationAddress,
+                    fromTime: Fmt.time(trip.departureTime),
+                    toTime: trip.estimatedArrivalTime != null ? Fmt.time(trip.estimatedArrivalTime!) : null,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(trip.driver.fullName,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
-                            ),
-                          ],
-                        ),
-                        RatingStars(
-                            rating: trip.driver.ratingAverage,
-                            count: trip.driver.ratingCount),
-                      ],
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      trip.pricePerSeat.toStringAsFixed(0),
+                      style: t.headlineSmall?.copyWith(color: scheme.primary, fontWeight: FontWeight.w800, height: 1),
                     ),
-                  ),
-                ],
-              ),
-              const Divider(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (trip.driver.vehicleLabel.isNotEmpty)
-                          Text(trip.driver.vehicleLabel,
-                              style: Theme.of(context).textTheme.bodySmall),
-                        if (trip.originAddress != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Row(
-                              children: [
-                                Icon(Icons.location_on_rounded,
-                                    size: 13, color: Colors.grey[500]),
-                                const SizedBox(width: 3),
-                                Text(
-                                  'التحميل: ${trip.originAddress}',
-                                  style: TextStyle(
-                                      fontSize: 11, color: Colors.grey[600]),
-                                ),
-                              ],
-                            ),
-                          ),
-                        SeatUrgencyLabel(availableSeats: trip.availableSeats),
-                        TripBadgeRow.fromTrip(trip),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    Text('ج.م / مقعد', style: t.labelSmall),
+                    if (seats > 1) ...[
+                      const SizedBox(height: 4),
+                      Text('الإجمالي ${(trip.pricePerSeat * seats).toStringAsFixed(0)}', style: t.labelSmall),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                StatusPill(label: seatText, color: seatColor, icon: Icons.event_seat_rounded),
+                if (trip.womenOnly)
+                  const StatusPill(label: 'نساء فقط', color: AppColors.womenOnly, icon: Icons.female_rounded),
+                if (trip.airConditioning)
+                  const StatusPill(label: 'تكييف', color: AppColors.info, icon: Icons.ac_unit_rounded),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: context.dividerColor)),
+            ),
+            child: Row(
+              children: [
+                UserAvatar(photoUrl: d.profilePhotoUrl, name: d.fullName, size: 38),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${trip.pricePerSeat.toStringAsFixed(0)} جنيه',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold),
+                      Row(
+                        children: [
+                          Flexible(child: Text(d.fullName, style: t.titleSmall, overflow: TextOverflow.ellipsis)),
+                          if (d.driverVerified) ...[
+                            const SizedBox(width: 4),
+                            Icon(Icons.verified_rounded, size: 16, color: scheme.primary),
+                          ],
+                        ],
                       ),
-                      Text(
-                        'للمقعد الواحد',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
+                      if (d.vehicleLabel.isNotEmpty)
+                        Text(d.vehicleLabel, style: t.bodySmall, overflow: TextOverflow.ellipsis),
                     ],
                   ),
-                ],
-              ),
-            ],
+                ),
+                if (d.ratingCount > 0)
+                  Row(
+                    children: [
+                      const Icon(Icons.star_rounded, size: 18, color: AppColors.secondary),
+                      const SizedBox(width: 2),
+                      Text(d.ratingAverage.toStringAsFixed(1), style: t.titleSmall),
+                      Text(' (${d.ratingCount})', style: t.bodySmall),
+                    ],
+                  )
+                else
+                  Text('سائق جديد', style: t.bodySmall),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
-

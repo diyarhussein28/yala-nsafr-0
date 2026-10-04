@@ -24,7 +24,7 @@ class ChatMessage {
       senderId: json['senderId'] as String? ?? '',
       senderName: rawName.isNotEmpty ? rawName : (sender?['phoneNumber'] as String? ?? '؟'),
       body: json['body'] as String? ?? '',
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ?? DateTime.now(),
     );
   }
 }

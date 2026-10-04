@@ -221,16 +221,19 @@ class RouteTimeline extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
     final gap = dense ? 14.0 : 22.0;
+    // Both stops share the time column whenever either has a time, so the dots and the
+    // line between them stay aligned.
+    final hasTimes = fromTime != null || toTime != null;
 
     Widget stop(String city, String? detail, String? time, {required bool origin}) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (time != null)
+          if (hasTimes)
             SizedBox(
               width: 50,
               child: Text(
-                time,
+                time ?? '',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
@@ -262,7 +265,7 @@ class RouteTimeline extends StatelessWidget {
     return Stack(
       children: [
         PositionedDirectional(
-          start: (fromTime != null ? 50 : 0) + 5.0,
+          start: (hasTimes ? 50 : 0) + 5.0,
           top: 18,
           bottom: 18,
           child: Container(width: 2, color: primary.withValues(alpha: 0.25)),

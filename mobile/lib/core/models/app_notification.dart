@@ -24,6 +24,6 @@ class AppNotification {
         body: json['body'] as String,
         data: json['data'] as Map<String, dynamic>?,
         read: json['read'] as bool,
-        createdAt: DateTime.parse(json['createdAt'] as String),
+        createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
       );
 }
