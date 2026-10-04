@@ -84,3 +84,29 @@ export function startOfCairoMonth(now = new Date()): Date {
     Number(parts.find((p) => p.type === type)?.value ?? 0);
   return cairoMidnight(get('year'), get('month'), 1);
 }
+
+/** "YYYY-MM-DD" of the instant in Cairo. */
+export function cairoDateString(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: CAIRO_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+/** Adds whole calendar days to a "YYYY-MM-DD" string. */
+export function addDays(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/**
+ * The instant on another Cairo calendar day at the same local wall-clock time as
+ * `reference` — 08:00 stays 08:00 across a daylight-saving change.
+ */
+export function sameCairoTimeOn(reference: Date, date: string): Date {
+  const refDay = cairoDayBounds(cairoDateString(reference)).start;
+  const minutes = Math.round((reference.getTime() - refDay.getTime()) / 60_000);
+  return new Date(cairoDayBounds(date).start.getTime() + minutes * 60_000);
+}

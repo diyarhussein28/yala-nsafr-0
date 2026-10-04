@@ -9,6 +9,12 @@ import {
   IsEnum,
   MinLength,
   MaxLength,
+  IsArray,
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsInt,
+  ArrayUnique,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -116,4 +122,36 @@ export class CreateTripDto {
   @IsString()
   @MaxLength(1000)
   notes?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MinLength(2, { each: true })
+  @MaxLength(100, { each: true })
+  stops?: string[];
+}
+
+export class TripRepeatDto {
+  /** Cairo weekdays to repeat on: 0 = Sunday … 6 = Saturday */
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(7)
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  weekdays: number[];
+
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  weeks: number;
+}
+
+export class CreateTripSeriesDto extends CreateTripDto {
+  @ValidateNested()
+  @Type(() => TripRepeatDto)
+  repeat: TripRepeatDto;
 }

@@ -103,6 +103,15 @@ export class Trip {
   @Column({ name: 'notes', nullable: true, type: 'text' })
   notes: string;
 
+  // Intermediate cities, in driving order. Passengers can board or leave at any of them.
+  @Column({ type: 'jsonb', nullable: true })
+  stops: string[] | null;
+
+  // Trips posted together as a weekly series share this id
+  @Index()
+  @Column({ name: 'series_id', type: 'uuid', nullable: true })
+  seriesId: string | null;
+
   // Community (Phase 3)
   @Column({ name: 'community_id', nullable: true })
   communityId: string;

@@ -29,7 +29,7 @@ import { CommissionBillingService } from '../src/modules/payments/commission-bil
 import { CommissionPayment } from '../src/database/entities/commission-payment.entity';
 import { SmsService } from '../src/modules/sms/sms.service';
 import { SosService } from '../src/modules/sos/sos.service';
-import { cairoDayBounds, formatCairoTime } from '../src/common/time/cairo';
+import { cairoDateString, cairoDayBounds, formatCairoTime } from '../src/common/time/cairo';
 import { parseEgyptianNationalId } from '../src/common/validation/egyptian-national-id';
 
 const PREFIX = '+2011111002';
@@ -726,6 +726,54 @@ describe('Security & integrity regressions', () => {
     }
     // Once released, the job runs normally
     expect(typeof (await locationService.purgeOldLocations())).toBe('number');
+  });
+
+  describe('recurring and multi-stop trips', () => {
+    const tripInput = (overrides: Record<string, unknown> = {}) => ({
+      originCity: 'القاهرة',
+      destinationCity: 'أسيوط',
+      departureTime: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+      totalSeats: 3,
+      pricePerSeat: 250,
+      ...overrides,
+    });
+
+    it('a weekly series creates one trip per chosen weekday per week, same local time', async () => {
+      const first = new Date(Date.now() + 2 * 86_400_000);
+      const res = await tripsService.createSeries(driver, {
+        ...tripInput({ departureTime: first.toISOString() }),
+        repeat: { weekdays: [0, 3], weeks: 3 },
+      } as any);
+      expect(res.count).toBeGreaterThanOrEqual(5);
+      expect(res.count).toBeLessThanOrEqual(6);
+      const times = new Set(res.trips.map((t) => formatCairoTime(new Date(t.departureTime))));
+      expect(times.size).toBe(1);
+      expect(res.trips.every((t) => t.seriesId === res.seriesId)).toBe(true);
+
+      const { cancelled } = await tripsService.cancelSeries(res.seriesId, driver);
+      expect(cancelled).toBe(res.count);
+      const left = await tripRepo.countBy({ seriesId: res.seriesId, status: TripStatus.SCHEDULED });
+      expect(left).toBe(0);
+    });
+
+    it('search finds a trip for any two of its stops in driving order, not the reverse', async () => {
+      const departure = new Date(Date.now() + 3 * 86_400_000);
+      const trip = await tripsService.create(driver, tripInput({
+        departureTime: departure.toISOString(),
+        stops: ['بني سويف', 'المنيا'],
+      }) as any);
+      const day = cairoDateString(departure);
+      const search = (originCity: string, destinationCity: string) =>
+        tripsService.search({ originCity, destinationCity, departureDate: day } as any, passenger);
+
+      expect((await search('بني سويف', 'أسيوط')).data.map((t) => t.id)).toContain(trip.id);
+      expect((await search('القاهرة', 'المنيا')).data.map((t) => t.id)).toContain(trip.id);
+      expect((await search('المنيا', 'بني سويف')).data.map((t) => t.id)).not.toContain(trip.id);
+    });
+
+    it('a stop equal to the origin or destination is refused', async () => {
+      await expect(tripsService.create(driver, tripInput({ stops: ['أسيوط'] }) as any)).rejects.toThrow();
+    });
   });
 
   // ── Pure helpers ───────────────────────────────────────────────────────────

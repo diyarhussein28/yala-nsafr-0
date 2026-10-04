@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Repository, DataSource, In } from 'typeorm';
+import { Repository, DataSource, In, FindOptionsWhere } from 'typeorm';
 import { Trip, TripStatus } from '../../database/entities/trip.entity';
 import { User, UserStatus } from '../../database/entities/user.entity';
 import { Booking, BookingStatus, PARTICIPANT_BOOKING_STATUSES } from '../../database/entities/booking.entity';
@@ -20,10 +20,18 @@ import { BlocksService } from '../blocks/blocks.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { KashierService } from '../payments/kashier.service';
 import { toPublicUser } from '../../common/serializers/public-user';
-import { cairoDayBounds, formatCairoDate } from '../../common/time/cairo';
+import {
+  addDays,
+  cairoDateString,
+  cairoDayBounds,
+  formatCairoDate,
+  sameCairoTimeOn,
+} from '../../common/time/cairo';
 import { creditPassengerCompletion, REFERRAL_REWARD_EGP, restorePromoCredit } from '../bookings/booking-side-effects';
 import { applyDriverCancellationStrike, LATE_DRIVER_CANCEL_HOURS } from './driver-strikes';
 import { UpdateTripDto } from './dto/update-trip.dto';
+import { CreateTripSeriesDto } from './dto/create-trip.dto';
+import { randomUUID } from 'crypto';
 import { DriverBalanceService } from '../earnings/driver-balance.service';
 import { Exclusive } from '../../common/jobs/exclusive';
 
@@ -54,7 +62,8 @@ export class TripsService {
     private readonly balances: DriverBalanceService,
   ) {}
 
-  async create(driver: User, dto: CreateTripDto): Promise<Trip> {
+  /** Everything that must hold before a driver may post any trip. */
+  private async assertCanPost(driver: User): Promise<void> {
     if (!driver.driverVerified) {
       throw new ForbiddenException('Driver must complete vehicle verification before posting trips');
     }
@@ -82,18 +91,30 @@ export class TripsService {
     if (!canPost) {
       throw new ForbiddenException('يجب الاشتراك في النسخة المدفوعة لنشر الرحلات');
     }
+  }
 
-    this.assertDepartureTimeInRange(dto.departureTime);
-
-    if (dto.originCity.trim().toLowerCase() === dto.destinationCity.trim().toLowerCase()) {
+  private assertRoute(dto: CreateTripDto): string[] | null {
+    const norm = (c: string) => c.trim().toLowerCase();
+    if (norm(dto.originCity) === norm(dto.destinationCity)) {
       throw new BadRequestException('مدينة الانطلاق والوصول يجب أن تكونا مختلفتين');
     }
+    const stops = (dto.stops ?? []).map((c) => c.trim()).filter(Boolean);
+    if (stops.some((c) => norm(c) === norm(dto.originCity) || norm(c) === norm(dto.destinationCity))) {
+      throw new BadRequestException('محطات التوقف يجب أن تختلف عن مدينتي الانطلاق والوصول');
+    }
+    return stops.length ? stops : null;
+  }
 
-    const trip = this.tripRepo.create({
-      ...dto,
+  private buildTrip(driver: User, dto: CreateTripDto, departure: Date, stops: string[] | null, seriesId: string | null) {
+    const { stops: _stops, ...rest } = dto as CreateTripDto & { repeat?: unknown };
+    delete (rest as { repeat?: unknown }).repeat;
+    return this.tripRepo.create({
+      ...rest,
+      stops,
+      seriesId,
       driverId: driver.id,
       availableSeats: dto.totalSeats,
-      departureTime: new Date(dto.departureTime),
+      departureTime: departure,
       womenOnly: dto.womenOnly ?? false,
       smokingAllowed: dto.smokingAllowed ?? false,
       petsAllowed: dto.petsAllowed ?? false,
@@ -101,8 +122,62 @@ export class TripsService {
       luggageSize: dto.luggageSize ?? 'medium',
       chatPreference: dto.chatPreference ?? 'friendly',
     });
+  }
 
-    return this.tripRepo.save(trip);
+  async create(driver: User, dto: CreateTripDto): Promise<Trip> {
+    await this.assertCanPost(driver);
+    this.assertDepartureTimeInRange(dto.departureTime);
+    const stops = this.assertRoute(dto);
+    return this.tripRepo.save(this.buildTrip(driver, dto, new Date(dto.departureTime), stops, null));
+  }
+
+  /**
+   * A weekly series: the same route and time on the chosen weekdays for N weeks, starting
+   * from the first departure. Drivers commuting the same route no longer re-enter it every
+   * week. Occurrences past the booking horizon are skipped rather than failing the batch.
+   */
+  async createSeries(driver: User, dto: CreateTripSeriesDto) {
+    await this.assertCanPost(driver);
+    this.assertDepartureTimeInRange(dto.departureTime);
+    const stops = this.assertRoute(dto);
+
+    const first = new Date(dto.departureTime);
+    const firstDay = cairoDateString(first);
+    const firstWeekday = new Date(firstDay + 'T12:00:00Z').getUTCDay();
+    const horizon = Date.now() + MAX_TRIP_LEAD_DAYS * 24 * 3_600_000;
+
+    const departures: Date[] = [];
+    for (let week = 0; week < dto.repeat.weeks; week++) {
+      for (const weekday of [...dto.repeat.weekdays].sort()) {
+        const offset = ((weekday - firstWeekday + 7) % 7) + week * 7;
+        const at = sameCairoTimeOn(first, addDays(firstDay, offset));
+        if (at.getTime() > Date.now() && at.getTime() <= horizon) departures.push(at);
+      }
+    }
+    if (departures.length === 0) {
+      throw new BadRequestException('لا توجد مواعيد صالحة في هذه السلسلة');
+    }
+
+    const seriesId = randomUUID();
+    const trips = await this.tripRepo.save(
+      departures.map((d) => this.buildTrip(driver, dto, d, stops, seriesId)),
+    );
+    return { seriesId, count: trips.length, trips };
+  }
+
+  /** Cancels every upcoming trip of a series (each with the normal refunds and rules). */
+  async cancelSeries(seriesId: string, driver: User, reason?: string) {
+    const trips = await this.tripRepo.find({
+      where: { seriesId, driverId: driver.id, status: TripStatus.SCHEDULED },
+      order: { departureTime: 'ASC' },
+    });
+    if (trips.length === 0) throw new NotFoundException('لا توجد رحلات قادمة في هذه السلسلة');
+    let cancelled = 0;
+    for (const trip of trips) {
+      await this.cancel(trip.id, driver, reason);
+      cancelled++;
+    }
+    return { cancelled };
   }
 
   // The app's date picker caps departure at 90 days, but that is client-side only —
@@ -147,8 +222,21 @@ export class TripsService {
     const qb = this.tripRepo
       .createQueryBuilder('trip')
       .leftJoinAndSelect('trip.driver', 'driver')
-      .where('LOWER(trip.originCity) = LOWER(:origin)', { origin: dto.originCity })
-      .andWhere('LOWER(trip.destinationCity) = LOWER(:destination)', { destination: dto.destinationCity })
+      // The passenger's two cities must both be on the route — origin, a stop or the
+      // destination — and in driving order.
+      .where(
+        `EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements_text(
+                 jsonb_build_array(trip.origin_city) || COALESCE(trip.stops, '[]'::jsonb) || jsonb_build_array(trip.destination_city)
+               ) WITH ORDINALITY AS a(city, i),
+               jsonb_array_elements_text(
+                 jsonb_build_array(trip.origin_city) || COALESCE(trip.stops, '[]'::jsonb) || jsonb_build_array(trip.destination_city)
+               ) WITH ORDINALITY AS b(city, j)
+          WHERE LOWER(a.city) = LOWER(:origin) AND LOWER(b.city) = LOWER(:destination) AND a.i < b.j
+        )`,
+        { origin: dto.originCity.trim(), destination: dto.destinationCity.trim() },
+      )
       .andWhere('trip.departureTime >= :start AND trip.departureTime < :end', { start: from, end: endOfDay })
       .andWhere('trip.status = :status', { status: TripStatus.SCHEDULED })
       .andWhere('trip.availableSeats >= :seats', { seats: dto.seats ?? 1 });
@@ -599,7 +687,7 @@ export class TripsService {
   }
 
   async getDriverTrips(driverId: string, status?: TripStatus): Promise<Trip[]> {
-    const where: Partial<Trip> = { driverId };
+    const where: FindOptionsWhere<Trip> = { driverId };
     if (status) where.status = status;
     return this.tripRepo.find({ where, order: { departureTime: 'DESC' } });
   }

@@ -10,7 +10,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { TripsService } from './trips.service';
-import { CreateTripDto } from './dto/create-trip.dto';
+import { CreateTripDto, CreateTripSeriesDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { SearchTripsDto } from './dto/search-trips.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
@@ -39,6 +39,23 @@ export class TripsController {
   @UseGuards(JwtAuthGuard)
   create(@CurrentUser() user: User, @Body() dto: CreateTripDto) {
     return this.tripsService.create(user, dto);
+  }
+
+  /** Weekly recurring trips → { seriesId, count, trips } */
+  @Post('series')
+  @UseGuards(JwtAuthGuard)
+  createSeries(@CurrentUser() user: User, @Body() dto: CreateTripSeriesDto) {
+    return this.tripsService.createSeries(user, dto);
+  }
+
+  @Patch('series/:seriesId/cancel')
+  @UseGuards(JwtAuthGuard)
+  cancelSeries(
+    @Param('seriesId', ParseUUIDPipe) seriesId: string,
+    @CurrentUser() user: User,
+    @Body() dto: CancelReasonDto,
+  ) {
+    return this.tripsService.cancelSeries(seriesId, user, dto.reason);
   }
 
   @Patch(':id')

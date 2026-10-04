@@ -60,3 +60,4 @@ export class UpdateTripDto {
   @MaxLength(1000)
   notes?: string;
 }
+
