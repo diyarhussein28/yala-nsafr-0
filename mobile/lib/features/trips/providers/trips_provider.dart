@@ -112,6 +112,19 @@ class PostTripNotifier extends StateNotifier<AsyncValue<void>> {
       return null;
     }
   }
+
+  /// Weekly series → number of trips created, or null on error (state holds it)
+  Future<int?> postSeries(Map<String, dynamic> body) async {
+    state = const AsyncLoading();
+    try {
+      final res = await _dio.post(Endpoints.tripSeries, data: body);
+      state = const AsyncData(null);
+      return ((res.data as Map<String, dynamic>)['count'] as num?)?.toInt() ?? 0;
+    } on DioException catch (e) {
+      state = AsyncError(ApiException.fromDioError(e), StackTrace.current);
+      return null;
+    }
+  }
 }
 
 final postTripProvider =

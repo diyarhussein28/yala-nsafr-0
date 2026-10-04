@@ -783,7 +783,9 @@ class _RouteHeader extends StatelessWidget {
                     fromCity: trip.originCity,
                     toCity: trip.destinationCity,
                     fromDetail: trip.originAddress,
-                    toDetail: trip.destinationAddress,
+                    toDetail: trip.stops.isNotEmpty
+                        ? '${trip.destinationAddress ?? ''}${trip.destinationAddress != null ? ' · ' : ''}عبر ${trip.stops.join('، ')}'
+                        : trip.destinationAddress,
                     fromTime: Fmt.time(trip.departureTime),
                     toTime: trip.estimatedArrivalTime != null ? Fmt.time(trip.estimatedArrivalTime!) : null,
                   ),

@@ -9,6 +9,8 @@ class Endpoints {
   static const fcmToken = '/users/me/fcm-token';
 
   static const trips = '/trips';
+
+  static const tripSeries = '/trips/series';
   static const searchTrips = '/trips/search';
   static const myTrips = '/trips/driver/my-trips';
   static String userPublicProfile(String id) => '/users/$id/profile';

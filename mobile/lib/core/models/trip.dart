@@ -70,6 +70,9 @@ class Trip {
   final String luggageSize;
   final String chatPreference;
   final String? notes;
+  /// Intermediate cities, in driving order
+  final List<String> stops;
+  final String? seriesId;
   final Map<String, dynamic>? preferences;
   final DateTime createdAt;
 
@@ -94,6 +97,8 @@ class Trip {
     required this.luggageSize,
     required this.chatPreference,
     this.notes,
+    this.stops = const [],
+    this.seriesId,
     this.preferences,
     required this.createdAt,
   });
@@ -143,6 +148,8 @@ class Trip {
       luggageSize: json['luggageSize'] as String? ?? 'medium',
       chatPreference: json['chatPreference'] as String? ?? 'friendly',
       notes: json['notes'] as String?,
+      stops: (json['stops'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      seriesId: json['seriesId'] as String?,
       preferences: json['preferences'] as Map<String, dynamic>?,
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ?? DateTime.now(),
     );

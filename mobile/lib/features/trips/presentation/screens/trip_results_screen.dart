@@ -643,6 +643,17 @@ class _TripCard extends StatelessWidget {
               ],
             ),
           ),
+          if (trip.stops.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: Row(
+                children: [
+                  Icon(Icons.alt_route_rounded, size: 16, color: context.textMuted),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text('عبر ${trip.stops.join('، ')}', style: t.bodySmall)),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Wrap(

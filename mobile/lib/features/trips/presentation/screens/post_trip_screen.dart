@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/models/trip.dart';
@@ -6,41 +7,80 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../providers/trips_provider.dart';
 
 const _cities = [
-  'القاهرة', 'الإسكندرية', 'الجيزة', 'أسوان', 'الأقصر',
-  'الغردقة', 'شرم الشيخ', 'بورسعيد', 'الإسماعيلية', 'السويس',
-  'المنصورة', 'طنطا', 'الزقازيق', 'أسيوط', 'سوهاج',
-  'المنيا', 'بني سويف', 'الفيوم', 'دمياط', 'كفر الشيخ',
+  'القاهرة',
+  'الإسكندرية',
+  'الجيزة',
+  'أسوان',
+  'الأقصر',
+  'الغردقة',
+  'شرم الشيخ',
+  'بورسعيد',
+  'الإسماعيلية',
+  'السويس',
+  'المنصورة',
+  'طنطا',
+  'الزقازيق',
+  'أسيوط',
+  'سوهاج',
+  'المنيا',
+  'بني سويف',
+  'الفيوم',
+  'دمياط',
+  'كفر الشيخ',
 ];
 
 const _cityAreas = <String, List<String>>{
   'القاهرة': [
-    'مدينة نصر', 'المعادي', 'التجمع الخامس', 'المهندسين', 'الزمالك',
-    'الدقي', 'شبرا', 'وسط البلد', 'مصر الجديدة', 'الهرم',
-    'المطرية', 'حدائق القبة', 'عين شمس', 'حلوان',
+    'مدينة نصر',
+    'المعادي',
+    'التجمع الخامس',
+    'المهندسين',
+    'الزمالك',
+    'الدقي',
+    'شبرا',
+    'وسط البلد',
+    'مصر الجديدة',
+    'الهرم',
+    'المطرية',
+    'حدائق القبة',
+    'عين شمس',
+    'حلوان',
   ],
   'الجيزة': [
-    'الشيخ زايد', '6 أكتوبر', 'الدقي', 'المهندسين', 'الهرم',
-    'فيصل', 'إمبابة', 'البدرشين', 'أبو النمرس',
+    'الشيخ زايد',
+    '6 أكتوبر',
+    'الدقي',
+    'المهندسين',
+    'الهرم',
+    'فيصل',
+    'إمبابة',
+    'البدرشين',
+    'أبو النمرس',
   ],
   'الإسكندرية': [
-    'سيدي جابر', 'سموحة', 'المنتزه', 'العجمي', 'الرمل',
-    'المعمورة', 'ستانلي', 'بكوس', 'محطة الرمل', 'الميناء',
+    'سيدي جابر',
+    'سموحة',
+    'المنتزه',
+    'العجمي',
+    'الرمل',
+    'المعمورة',
+    'ستانلي',
+    'بكوس',
+    'محطة الرمل',
+    'الميناء',
   ],
   'الغردقة': [
-    'الهضبة', 'الكورنيش', 'المارينا', 'الممشى', 'الدهار', 'سيتى سنتر',
+    'الهضبة',
+    'الكورنيش',
+    'المارينا',
+    'الممشى',
+    'الدهار',
+    'سيتى سنتر',
   ],
-  'شرم الشيخ': [
-    'نعمة باي', 'شرم القديم', 'الميراج', 'رأس نصراني', 'هيلتون',
-  ],
-  'المنصورة': [
-    'المدينة', 'ميت غمر', 'طلخا', 'المنزلة',
-  ],
-  'طنطا': [
-    'وسط البلد', 'زفتى', 'السنطة',
-  ],
-  'بورسعيد': [
-    'البحيرة', 'العرب', 'الشرق', 'الضواحي',
-  ],
+  'شرم الشيخ': ['نعمة باي', 'شرم القديم', 'الميراج', 'رأس نصراني', 'هيلتون'],
+  'المنصورة': ['المدينة', 'ميت غمر', 'طلخا', 'المنزلة'],
+  'طنطا': ['وسط البلد', 'زفتى', 'السنطة'],
+  'بورسعيد': ['البحيرة', 'العرب', 'الشرق', 'الضواحي'],
 };
 
 const _otherChip = 'أخرى';
@@ -68,6 +108,12 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
   final _priceCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   late bool _womenOnly;
+  // Intermediate cities, in driving order
+  final List<String> _stops = [];
+  // Weekly repeat (new trips only); weekdays use the API's 0 = Sunday … 6 = Saturday
+  bool _repeat = false;
+  final Set<int> _repeatDays = {};
+  int _repeatWeeks = 4;
   late bool _smoking;
   late bool _pets;
   late bool _ac;
@@ -78,7 +124,8 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
     final t = widget.editTrip;
     _from = t?.originCity;
     _to = t?.destinationCity;
-    _departure = t?.departureTime ?? DateTime.now().add(const Duration(hours: 2));
+    _departure =
+        t?.departureTime ?? DateTime.now().add(const Duration(hours: 2));
     _seats = t?.totalSeats ?? 3;
     _priceCtrl.text = t != null ? t.pricePerSeat.toStringAsFixed(0) : '';
     _notesCtrl.text = t?.notes ?? '';
@@ -144,9 +191,44 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
     return area;
   }
 
+  Future<void> _addStop() async {
+    final options = _cities
+        .where((c) => c != _from && c != _to && !_stops.contains(c))
+        .toList();
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SizedBox(
+        height: MediaQuery.of(ctx).size.height * 0.6,
+        child: Column(
+          children: [
+            Text(
+              'أضف محطة على الطريق',
+              style: Theme.of(ctx).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView(
+                children: [
+                  for (final c in options)
+                    ListTile(
+                      leading: const Icon(Icons.location_city_rounded),
+                      title: Text(c),
+                      onTap: () => Navigator.pop(ctx, c),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) setState(() => _stops.add(picked));
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final body = {
+    final body = <String, dynamic>{
       if (!widget.isEditing) 'originCity': _from,
       if (!widget.isEditing) 'destinationCity': _to,
       // Sent as UTC with an explicit "Z". A local time without an offset was read by
@@ -166,9 +248,30 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
         'destinationAddress': _resolvedArea(_toArea, _toAreaCtrl),
     };
 
+    if (!widget.isEditing && _stops.isNotEmpty) {
+      body['stops'] = List<String>.from(_stops);
+    }
+
+    if (!widget.isEditing && _repeat) {
+      final days = _repeatDays.isEmpty ? {_departure.weekday % 7} : _repeatDays;
+      final count = await ref.read(postTripProvider.notifier).postSeries({
+        ...body,
+        'repeat': {'weekdays': days.toList()..sort(), 'weeks': _repeatWeeks},
+      });
+      if (!mounted || count == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تم نشر $count رحلة ضمن السلسلة الأسبوعية')),
+      );
+      ref.read(tripsRefreshTokenProvider.notifier).state++;
+      context.go('/my-trips');
+      return;
+    }
+
     Trip? trip;
     if (widget.isEditing) {
-      trip = await ref.read(updateTripProvider.notifier).update(widget.editTrip!.id, body);
+      trip = await ref
+          .read(updateTripProvider.notifier)
+          .update(widget.editTrip!.id, body);
     } else {
       trip = await ref.read(postTripProvider.notifier).post(body);
     }
@@ -189,12 +292,12 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
     String? apiError;
     if (actionState is AsyncError) apiError = actionState.error.toString();
 
-    final depLabel =
-        '${_departure.day}/${_departure.month}/${_departure.year} '
-        '${_departure.hour.toString().padLeft(2, '0')}:${_departure.minute.toString().padLeft(2, '0')}';
+    final depLabel = '${Fmt.relativeDay(_departure)} · ${Fmt.time(_departure)}';
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.isEditing ? 'تعديل الرحلة' : 'نشر رحلة جديدة')),
+      appBar: AppBar(
+        title: Text(widget.isEditing ? 'تعديل الرحلة' : 'نشر رحلة جديدة'),
+      ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
@@ -209,144 +312,267 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
         onTap: () => FocusScope.of(context).unfocus(),
         behavior: HitTestBehavior.translucent,
         child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: _from,
-                decoration: const InputDecoration(labelText: 'من'),
-                items: _cities.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                onChanged: widget.isEditing
-                    ? null
-                    : (v) => setState(() {
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _SectionLabel('المسار', Icons.route_rounded),
+                DropdownButtonFormField<String>(
+                  initialValue: _from,
+                  decoration: const InputDecoration(labelText: 'من'),
+                  items: _cities
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: widget.isEditing
+                      ? null
+                      : (v) => setState(() {
                           _from = v;
                           _fromArea = null;
                           _fromAreaCtrl.clear();
                         }),
-                validator: (v) => v == null ? 'مطلوب' : null,
-              ),
-              if (_from != null && !widget.isEditing) ...[
-                const SizedBox(height: 8),
-                _AreaPicker(
-                  city: _from!,
-                  selected: _fromArea,
-                  customCtrl: _fromAreaCtrl,
-                  onChanged: (v) => setState(() => _fromArea = v),
+                  validator: (v) => v == null ? 'مطلوب' : null,
                 ),
-              ],
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _to,
-                decoration: const InputDecoration(labelText: 'إلى'),
-                items: _cities.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                onChanged: widget.isEditing
-                    ? null
-                    : (v) => setState(() {
+                if (_from != null && !widget.isEditing) ...[
+                  const SizedBox(height: 8),
+                  _AreaPicker(
+                    city: _from!,
+                    selected: _fromArea,
+                    customCtrl: _fromAreaCtrl,
+                    onChanged: (v) => setState(() => _fromArea = v),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _to,
+                  decoration: const InputDecoration(labelText: 'إلى'),
+                  items: _cities
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: widget.isEditing
+                      ? null
+                      : (v) => setState(() {
                           _to = v;
                           _toArea = null;
                           _toAreaCtrl.clear();
                         }),
-                validator: (v) => v == null ? 'مطلوب' : null,
-              ),
-              if (_to != null && !widget.isEditing) ...[
-                const SizedBox(height: 8),
-                _AreaPicker(
-                  city: _to!,
-                  selected: _toArea,
-                  customCtrl: _toAreaCtrl,
-                  onChanged: (v) => setState(() => _toArea = v),
+                  validator: (v) => v == null ? 'مطلوب' : null,
                 ),
-              ],
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(depLabel),
-                subtitle: const Text('وقت الانطلاق'),
-                trailing: const Icon(Icons.access_time_rounded),
-                onTap: _pickDeparture,
-              ),
-              const Divider(),
-              TextFormField(
-                controller: _priceCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'سعر المقعد (جنيه)',
-                  prefixIcon: Icon(Icons.attach_money_rounded),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (v) {
-                  final n = double.tryParse(v ?? '');
-                  if (n == null || n <= 0) return 'أدخل سعراً صحيحاً';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Text('عدد المقاعد المتاحة'),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.remove_circle_outline_rounded),
-                    onPressed: _seats > 1 ? () => setState(() => _seats--) : null,
-                  ),
-                  Text('$_seats',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline_rounded),
-                    onPressed: _seats < 7 ? () => setState(() => _seats++) : null,
+                if (_to != null && !widget.isEditing) ...[
+                  const SizedBox(height: 8),
+                  _AreaPicker(
+                    city: _to!,
+                    selected: _toArea,
+                    customCtrl: _toAreaCtrl,
+                    onChanged: (v) => setState(() => _toArea = v),
                   ),
                 ],
-              ),
-              const Divider(),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _womenOnly,
-                onChanged: (v) => setState(() => _womenOnly = v),
-                title: const Text('رحلة نساء فقط'),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _smoking,
-                onChanged: (v) => setState(() => _smoking = v),
-                title: const Text('التدخين مسموح'),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _pets,
-                onChanged: (v) => setState(() => _pets = v),
-                title: const Text('حيوانات أليفة مسموح'),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _ac,
-                onChanged: (v) => setState(() => _ac = v),
-                title: const Text('تكييف هواء'),
-                secondary: const Icon(Icons.ac_unit_rounded, color: Colors.lightBlue),
-              ),
-              const Divider(),
-              TextFormField(
-                controller: _notesCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'ملاحظات للركاب (اختياري)',
-                  hintText:
-                      'مثال: سأنطلق من مطار القاهرة الترمينال 2 الساعة 12 ظهراً',
-                  prefixIcon: Icon(Icons.notes_rounded),
-                  alignLabelWithHint: true,
+                if (!widget.isEditing && _from != null && _to != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'محطات على الطريق (اختياري)',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'يقدر الركاب يركبوا أو ينزلوا في أي محطة منها',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final (i, stop) in _stops.indexed)
+                        InputChip(
+                          label: Text('${i + 1}. $stop'),
+                          onDeleted: () => setState(() => _stops.removeAt(i)),
+                        ),
+                      if (_stops.length < 5)
+                        ActionChip(
+                          avatar: const Icon(
+                            Icons.add_location_alt_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('إضافة محطة'),
+                          onPressed: _addStop,
+                        ),
+                    ],
+                  ),
+                ],
+                const _SectionLabel('الموعد', Icons.schedule_rounded),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.event_rounded),
+                    title: Text(
+                      depLabel,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    subtitle: Text(Fmt.dayLong(_departure)),
+                    trailing: const Icon(Icons.edit_calendar_rounded),
+                    onTap: _pickDeparture,
+                  ),
                 ),
-                maxLines: 3,
-                minLines: 2,
-                maxLength: 500,
-              ),
-              if (apiError != null) ...[
-                const SizedBox(height: 8),
-                Text(apiError,
-                    style: const TextStyle(color: Colors.red, fontSize: 13)),
+                if (!widget.isEditing) ...[
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _repeat,
+                    onChanged: (v) => setState(() {
+                      _repeat = v;
+                      if (v && _repeatDays.isEmpty) {
+                        _repeatDays.add(_departure.weekday % 7);
+                      }
+                    }),
+                    title: const Text('كرّر الرحلة أسبوعياً'),
+                    subtitle: const Text(
+                      'نفس المسار والموعد في الأيام التي تختارها',
+                    ),
+                    secondary: const Icon(Icons.event_repeat_rounded),
+                  ),
+                  if (_repeat) ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final (day, label) in const [
+                          (6, 'السبت'),
+                          (0, 'الأحد'),
+                          (1, 'الاثنين'),
+                          (2, 'الثلاثاء'),
+                          (3, 'الأربعاء'),
+                          (4, 'الخميس'),
+                          (5, 'الجمعة'),
+                        ])
+                          FilterChip(
+                            label: Text(label),
+                            selected: _repeatDays.contains(day),
+                            onSelected: (on) => setState(
+                              () => on
+                                  ? _repeatDays.add(day)
+                                  : _repeatDays.remove(day),
+                            ),
+                          ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        const Expanded(child: Text('لمدة')),
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline_rounded),
+                          onPressed: _repeatWeeks > 1
+                              ? () => setState(() => _repeatWeeks--)
+                              : null,
+                        ),
+                        Text(
+                          '$_repeatWeeks ${_repeatWeeks <= 2 ? 'أسبوع' : 'أسابيع'}',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline_rounded),
+                          onPressed: _repeatWeeks < 12
+                              ? () => setState(() => _repeatWeeks++)
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+                const _SectionLabel('السعر والمقاعد', Icons.payments_rounded),
+                TextFormField(
+                  controller: _priceCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'سعر المقعد (جنيه)',
+                    prefixIcon: Icon(Icons.payments_rounded),
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    final n = double.tryParse(v ?? '');
+                    if (n == null || n <= 0) return 'أدخل سعراً صحيحاً';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text('عدد المقاعد المتاحة'),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline_rounded),
+                      onPressed: _seats > 1
+                          ? () => setState(() => _seats--)
+                          : null,
+                    ),
+                    Text(
+                      '$_seats',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline_rounded),
+                      onPressed: _seats < 7
+                          ? () => setState(() => _seats++)
+                          : null,
+                    ),
+                  ],
+                ),
+                const _SectionLabel('تفضيلات الرحلة', Icons.tune_rounded),
+                Card(
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        value: _womenOnly,
+                        onChanged: (v) => setState(() => _womenOnly = v),
+                        title: const Text('رحلة نساء فقط'),
+                      ),
+                      SwitchListTile(
+                        value: _smoking,
+                        onChanged: (v) => setState(() => _smoking = v),
+                        title: const Text('التدخين مسموح'),
+                      ),
+                      SwitchListTile(
+                        value: _pets,
+                        onChanged: (v) => setState(() => _pets = v),
+                        title: const Text('حيوانات أليفة مسموح'),
+                      ),
+                      SwitchListTile(
+                        value: _ac,
+                        onChanged: (v) => setState(() => _ac = v),
+                        title: const Text('تكييف هواء'),
+                        secondary: const Icon(
+                          Icons.ac_unit_rounded,
+                          color: Colors.lightBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const _SectionLabel('ملاحظات', Icons.sticky_note_2_rounded),
+                TextFormField(
+                  controller: _notesCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'ملاحظات للركاب (اختياري)',
+                    hintText:
+                        'مثال: سأنطلق من مطار القاهرة الترمينال 2 الساعة 12 ظهراً',
+                    prefixIcon: Icon(Icons.notes_rounded),
+                    alignLabelWithHint: true,
+                  ),
+                  maxLines: 3,
+                  minLines: 2,
+                  maxLength: 500,
+                ),
+                if (apiError != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    apiError,
+                    style: const TextStyle(color: Colors.red, fontSize: 13),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
         ),
       ),
     );
@@ -378,10 +604,9 @@ class _AreaPicker extends StatelessWidget {
       children: [
         Text(
           'نقطة الانطلاق/التحميل (اختياري)',
-          style: Theme.of(context)
-              .textTheme
-              .labelSmall
-              ?.copyWith(color: Colors.grey[600]),
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: Colors.grey[600]),
         ),
         const SizedBox(height: 6),
         SingleChildScrollView(
@@ -420,6 +645,26 @@ class _AreaPicker extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  final IconData icon;
+  const _SectionLabel(this.text, this.icon);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 20, bottom: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          Text(text, style: Theme.of(context).textTheme.titleSmall),
+        ],
+      ),
     );
   }
 }

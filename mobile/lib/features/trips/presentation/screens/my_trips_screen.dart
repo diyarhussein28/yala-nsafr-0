@@ -87,7 +87,8 @@ class _MyTripsScreenState extends ConsumerState<MyTripsScreen>
   }
 
   Future<void> _cancelTrip(Trip trip) async {
-    final confirmed = await showDialog<bool>(
+    // For a weekly series the driver chooses: this trip only, or every upcoming one
+    final confirmed = await showDialog<Object>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('إلغاء الرحلة'),
@@ -124,19 +125,32 @@ class _MyTripsScreenState extends ConsumerState<MyTripsScreen>
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('تراجع')),
+          if (trip.seriesId != null)
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              onPressed: () => Navigator.pop(ctx, 'series'),
+              child: const Text('إلغاء كل رحلات السلسلة القادمة'),
+            ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('إلغاء الرحلة'),
+            child: const Text('إلغاء هذه الرحلة'),
           ),
         ],
       ),
     );
 
-    if (confirmed != true || !mounted) return;
+    if ((confirmed != true && confirmed != 'series') || !mounted) return;
 
     try {
-      await cancelTrip(ref, trip.id, reason: 'إلغاء من قِبل السائق');
+      if (confirmed == 'series') {
+        await ref.read(dioProvider).patch(
+          '/trips/series/${trip.seriesId}/cancel',
+          data: {'reason': 'إلغاء من قِبل السائق'},
+        );
+      } else {
+        await cancelTrip(ref, trip.id, reason: 'إلغاء من قِبل السائق');
+      }
       if (mounted) {
         _load(reset: true);
         ScaffoldMessenger.of(context).showSnackBar(
