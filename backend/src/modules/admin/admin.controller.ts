@@ -57,6 +57,11 @@ export class AdminController {
     return this.adminService.getAnalytics();
   }
 
+  @Get('analytics/timeseries')
+  getTimeseries(@Query('days') days?: string) {
+    return this.adminService.getTimeseries(days ? Number(days) : 30);
+  }
+
   // ── Search ─────────────────────────────────────────────────────────────────
   @Get('search')
   search(@Query('q') q: string) {

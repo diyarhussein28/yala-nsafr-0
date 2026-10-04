@@ -1,661 +1,731 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>يلا نسافر — لوحة التحكم</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: { extend: { colors: { brand: { DEFAULT: '#1B6B5A', dark: '#114A3E' } } } }
-    }
-  </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
-  <style>[x-cloak]{display:none!important}</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>يلا نسافر — الإدارة</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b7a62'/%3E%3Cpath d='M18 40h28M20 40l3-9c.5-1.5 2-2.5 3.5-2.5h11c1.5 0 3 1 3.5 2.5l3 9' stroke='white' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='24' cy='42' r='3.5' fill='white'/%3E%3Ccircle cx='40' cy='42' r='3.5' fill='white'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/admin.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+  <script src="assets/admin.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js" defer></script>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen" x-data="app()" x-init="init()" x-cloak>
+<body x-data="admin()" x-init="init()">
 
-<!-- LOGIN -->
-<div x-show="!authenticated" class="min-h-screen flex items-center justify-center bg-[#1B6B5A]">
-  <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm mx-4">
-    <div class="text-center mb-8">
-      <div class="text-5xl mb-3">🚗</div>
-      <h1 class="text-2xl font-bold text-[#1B6B5A]">يلا نسافر</h1>
-      <p class="text-gray-400 text-sm mt-1">لوحة تحكم المشرفين</p>
-    </div>
-
-    <div x-show="!otpSent">
-      <label class="block text-sm font-medium text-gray-700 mb-1">رقم الهاتف</label>
-      <input type="tel" x-model="phone" placeholder="+201234567890" dir="ltr"
-        class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B6B5A] focus:ring-1 focus:ring-[#1B6B5A]"
-        @keydown.enter="sendOtp" />
-      <p class="text-red-500 text-xs mt-1 h-4" x-text="authErr"></p>
-      <button @click="sendOtp" :disabled="authBusy"
-        class="mt-3 w-full bg-[#1B6B5A] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#114A3E] disabled:opacity-50 transition">
-        <span x-show="!authBusy">إرسال رمز التحقق</span>
-        <span x-show="authBusy">جاري الإرسال…</span>
-      </button>
-    </div>
-
-    <div x-show="otpSent">
-      <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-sm text-amber-700">
-        راجع نافذة تشغيل الـ backend للحصول على رمز التحقق.
+<!-- ═══════════════════════════ Login ═══════════════════════════ -->
+<template x-if="!booting && !authenticated">
+  <div class="login">
+    <section class="login-hero">
+      <div class="row">
+        <div class="brand-mark" style="background:rgba(255,255,255,.15)" x-html="svg('car')"></div>
+        <strong style="font-size:18px">يلا نسافر</strong>
       </div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">رمز التحقق (6 أرقام)</label>
-      <input type="text" x-model="otpCode" placeholder="123456" maxlength="6" dir="ltr"
-        class="w-full border border-gray-300 rounded-xl px-4 py-3 text-center tracking-[0.4em] text-lg font-mono focus:outline-none focus:border-[#1B6B5A]"
-        @keydown.enter="verifyOtp" />
-      <p class="text-red-500 text-xs mt-1 h-4" x-text="authErr"></p>
-      <button @click="verifyOtp" :disabled="authBusy"
-        class="mt-3 w-full bg-[#1B6B5A] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#114A3E] disabled:opacity-50 transition">
-        <span x-show="!authBusy">دخول</span>
-        <span x-show="authBusy">جاري التحقق…</span>
-      </button>
-      <button @click="otpSent = false; authErr = ''" class="mt-2 w-full text-gray-400 text-xs hover:text-gray-600 py-1">
-        ← تغيير الرقم
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ADMIN SHELL -->
-<div x-show="authenticated" class="flex h-screen overflow-hidden">
-
-  <!-- Sidebar -->
-  <aside class="w-60 bg-[#1B6B5A] flex flex-col shrink-0">
-    <div class="px-5 py-5 border-b border-white/10">
-      <div class="text-white font-bold text-lg">يلا نسافر</div>
-      <div class="text-white/50 text-xs mt-0.5">لوحة التحكم</div>
-    </div>
-
-    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-      <button @click="go('dashboard')"
-        :class="page==='dashboard' ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'"
-        class="flex items-center gap-3 w-full text-right px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer">
-        📊 لوحة البيانات
-      </button>
-      <button @click="go('users')"
-        :class="page==='users' ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'"
-        class="flex items-center gap-3 w-full text-right px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer">
-        👥 المستخدمون
-        <span x-show="analytics && analytics.users && analytics.users.pendingIdVerifications > 0"
-          class="mr-auto bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full"
-          x-text="analytics && analytics.users ? analytics.users.pendingIdVerifications : ''"></span>
-      </button>
-      <button @click="go('trips')"
-        :class="page==='trips' ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'"
-        class="flex items-center gap-3 w-full text-right px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer">
-        🚗 الرحلات
-      </button>
-      <button @click="go('disputes')"
-        :class="page==='disputes' ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'"
-        class="flex items-center gap-3 w-full text-right px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer">
-        ⚖️ النزاعات
-        <span x-show="analytics && analytics.disputes && analytics.disputes.open > 0"
-          class="mr-auto bg-red-400 text-white text-xs font-bold px-2 py-0.5 rounded-full"
-          x-text="analytics && analytics.disputes ? analytics.disputes.open : ''"></span>
-      </button>
-      <button @click="go('config')"
-        :class="page==='config' ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'"
-        class="flex items-center gap-3 w-full text-right px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer">
-        ⚙️ إعدادات المنصة
-      </button>
-    </nav>
-
-    <div class="px-4 py-4 border-t border-white/10">
-      <div class="text-white/80 text-sm font-medium truncate" x-text="me && me.fullName ? me.fullName : ''"></div>
-      <div class="text-white/40 text-xs" x-text="me ? me.phoneNumber : ''"></div>
-      <button @click="logout" class="mt-2 text-white/40 text-xs hover:text-white/80 transition cursor-pointer">تسجيل الخروج ←</button>
-    </div>
-  </aside>
-
-  <!-- Main -->
-  <main class="flex-1 flex flex-col overflow-hidden">
-    <!-- Topbar -->
-    <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0">
-      <h2 class="text-base font-semibold text-gray-800" x-text="pageTitle"></h2>
-      <div x-show="toast.msg"
-        :class="toast.ok ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'"
-        class="text-sm px-4 py-2 rounded-xl border font-medium"
-        x-text="toast.msg">
-      </div>
-    </header>
-
-    <!-- Content -->
-    <div class="flex-1 overflow-y-auto p-6">
-
-      <!-- DASHBOARD -->
-      <div x-show="page === 'dashboard'">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <template x-for="c in statCards" :key="c.label">
-            <div @click="c.target && go(c.target)"
-              :class="c.target ? 'cursor-pointer hover:shadow-md hover:border-gray-200 hover:-translate-y-0.5' : ''"
-              class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 transition-all select-none">
-              <div class="text-3xl mb-2" x-text="c.icon"></div>
-              <div class="text-2xl font-bold" x-text="c.value"></div>
-              <div class="text-xs text-gray-400 mt-0.5" x-text="c.label"></div>
-              <div x-show="c.target" class="text-xs text-[#1B6B5A] mt-2 font-medium">اضغط للعرض ←</div>
-            </div>
-          </template>
-        </div>
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <h3 class="font-semibold text-gray-800 mb-4">أكثر المسارات شيوعاً</h3>
-          <template x-if="analytics && analytics.topRoutes && analytics.topRoutes.length > 0">
-            <table class="w-full text-sm">
-              <thead><tr class="border-b text-gray-500 text-xs">
-                <th class="text-right py-2 font-medium">من</th>
-                <th class="text-right py-2 font-medium">إلى</th>
-                <th class="text-right py-2 font-medium">عدد الرحلات</th>
-              </tr></thead>
-              <tbody>
-                <template x-for="r in analytics.topRoutes" :key="r.originCity + r.destinationCity">
-                  <tr class="border-b border-gray-50">
-                    <td class="py-2 font-medium" x-text="r.originCity"></td>
-                    <td class="py-2 text-gray-500" x-text="r.destinationCity"></td>
-                    <td class="py-2 font-semibold" x-text="r.tripCount"></td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-          </template>
-          <p x-show="!analytics || !analytics.topRoutes || analytics.topRoutes.length === 0" class="text-gray-400 text-sm">لا توجد رحلات مكتملة بعد</p>
+      <div>
+        <h1>لوحة إدارة المنصة</h1>
+        <p>التوثيق والنزاعات والمدفوعات والطوارئ — كل ما يحتاجه فريق التشغيل في مكان واحد.</p>
+        <div class="login-points">
+          <div><span x-html="svg('shield')" style="width:20px;display:inline-flex"></span> مراجعة مستندات الهوية والرخص بروابط خاصة مؤقتة</div>
+          <div><span x-html="svg('gavel')" style="width:20px;display:inline-flex"></span> البت في النزاعات مع تنفيذ الاسترداد عبر Kashier</div>
+          <div><span x-html="svg('history')" style="width:20px;display:inline-flex"></span> كل إجراء مُسجَّل في سجل العمليات</div>
         </div>
       </div>
-
-      <!-- USERS -->
-      <div x-show="page === 'users'">
-        <div class="flex gap-3 mb-4 flex-wrap">
-          <input type="text" x-model="uq.search" @input.debounce.400ms="loadUsers(true)"
-            placeholder="بحث باسم أو رقم هاتف…"
-            class="flex-1 min-w-48 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#1B6B5A]" />
-          <select x-model="uq.status" @change="loadUsers(true)"
-            class="min-w-36 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
-            <option value="">كل الحالات</option>
-            <option value="pending_verification">في الانتظار</option>
-            <option value="active">نشط</option>
-            <option value="suspended">موقوف</option>
-            <option value="banned">محظور</option>
-          </select>
-          <select x-model="uq.idVerified" @change="loadUsers(true)"
-            class="min-w-36 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
-            <option value="">كل الهويات</option>
-            <option value="false">غير محقق</option>
-            <option value="true">محقق</option>
-          </select>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div x-show="loading" class="p-8 text-center text-gray-400 text-sm">جاري التحميل…</div>
-          <table x-show="!loading" class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">المستخدم</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">الدور</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">الحالة</th>
-                <th class="text-center py-3 px-4 text-xs font-semibold text-gray-500 uppercase">هوية</th>
-                <th class="text-center py-3 px-4 text-xs font-semibold text-gray-500 uppercase">سائق</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-              <template x-for="u in users" :key="u.id">
-                <tr class="hover:bg-gray-50">
-                  <td class="py-3 px-4">
-                    <div class="font-medium" x-text="u.fullName || '—'"></div>
-                    <div class="text-gray-400 text-xs" x-text="u.phoneNumber"></div>
-                  </td>
-                  <td class="py-3 px-4">
-                    <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700" x-text="roleLabel(u.role)"></span>
-                  </td>
-                  <td class="py-3 px-4">
-                    <span :class="statusClass(u.status)" class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium" x-text="statusLabel(u.status)"></span>
-                  </td>
-                  <td class="py-3 px-4 text-center">
-                    <span x-show="u.idVerified" class="text-green-500 font-bold">✓</span>
-                    <span x-show="!u.idVerified && u.nationalIdNumber" class="text-yellow-500">⏳</span>
-                    <span x-show="!u.idVerified && !u.nationalIdNumber" class="text-gray-300">—</span>
-                  </td>
-                  <td class="py-3 px-4 text-center">
-                    <span x-show="u.driverVerified" class="text-green-500 font-bold">✓</span>
-                    <span x-show="!u.driverVerified && u.vehiclePlate" class="text-yellow-500">⏳</span>
-                    <span x-show="!u.driverVerified && !u.vehiclePlate" class="text-gray-300">—</span>
-                  </td>
-                  <td class="py-3 px-4">
-                    <div class="flex gap-1.5 flex-wrap">
-                      <template x-if="!u.idVerified && u.nationalIdNumber">
-                        <button @click="approveId(u.id)" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-500 text-white hover:bg-green-600 cursor-pointer">✓ هوية</button>
-                      </template>
-                      <template x-if="u.idVerified && !u.driverVerified && u.vehiclePlate">
-                        <button @click="approveDriver(u.id)" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500 text-white hover:bg-blue-600 cursor-pointer">✓ سائق</button>
-                      </template>
-                      <template x-if="u.status === 'active' || u.status === 'pending_verification'">
-                        <button @click="setStatus(u.id, 'suspended')" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-orange-100 text-orange-700 hover:bg-orange-200 cursor-pointer">تعليق</button>
-                      </template>
-                      <template x-if="u.status === 'suspended'">
-                        <button @click="setStatus(u.id, 'active')" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer">تفعيل</button>
-                      </template>
-                      <template x-if="u.status !== 'banned'">
-                        <button @click="setStatus(u.id, 'banned')" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-100 text-red-700 hover:bg-red-200 cursor-pointer">حظر</button>
-                      </template>
-                    </div>
-                  </td>
-                </tr>
-              </template>
-              <tr x-show="!loading && users.length === 0">
-                <td colspan="6" class="py-10 text-center text-gray-400">لا يوجد مستخدمون</td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="border-t border-gray-100 px-4 py-3 flex items-center justify-between text-xs text-gray-500">
-            <span x-text="usersTotal + ' مستخدم إجمالاً'"></span>
-            <div class="flex items-center gap-2">
-              <button @click="uq.page--; loadUsers()" :disabled="uq.page <= 1"
-                class="px-3 py-1 border border-gray-200 rounded-lg disabled:opacity-40 cursor-pointer">السابق</button>
-              <span x-text="'صفحة ' + uq.page" class="font-medium"></span>
-              <button @click="uq.page++; loadUsers()" :disabled="users.length < uq.limit"
-                class="px-3 py-1 border border-gray-200 rounded-lg disabled:opacity-40 cursor-pointer">التالي</button>
-            </div>
+      <div class="subtle" style="color:rgba(255,255,255,.6)">للاستخدام الداخلي فقط</div>
+    </section>
+    <section class="login-panel">
+      <div class="login-card">
+        <h2 x-text="otpSent ? 'أدخل رمز التحقق' : 'تسجيل دخول المشرف'"></h2>
+        <p class="muted" style="margin:0 0 22px" x-text="otpSent ? 'أرسلنا رمزاً من 6 أرقام إلى ' + phone : 'بنفس رقم الموبايل المسجّل بحساب الإدارة'"></p>
+        <form class="stack" x-show="!otpSent" @submit.prevent="sendOtp()">
+          <div class="field">
+            <label>رقم الموبايل</label>
+            <input class="input ltr" style="text-align:left;width:100%" x-model="phone" placeholder="01X XXXX XXXX" inputmode="tel" autocomplete="tel" required />
           </div>
+          <button class="btn" :disabled="authBusy || phone.length < 10" x-text="authBusy ? 'جاري الإرسال…' : 'إرسال رمز التحقق'"></button>
+        </form>
+        <form class="stack" x-show="otpSent" @submit.prevent="verifyOtp()">
+          <input class="input otp-input ltr" style="width:100%" x-model="otp" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="••••••" required />
+          <button class="btn" :disabled="authBusy || otp.length !== 6" x-text="authBusy ? 'جاري التحقق…' : 'دخول'"></button>
+          <button type="button" class="btn btn-ghost" @click="otpSent=false; otp=''; authErr=''">تغيير الرقم</button>
+        </form>
+        <p x-show="authErr" x-text="authErr" style="color:var(--danger);font-weight:600;margin-top:14px"></p>
+      </div>
+    </section>
+  </div>
+</template>
+
+<!-- ═══════════════════════════ App ═══════════════════════════ -->
+<template x-if="authenticated">
+  <div class="app">
+    <aside class="sidebar" :class="navOpen && 'open'">
+      <div class="brand">
+        <div class="brand-mark" x-html="svg('car')"></div>
+        <div>
+          <div class="brand-title">يلا نسافر</div>
+          <div class="brand-sub">لوحة الإدارة</div>
         </div>
       </div>
-
-      <!-- TRIPS -->
-      <div x-show="page === 'trips'">
-        <div class="flex gap-3 mb-4">
-          <select x-model="tq.status" @change="loadTrips()"
-            class="min-w-36 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
-            <option value="">كل الحالات</option>
-            <option value="scheduled">مجدولة</option>
-            <option value="active">نشطة</option>
-            <option value="completed">مكتملة</option>
-            <option value="cancelled">ملغية</option>
-          </select>
-        </div>
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div x-show="loading" class="p-8 text-center text-gray-400 text-sm">جاري التحميل…</div>
-          <table x-show="!loading" class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">المسار</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">السائق</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">موعد الانطلاق</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">المقاعد</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">السعر</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">الحالة</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-              <template x-for="t in trips" :key="t.id">
-                <tr class="hover:bg-gray-50">
-                  <td class="py-3 px-4 font-medium" x-text="t.originCity + ' ← ' + t.destinationCity"></td>
-                  <td class="py-3 px-4 text-gray-500" x-text="t.driver && t.driver.fullName ? t.driver.fullName : '—'"></td>
-                  <td class="py-3 px-4 text-gray-500 text-xs" x-text="fmtDate(t.departureTime)"></td>
-                  <td class="py-3 px-4" x-text="t.availableSeats + ' / ' + t.totalSeats"></td>
-                  <td class="py-3 px-4 font-semibold" x-text="t.pricePerSeat + ' ج'"></td>
-                  <td class="py-3 px-4">
-                    <span :class="tripStatusClass(t.status)" class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium" x-text="tripStatusLabel(t.status)"></span>
-                  </td>
-                </tr>
-              </template>
-              <tr x-show="!loading && trips.length === 0">
-                <td colspan="6" class="py-10 text-center text-gray-400">لا توجد رحلات</td>
-              </tr>
-            </tbody>
-          </table>
+      <nav class="nav">
+        <template x-for="group in nav" :key="group.label">
+          <div>
+            <div class="nav-label" x-text="group.label"></div>
+            <template x-for="item in group.items" :key="item.id">
+              <button class="nav-item" :class="page === item.id && 'active'" @click="open(item.id)">
+                <span x-html="svg(item.icon)" style="display:inline-flex"></span>
+                <span x-text="item.title"></span>
+                <span class="nav-badge" x-show="item.badge > 0" x-text="item.badge"></span>
+              </button>
+            </template>
+          </div>
+        </template>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="me">
+          <div class="avatar" x-text="fmt.initial(me?.fullName)"></div>
+          <div class="grow">
+            <div style="font-weight:700" x-text="me?.fullName || 'مشرف'"></div>
+            <div class="subtle ltr" x-text="me?.phoneNumber"></div>
+          </div>
+          <button class="icon-btn" title="تسجيل الخروج" @click="logout()" x-html="svg('logout')"></button>
         </div>
       </div>
+    </aside>
+    <div class="scrim" :class="navOpen && 'show'" @click="navOpen=false"></div>
 
-      <!-- DISPUTES -->
-      <div x-show="page === 'disputes'">
-        <div class="flex gap-3 mb-4">
-          <select x-model="dq.status" @change="loadDisputes()"
-            class="min-w-44 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
-            <option value="">كل الحالات</option>
-            <option value="open">مفتوح</option>
-            <option value="under_review">قيد المراجعة</option>
-            <option value="resolved_refund">محلول — استرداد</option>
-            <option value="resolved_release">محلول — دفع للسائق</option>
-            <option value="closed">مغلق</option>
-          </select>
-        </div>
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div x-show="loading" class="p-8 text-center text-gray-400 text-sm">جاري التحميل…</div>
-          <table x-show="!loading" class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">السبب</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">المُبلِّغ</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">الحالة</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">الموعد النهائي</th>
-                <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-              <template x-for="d in disputes" :key="d.id">
-                <tr class="hover:bg-gray-50">
-                  <td class="py-3 px-4">
-                    <div class="font-medium" x-text="d.reason"></div>
-                    <div class="text-gray-400 text-xs max-w-xs truncate" x-text="d.description"></div>
-                  </td>
-                  <td class="py-3 px-4 text-gray-500 text-xs" x-text="d.openedBy && d.openedBy.fullName ? d.openedBy.fullName : (d.openedByUserId ? d.openedByUserId.slice(0,8) + '…' : '—')"></td>
-                  <td class="py-3 px-4">
-                    <span :class="disputeStatusClass(d.status)" class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium" x-text="disputeStatusLabel(d.status)"></span>
-                  </td>
-                  <td class="py-3 px-4 text-xs text-gray-500" x-text="fmtDate(d.slaDeadline)"></td>
-                  <td class="py-3 px-4">
-                    <template x-if="d.status === 'open' || d.status === 'under_review'">
-                      <div class="flex gap-1.5">
-                        <button @click="resolveDispute(d.id, 'resolved_refund')" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer">↩ استرداد</button>
-                        <button @click="resolveDispute(d.id, 'resolved_release')" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer">✓ دفع للسائق</button>
-                      </div>
-                    </template>
-                  </td>
-                </tr>
-              </template>
-              <tr x-show="!loading && disputes.length === 0">
-                <td colspan="5" class="py-10 text-center text-gray-400">لا توجد نزاعات</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- CONFIG -->
-      <div x-show="page === 'config'">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-lg">
-          <div x-show="loading" class="text-gray-400 text-sm">جاري التحميل…</div>
-          <form x-show="!loading" @submit.prevent="saveConfig" class="space-y-5">
-            <template x-for="(val, key) in config" :key="key">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" x-text="configLabel(key)"></label>
-                <input type="text" :value="config[key]" @input="config[key] = $event.target.value"
-                  class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#1B6B5A]" dir="ltr" />
-                <p class="text-xs text-gray-400 mt-1" x-text="configHint(key)"></p>
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" @click="navOpen=true" x-html="svg('menu')"></button>
+        <h1 class="page-title" x-text="pageTitle"></h1>
+        <div class="spacer"></div>
+        <div class="search hide-sm" style="width:300px" @click.outside="globalResults=null">
+          <span x-html="svg('search')"></span>
+          <input class="input" placeholder="بحث سريع: اسم، موبايل، رقم قومي، معرّف" x-model="globalQ" @input.debounce.350ms="globalSearch()" />
+          <div class="card" x-show="globalResults" x-cloak style="position:absolute;top:46px;inset-inline:0;z-index:60;max-height:360px;overflow:auto">
+            <template x-for="u in globalResults?.users || []" :key="u.id">
+              <div class="list-item clickable" style="cursor:pointer" @click="globalResults=null; globalQ=''; openUser(u.id)">
+                <div class="avatar" x-text="fmt.initial(u.fullName)"></div>
+                <div class="grow"><div style="font-weight:700" x-text="u.fullName || '—'"></div><div class="subtle ltr" x-text="u.phoneNumber"></div></div>
+                <span class="pill" :class="tone('userStatus', u.status)" x-text="label('userStatus', u.status)"></span>
               </div>
             </template>
-            <button type="submit" class="bg-[#1B6B5A] text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#114A3E] transition cursor-pointer">
-              حفظ الإعدادات
-            </button>
-          </form>
+            <template x-for="t in globalResults?.trips || []" :key="t.id">
+              <div class="list-item" style="cursor:pointer" @click="globalResults=null; globalQ=''; openTrip(t.id)">
+                <span class="kpi-icon tone-brand" x-html="svg('route')"></span>
+                <div class="grow"><div style="font-weight:700" x-text="t.originCity + ' ← ' + t.destinationCity"></div><div class="subtle" x-text="fmt.date(t.departureTime)"></div></div>
+              </div>
+            </template>
+            <div class="empty" style="padding:20px" x-show="globalResults && !globalResults.users.length && !globalResults.trips.length">لا نتائج</div>
+          </div>
         </div>
+        <button class="icon-btn" :title="theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'" @click="toggleTheme()" x-html="svg(theme === 'dark' ? 'sun' : 'moon')"></button>
+      </header>
+
+      <div class="content">
+
+        <!-- ─────────── Dashboard ─────────── -->
+        <section x-show="page==='dashboard'">
+          <div class="card card-pad" x-show="sos.rows.length" style="background:var(--danger-soft);border-color:transparent;margin-bottom:16px">
+            <div class="row">
+              <span class="kpi-icon tone-danger" x-html="svg('siren')"></span>
+              <div class="grow"><strong x-text="`${sos.rows.length} تنبيه طوارئ مفتوح`"></strong><div class="muted">يحتاج تواصلاً فورياً مع المستخدم.</div></div>
+              <button class="btn btn-danger" @click="open('sos')">عرض التنبيهات</button>
+            </div>
+          </div>
+
+          <div class="grid grid-4">
+            <div class="card kpi">
+              <div class="kpi-top"><span class="kpi-icon tone-brand" x-html="svg('coins')"></span><span class="kpi-label">العمولة المُحصّلة</span></div>
+              <div class="kpi-value" x-text="fmt.money(commission?.capturedCommission)"></div>
+              <div class="kpi-foot" x-text="'هذا الشهر: ' + fmt.money(commission?.thisMonthCommission)"></div>
+            </div>
+            <div class="card kpi clickable" @click="open('trips')">
+              <div class="kpi-top"><span class="kpi-icon tone-info" x-html="svg('route')"></span><span class="kpi-label">رحلات مكتملة (30 يوم)</span></div>
+              <div class="kpi-value" x-text="fmt.num(analytics?.trips.completedLast30Days)"></div>
+              <div class="kpi-foot" x-text="'الإجمالي: ' + fmt.num(analytics?.trips.total) + ' رحلة'"></div>
+            </div>
+            <div class="card kpi clickable" @click="open('users')">
+              <div class="kpi-top"><span class="kpi-icon tone-success" x-html="svg('users')"></span><span class="kpi-label">المستخدمون النشطون</span></div>
+              <div class="kpi-value" x-text="fmt.num(analytics?.users.active)"></div>
+              <div class="kpi-foot" x-text="'من ' + fmt.num(analytics?.users.total) + ' مستخدم'"></div>
+            </div>
+            <div class="card kpi clickable" @click="open('verify')">
+              <div class="kpi-top"><span class="kpi-icon tone-accent" x-html="svg('shield')"></span><span class="kpi-label">بانتظار التوثيق</span></div>
+              <div class="kpi-value" x-text="fmt.num((analytics?.users.pendingIdVerifications||0) + (analytics?.users.pendingDriverVerifications||0))"></div>
+              <div class="kpi-foot" x-text="`${fmt.num(analytics?.users.pendingIdVerifications)} هوية · ${fmt.num(analytics?.users.pendingDriverVerifications)} سائق`"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-2" style="margin-top:16px">
+            <div class="card">
+              <div class="card-head">
+                <h3 class="card-title grow">الإيرادات اليومية</h3>
+                <div class="tabs">
+                  <template x-for="d in [14, 30, 90]" :key="d">
+                    <button class="tab" :class="seriesDays===d && 'active'" @click="seriesDays=d; loadSeries()" x-text="d + ' يوم'"></button>
+                  </template>
+                </div>
+              </div>
+              <div class="row" style="padding:12px 18px 0;gap:24px">
+                <div><div class="subtle">قيمة الرحلات</div><strong style="font-size:18px" x-text="fmt.money(seriesSum('gmv'))"></strong></div>
+                <div><div class="subtle">العمولة</div><strong style="font-size:18px;color:var(--warning)" x-text="fmt.money(seriesSum('commission'))"></strong></div>
+              </div>
+              <div class="chart-box"><canvas id="chartMoney"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3 class="card-title grow">النشاط</h3>
+                <div class="legend">
+                  <span><i style="background:var(--brand)"></i>حجوزات</span>
+                  <span><i style="background:#2563eb"></i>رحلات مكتملة</span>
+                  <span><i style="background:#f2a516"></i>مستخدمون جدد</span>
+                </div>
+              </div>
+              <div class="chart-box"><canvas id="chartActivity"></canvas></div>
+            </div>
+          </div>
+
+          <div class="grid grid-3" style="margin-top:16px">
+            <div class="card">
+              <div class="card-head"><h3 class="card-title">أكثر الطرق طلباً</h3></div>
+              <template x-for="r in analytics?.topRoutes || []" :key="r.originCity + r.destinationCity">
+                <div class="list-item">
+                  <div class="grow">
+                    <div class="row"><strong class="grow" x-text="r.originCity + ' ← ' + r.destinationCity"></strong><span class="muted" x-text="fmt.num(r.tripCount) + ' رحلة'"></span></div>
+                    <div class="bar" style="margin-top:6px"><span :style="`width:${(Number(r.tripCount) / maxRoute()) * 100}%`"></span></div>
+                  </div>
+                </div>
+              </template>
+              <div class="empty" x-show="!(analytics?.topRoutes || []).length"><h4>لا توجد رحلات مكتملة بعد</h4></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3 class="card-title">يحتاج انتباهك</h3></div>
+              <div class="list-item" style="cursor:pointer" @click="open('disputes')">
+                <span class="kpi-icon tone-pink" x-html="svg('gavel')"></span>
+                <div class="grow"><strong>نزاعات مفتوحة</strong><div class="subtle">بانتظار المراجعة والبت</div></div>
+                <strong style="font-size:20px" x-text="fmt.num(analytics?.disputes.open)"></strong>
+              </div>
+              <div class="list-item" style="cursor:pointer" @click="open('users'); uq.status=''; ">
+                <span class="kpi-icon tone-danger" x-html="svg('flag')"></span>
+                <div class="grow"><strong>حسابات بتقييم منخفض</strong><div class="subtle">عليها علامة مراجعة</div></div>
+                <strong style="font-size:20px" x-text="fmt.num(analytics?.users.trustFlagged)"></strong>
+              </div>
+              <div class="list-item" style="cursor:pointer" @click="open('withdrawals')">
+                <span class="kpi-icon tone-accent" x-html="svg('wallet')"></span>
+                <div class="grow"><strong>عمولة معلّقة</strong><div class="subtle">لم تُحصّل بعد من Kashier</div></div>
+                <strong x-text="fmt.money(commission?.pendingCommission)"></strong>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3 class="card-title">ملخص الرحلات</h3></div>
+              <div class="list-item"><span class="pill tone-brand">مكتملة</span><span class="grow"></span><strong x-text="fmt.num(analytics?.trips.completed)"></strong></div>
+              <div class="list-item"><span class="pill tone-danger">ملغاة</span><span class="grow"></span><strong x-text="fmt.num(analytics?.trips.cancelled)"></strong></div>
+              <div class="list-item"><span class="pill tone-info">إجمالي الحجوزات</span><span class="grow"></span><strong x-text="fmt.num(analytics?.bookings.total)"></strong></div>
+              <div class="list-item"><span class="pill tone-success">إجمالي العمولة المسجّلة</span><span class="grow"></span><strong x-text="fmt.money(analytics?.revenue.totalEgp)"></strong></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ─────────── Verification queue ─────────── -->
+        <section x-show="page==='verify'">
+          <div class="grid grid-2">
+            <template x-for="col in [['id', 'توثيق الهوية', 'shield'], ['driver', 'توثيق السائقين', 'car']]" :key="col[0]">
+              <div class="card">
+                <div class="card-head">
+                  <span class="kpi-icon tone-accent" x-html="svg(col[2])"></span>
+                  <h3 class="card-title grow" x-text="col[1]"></h3>
+                  <span class="pill tone-accent" x-text="queue[col[0]].length + ' طلب'"></span>
+                </div>
+                <template x-for="u in queue[col[0]]" :key="u.id">
+                  <div class="list-item" style="cursor:pointer" @click="openUser(u.id)">
+                    <div class="avatar"><template x-if="u.profilePhotoUrl"><img :src="u.profilePhotoUrl" alt=""></template><span x-show="!u.profilePhotoUrl" x-text="fmt.initial(u.fullName)"></span></div>
+                    <div class="grow">
+                      <div style="font-weight:700" x-text="u.fullName || '—'"></div>
+                      <div class="subtle" x-text="col[0]==='id' ? ('الرقم القومي: ' + (u.nationalIdNumber || '—')) : [u.vehicleMake, u.vehicleModel, u.vehiclePlate].filter(Boolean).join(' · ')"></div>
+                    </div>
+                    <span class="subtle" x-text="fmt.ago(u.updatedAt)"></span>
+                    <button class="btn btn-sm btn-soft">مراجعة</button>
+                  </div>
+                </template>
+                <div class="empty" x-show="!queue.loading && !queue[col[0]].length"><span x-html="svg('check')"></span><h4>لا توجد طلبات معلّقة</h4></div>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <!-- ─────────── Users ─────────── -->
+        <section x-show="page==='users'">
+          <div class="toolbar">
+            <div class="search"><span x-html="svg('search')"></span><input class="input" placeholder="بحث بالاسم أو رقم الموبايل" x-model="uq.search" @input.debounce.400ms="loadUsers(1)" /></div>
+            <select class="select" x-model="uq.status" @change="loadUsers(1)">
+              <option value="">كل الحالات</option><option value="active">نشط</option><option value="pending_verification">بانتظار الإكمال</option><option value="suspended">موقوف</option><option value="banned">محظور</option>
+            </select>
+            <select class="select" x-model="uq.role" @change="loadUsers(1)">
+              <option value="">كل الأدوار</option><option value="passenger">راكب</option><option value="both">راكب وسائق</option><option value="admin">مشرف</option>
+            </select>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>المستخدم</th><th>الدور</th><th>التوثيق</th><th>التقييم</th><th>رحلات (راكب / سائق)</th><th>الحالة</th><th class="hide-sm">انضم</th></tr></thead>
+                <tbody>
+                  <template x-for="u in users.rows" :key="u.id">
+                    <tr class="clickable" @click="openUser(u.id)">
+                      <td><div class="user-cell"><div class="avatar"><template x-if="u.profilePhotoUrl"><img :src="u.profilePhotoUrl" alt=""></template><span x-show="!u.profilePhotoUrl" x-text="fmt.initial(u.fullName)"></span></div><div><div class="name" x-text="u.fullName || '—'"></div><div class="subtle ltr" x-text="u.phoneNumber"></div></div></div></td>
+                      <td x-text="LABELS.role[u.role] || u.role"></td>
+                      <td><div class="row wrap" style="gap:4px">
+                        <span class="pill" :class="u.idVerified ? 'tone-success' : (u.nationalIdNumber ? 'tone-accent' : 'tone-muted')" x-text="u.idVerified ? 'هوية ✓' : (u.nationalIdNumber ? 'هوية: مراجعة' : 'بدون هوية')"></span>
+                        <span class="pill" x-show="u.role==='both' || u.driverVerified" :class="u.driverVerified ? 'tone-success' : 'tone-accent'" x-text="u.driverVerified ? 'سائق ✓' : 'سائق: مراجعة'"></span>
+                      </div></td>
+                      <td><span x-show="u.ratingCount > 0" x-text="'★ ' + Number(u.ratingAverage).toFixed(1) + ' (' + u.ratingCount + ')'"></span><span class="subtle" x-show="!u.ratingCount">—</span>
+                        <span class="pill tone-danger" x-show="u.trustFlagged">مراجعة</span></td>
+                      <td class="nowrap" x-text="u.completedTripsAsPassenger + ' / ' + u.completedTripsAsDriver"></td>
+                      <td><span class="pill" :class="tone('userStatus', u.status)" x-text="label('userStatus', u.status)"></span></td>
+                      <td class="subtle hide-sm" x-text="fmt.day(u.createdAt)"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div class="empty" x-show="!users.loading && !users.rows.length"><span x-html="svg('users')"></span><h4>لا يوجد مستخدمون مطابقون</h4></div>
+            <div class="pager">
+              <span class="muted" x-text="`${fmt.num(users.total)} مستخدم · صفحة ${users.page} من ${pages(users)}`"></span>
+              <div class="row"><button class="btn btn-sm btn-ghost" :disabled="users.page<=1" @click="loadUsers(users.page-1)">السابق</button><button class="btn btn-sm btn-ghost" :disabled="users.page>=pages(users)" @click="loadUsers(users.page+1)">التالي</button></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ─────────── Trips ─────────── -->
+        <section x-show="page==='trips'">
+          <div class="toolbar">
+            <div class="tabs">
+              <template x-for="s in [['', 'الكل'], ['scheduled', 'مجدولة'], ['active', 'جارية'], ['completed', 'مكتملة'], ['cancelled', 'ملغاة']]" :key="s[0]">
+                <button class="tab" :class="tq.status===s[0] && 'active'" @click="tq.status=s[0]; loadTrips(1)" x-text="s[1]"></button>
+              </template>
+            </div>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>المسار</th><th>الانطلاق</th><th>السائق</th><th>المقاعد</th><th>السعر</th><th>الحالة</th></tr></thead>
+                <tbody>
+                  <template x-for="t in trips.rows" :key="t.id">
+                    <tr class="clickable" @click="openTrip(t.id)">
+                      <td><strong x-text="t.originCity + ' ← ' + t.destinationCity"></strong><span class="pill tone-pink" x-show="t.womenOnly" style="margin-inline-start:6px">نسائية</span></td>
+                      <td class="nowrap" x-text="fmt.date(t.departureTime)"></td>
+                      <td x-text="t.driver?.fullName || '—'"></td>
+                      <td x-text="(t.totalSeats - t.availableSeats) + ' / ' + t.totalSeats"></td>
+                      <td class="nowrap" x-text="fmt.money(t.pricePerSeat)"></td>
+                      <td><span class="pill" :class="tone('tripStatus', t.status)" x-text="label('tripStatus', t.status)"></span></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div class="empty" x-show="!trips.loading && !trips.rows.length"><span x-html="svg('route')"></span><h4>لا توجد رحلات</h4></div>
+            <div class="pager">
+              <span class="muted" x-text="`${fmt.num(trips.total)} رحلة · صفحة ${trips.page} من ${pages(trips)}`"></span>
+              <div class="row"><button class="btn btn-sm btn-ghost" :disabled="trips.page<=1" @click="loadTrips(trips.page-1)">السابق</button><button class="btn btn-sm btn-ghost" :disabled="trips.page>=pages(trips)" @click="loadTrips(trips.page+1)">التالي</button></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ─────────── Disputes ─────────── -->
+        <section x-show="page==='disputes'">
+          <div class="toolbar">
+            <div class="tabs">
+              <template x-for="s in [['open', 'مفتوحة'], ['under_review', 'قيد المراجعة'], ['resolved_refund', 'استرداد'], ['resolved_release', 'صرف للسائق'], ['resolved_split', 'تقسيم'], ['', 'الكل']]" :key="s[0]">
+                <button class="tab" :class="dq.status===s[0] && 'active'" @click="dq.status=s[0]; loadDisputes(1)" x-text="s[1]"></button>
+              </template>
+            </div>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>السبب</th><th>فتحه</th><th>المهلة</th><th>الحالة</th><th class="hide-sm">التاريخ</th></tr></thead>
+                <tbody>
+                  <template x-for="d in disputes.rows" :key="d.id">
+                    <tr class="clickable" @click="openDispute(d.id)">
+                      <td><strong x-text="LABELS.disputeReason[d.reason] || d.reason"></strong><div class="subtle" style="max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="d.description"></div></td>
+                      <td x-text="d.openedBy?.fullName || '—'"></td>
+                      <td class="nowrap">
+                        <template x-if="['open','under_review'].includes(d.status) && slaLeft(d) !== null">
+                          <span class="pill" :class="slaLeft(d) < 0 ? 'tone-danger' : (slaLeft(d) < 12 ? 'tone-accent' : 'tone-muted')" x-text="slaLeft(d) < 0 ? 'تجاوز المهلة' : ('باقي ' + Math.ceil(slaLeft(d)) + ' س')"></span>
+                        </template>
+                      </td>
+                      <td><span class="pill" :class="tone('disputeStatus', d.status)" x-text="label('disputeStatus', d.status)"></span></td>
+                      <td class="subtle hide-sm" x-text="fmt.date(d.createdAt)"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div class="empty" x-show="!disputes.loading && !disputes.rows.length"><span x-html="svg('gavel')"></span><h4>لا توجد نزاعات هنا</h4></div>
+            <div class="pager">
+              <span class="muted" x-text="`${fmt.num(disputes.total)} نزاع`"></span>
+              <div class="row"><button class="btn btn-sm btn-ghost" :disabled="disputes.page<=1" @click="loadDisputes(disputes.page-1)">السابق</button><button class="btn btn-sm btn-ghost" :disabled="disputes.page>=pages(disputes)" @click="loadDisputes(disputes.page+1)">التالي</button></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ─────────── Withdrawals ─────────── -->
+        <section x-show="page==='withdrawals'">
+          <div class="toolbar">
+            <div class="tabs">
+              <template x-for="s in [['pending', 'قيد التنفيذ'], ['paid', 'تم التحويل'], ['rejected', 'مرفوضة / فاشلة']]" :key="s[0]">
+                <button class="tab" :class="wq.status===s[0] && 'active'" @click="wq.status=s[0]; loadWithdrawals()" x-text="s[1]"></button>
+              </template>
+            </div>
+            <span class="subtle">التحويلات تُرسل تلقائياً عبر Kashier وتُطابق كل 30 دقيقة — التدخل اليدوي للحالات العالقة فقط.</span>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>السائق</th><th>المبلغ</th><th>الوسيلة</th><th>الحساب</th><th>Kashier</th><th>التاريخ</th><th x-show="wq.status==='pending'"></th></tr></thead>
+                <tbody>
+                  <template x-for="w in withdrawals.rows" :key="w.id">
+                    <tr>
+                      <td><div class="user-cell" style="cursor:pointer" @click="openUser(w.driverId)"><div class="avatar" x-text="fmt.initial(w.driver?.fullName)"></div><div><div class="name" x-text="w.driver?.fullName || '—'"></div><div class="subtle ltr" x-text="w.driver?.phoneNumber"></div></div></div></td>
+                      <td class="nowrap"><strong x-text="fmt.money(w.amount)"></strong></td>
+                      <td x-text="LABELS.payout[w.payoutMethod] || w.payoutMethod"></td>
+                      <td><span class="ltr mono" x-text="w.payoutAccount"></span><div class="subtle" x-text="[w.payoutName, w.payoutBank].filter(Boolean).join(' · ')"></div></td>
+                      <td><span class="mono subtle" x-text="w.kashierTransferId || 'لم يُرسل'"></span><div class="subtle" style="color:var(--danger)" x-show="w.adminNote" x-text="w.adminNote"></div></td>
+                      <td class="subtle nowrap" x-text="fmt.date(w.createdAt)"></td>
+                      <td x-show="wq.status==='pending'" class="nowrap">
+                        <button class="btn btn-sm btn-soft" @click="settleWithdrawal(w, 'pay')">تأكيد التحويل</button>
+                        <button class="btn btn-sm btn-ghost" @click="settleWithdrawal(w, 'reject')">رفض</button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div class="empty" x-show="!withdrawals.loading && !withdrawals.rows.length"><span x-html="svg('wallet')"></span><h4>لا توجد طلبات</h4></div>
+          </div>
+        </section>
+
+        <!-- ─────────── SOS ─────────── -->
+        <section x-show="page==='sos'">
+          <div class="grid grid-2">
+            <template x-for="a in sos.rows" :key="a.id">
+              <div class="card card-pad" style="border-color:color-mix(in srgb, var(--danger) 40%, var(--border))">
+                <div class="row">
+                  <span class="kpi-icon tone-danger" x-html="svg('siren')"></span>
+                  <div class="grow">
+                    <strong x-text="a.user?.fullName || 'مستخدم'"></strong>
+                    <div class="subtle"><span class="ltr" x-text="a.user?.phoneNumber"></span> · <span x-text="fmt.ago(a.createdAt)"></span></div>
+                  </div>
+                  <a class="btn btn-sm btn-ghost ltr" :href="'tel:' + a.user?.phoneNumber">اتصال</a>
+                </div>
+                <div class="quote" style="margin-top:12px" x-show="a.message" x-text="a.message"></div>
+                <div class="row wrap" style="margin-top:12px">
+                  <a class="btn btn-sm btn-ghost" x-show="a.lat" target="_blank" rel="noopener" :href="`https://maps.google.com/?q=${a.lat},${a.lng}`"><span x-html="svg('map')" style="display:inline-flex"></span>الموقع على الخريطة</a>
+                  <button class="btn btn-sm btn-ghost" x-show="a.tripId" @click="openTrip(a.tripId)">تفاصيل الرحلة</button>
+                  <a class="btn btn-sm btn-ghost" x-show="a.user?.emergencyContactPhone" :href="'tel:' + a.user?.emergencyContactPhone">جهة الطوارئ</a>
+                  <span class="spacer"></span>
+                  <button class="btn btn-sm" @click="resolveSos(a)">تم التعامل معه</button>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div class="card" x-show="!sos.loading && !sos.rows.length"><div class="empty"><span x-html="svg('check')"></span><h4>لا توجد تنبيهات طوارئ مفتوحة</h4><p>تصل التنبيهات الجديدة هنا وكإشعار لكل المشرفين.</p></div></div>
+        </section>
+
+        <!-- ─────────── Config ─────────── -->
+        <section x-show="page==='config'">
+          <template x-for="group in CONFIG_GROUPS" :key="group[0]">
+            <div class="card config-group">
+              <div class="card-head"><h3 class="card-title" x-text="group[0]"></h3></div>
+              <template x-for="row in group[1]" :key="row[0]">
+                <div class="config-row">
+                  <div><div style="font-weight:700" x-text="row[1]"></div><div class="subtle" x-text="row[2]"></div></div>
+                  <div class="unit"><input class="input ltr" style="width:100%;text-align:left" type="number" :step="row[5]" x-model="configDraft[row[0]]" /><span x-text="row[3]"></span></div>
+                </div>
+              </template>
+            </div>
+          </template>
+          <div class="row" style="margin-top:16px;position:sticky;bottom:16px">
+            <span class="spacer"></span>
+            <button class="btn btn-ghost" x-show="configDirty()" @click="configDraft = { ...config }">تراجع</button>
+            <button class="btn" :disabled="!configDirty() || configBusy" @click="saveConfig()" x-text="configBusy ? 'جاري الحفظ…' : 'حفظ التغييرات'"></button>
+          </div>
+        </section>
+
+        <!-- ─────────── Audit ─────────── -->
+        <section x-show="page==='audit'">
+          <div class="card">
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>الإجراء</th><th>المشرف</th><th>الهدف</th><th>التفاصيل</th><th>الوقت</th></tr></thead>
+                <tbody>
+                  <template x-for="a in audit.rows" :key="a.id">
+                    <tr>
+                      <td><strong x-text="LABELS.audit[a.action] || a.action"></strong></td>
+                      <td x-text="a.admin?.fullName || '—'"></td>
+                      <td><span class="pill tone-muted" x-text="a.targetType"></span> <span class="mono subtle" x-text="(a.targetId || '').slice(0, 8)"></span></td>
+                      <td class="subtle" style="max-width:420px" x-text="auditDetails(a.details)"></td>
+                      <td class="subtle nowrap" x-text="fmt.date(a.createdAt)"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div class="empty" x-show="!audit.loading && !audit.rows.length"><span x-html="svg('history')"></span><h4>لا توجد عمليات مسجّلة بعد</h4></div>
+            <div class="pager">
+              <span class="muted" x-text="`${fmt.num(audit.total)} عملية`"></span>
+              <div class="row"><button class="btn btn-sm btn-ghost" :disabled="audit.page<=1" @click="loadAudit(audit.page-1)">الأحدث</button><button class="btn btn-sm btn-ghost" :disabled="audit.page>=pages(audit)" @click="loadAudit(audit.page+1)">الأقدم</button></div>
+            </div>
+          </div>
+        </section>
       </div>
+    </main>
 
-    </div>
-  </main>
+    <!-- ═══════════ Drawers ═══════════ -->
+    <div class="drawer-scrim" x-show="drawer" x-transition.opacity x-cloak @click="drawer=null"></div>
+
+    <!-- User -->
+    <aside class="drawer" x-show="drawer==='user'" x-cloak x-transition:enter="transition" x-transition:enter-start="opacity-0" @keydown.escape.window="drawer=null">
+      <div class="drawer-head">
+        <h3 class="card-title grow">ملف المستخدم</h3>
+        <button class="icon-btn" @click="drawer=null" x-html="svg('close')"></button>
+      </div>
+      <div class="drawer-body" x-show="sel && drawer==='user'">
+        <template x-if="sel && drawer==='user'">
+          <div>
+            <div class="row" style="margin-bottom:18px">
+              <div class="avatar lg"><template x-if="sel.profilePhotoUrl"><img :src="sel.profilePhotoUrl" alt=""></template><span x-show="!sel.profilePhotoUrl" x-text="fmt.initial(sel.fullName)"></span></div>
+              <div class="grow">
+                <div style="font-size:18px;font-weight:800" x-text="sel.fullName || '—'"></div>
+                <div class="muted ltr" x-text="sel.phoneNumber"></div>
+                <div class="row wrap" style="gap:6px;margin-top:6px">
+                  <span class="pill" :class="tone('userStatus', sel.status)" x-text="label('userStatus', sel.status)"></span>
+                  <span class="pill tone-muted" x-text="LABELS.role[sel.role]"></span>
+                  <span class="pill tone-danger" x-show="sel.trustFlagged">تقييم منخفض</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-title">التوثيق</div>
+            <dl class="dl">
+              <dt>الرقم القومي</dt><dd class="mono" x-text="sel.nationalIdNumber || 'لم يُرسل'"></dd>
+              <dt>الجنس</dt><dd x-text="sel.gender === 'female' ? 'أنثى' : (sel.gender === 'male' ? 'ذكر' : '—')"></dd>
+              <dt>الهوية</dt><dd x-text="sel.idVerified ? ('موثّقة · ' + fmt.day(sel.idVerifiedAt)) : (sel.nationalIdNumber ? 'بانتظار المراجعة' : '—')"></dd>
+              <dt>السيارة</dt><dd x-text="[sel.vehicleMake, sel.vehicleModel, sel.vehicleYear, sel.vehicleColor].filter(Boolean).join(' · ') || '—'"></dd>
+              <dt>اللوحة / الرخصة</dt><dd x-text="[sel.vehiclePlate, sel.drivingLicenceNumber].filter(Boolean).join(' · ') || '—'"></dd>
+              <dt>حالة السائق</dt><dd x-text="sel.driverVerified ? 'موثّق' : (sel.vehiclePlate ? 'بانتظار المراجعة' : '—')"></dd>
+            </dl>
+            <div class="docs" style="margin-top:12px">
+              <template x-for="d in docs(sel)" :key="d[0]">
+                <div>
+                  <template x-if="d[1]"><div class="doc"><img :src="d[1]" :alt="d[0]" @click="lightbox=d[1]"><div class="doc-label" x-text="d[0]"></div></div></template>
+                  <template x-if="!d[1]"><div class="doc missing" x-text="d[0] + ' — غير مرفوع'"></div></template>
+                </div>
+              </template>
+            </div>
+            <div class="row wrap" style="margin-top:12px">
+              <template x-if="sel.nationalIdNumber && !sel.idVerified">
+                <div class="row">
+                  <button class="btn btn-sm" :disabled="selBusy" @click="userAction('/verify-id/approve', 'تم توثيق الهوية')">قبول الهوية</button>
+                  <button class="btn btn-sm btn-ghost" :disabled="selBusy" @click="confirm('رفض المستندات وإعادتها للمستخدم؟') && userAction('/verify-id/reject', 'تم رفض الهوية')">رفض</button>
+                </div>
+              </template>
+              <template x-if="sel.vehiclePlate && !sel.driverVerified">
+                <div class="row">
+                  <button class="btn btn-sm" :disabled="selBusy || !sel.idVerified" :title="!sel.idVerified ? 'وثّق الهوية أولاً' : ''" @click="userAction('/verify-driver/approve', 'تم توثيق السائق')">قبول السائق</button>
+                  <button class="btn btn-sm btn-ghost" :disabled="selBusy" @click="confirm('رفض توثيق السائق؟') && userAction('/verify-driver/reject', 'تم رفض توثيق السائق')">رفض</button>
+                </div>
+              </template>
+            </div>
+
+            <div class="section-title">النشاط</div>
+            <dl class="dl">
+              <dt>التقييم</dt><dd x-text="sel.ratingCount ? ('★ ' + Number(sel.ratingAverage).toFixed(2) + ' من ' + sel.ratingCount + ' تقييم') : 'لا تقييمات'"></dd>
+              <dt>رحلات كراكب</dt><dd x-text="sel.completedTripsAsPassenger"></dd>
+              <dt>رحلات كسائق</dt><dd x-text="sel.completedTripsAsDriver + ' مكتملة · ' + sel.cancelledTripsAsDriver + ' ملغاة'"></dd>
+              <dt>إنذارات الإلغاء</dt><dd x-text="sel.cancellationStrikes"></dd>
+              <dt>نزاعات ضده</dt><dd x-text="sel.disputeCount"></dd>
+              <dt>رصيد العروض</dt><dd x-text="fmt.money(sel.promoBalance)"></dd>
+              <dt>جهة الطوارئ</dt><dd x-text="[sel.emergencyContactName, sel.emergencyContactPhone].filter(Boolean).join(' · ') || '—'"></dd>
+              <dt>انضم</dt><dd x-text="fmt.date(sel.createdAt)"></dd>
+            </dl>
+
+            <template x-if="ledger">
+              <div>
+                <div class="section-title">رصيد السائق</div>
+                <div class="grid grid-2">
+                  <div class="card kpi" style="box-shadow:none"><div class="kpi-label">متاح للسحب</div><div class="kpi-value" style="font-size:20px" x-text="fmt.money(ledger.balance.pendingBalance)"></div><div class="kpi-foot" x-text="'معلّق: ' + fmt.money(ledger.balance.heldBalance)"></div></div>
+                  <div class="card kpi" style="box-shadow:none"><div class="kpi-label">عمولة كاش مستحقة</div><div class="kpi-value" style="font-size:20px;color:var(--warning)" x-text="fmt.money(ledger.balance.cashCommissionOutstanding)"></div><div class="kpi-foot" x-text="'إجمالي العمولة: ' + fmt.money(ledger.balance.cashCommissionOwed)"></div></div>
+                </div>
+                <div class="card" style="margin-top:10px;box-shadow:none" x-show="ledger.entries.length">
+                  <template x-for="e in ledger.entries" :key="e.id">
+                    <div class="list-item">
+                      <div class="grow"><strong x-text="LABELS.ledger[e.type] || e.type"></strong><div class="subtle" x-text="(e.note || '') + ' · ' + fmt.date(e.createdAt)"></div></div>
+                      <strong class="nowrap" :style="Number(e.amount) < 0 ? 'color:var(--danger)' : 'color:var(--success)'" x-text="(Number(e.amount) > 0 ? '+' : '') + fmt.money(e.amount)"></strong>
+                    </div>
+                  </template>
+                </div>
+                <div class="card card-pad" style="margin-top:10px;box-shadow:none">
+                  <div class="row wrap">
+                    <select class="select" style="width:auto" x-model="adjust.type">
+                      <option value="adjustment">تسوية إدارية (+/−)</option>
+                      <option value="cash_commission_payment">استلام عمولة كاش يدوياً</option>
+                    </select>
+                    <input class="input ltr" style="width:120px" type="number" step="0.01" placeholder="المبلغ" x-model="adjust.amount" />
+                  </div>
+                  <input class="input" style="margin-top:8px" placeholder="السبب (يظهر للسائق ويُسجَّل)" x-model="adjust.note" />
+                  <button class="btn btn-sm" style="margin-top:8px" :disabled="selBusy" @click="addLedger()">تسجيل القيد</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+      <div class="drawer-foot" x-show="sel && drawer==='user'">
+        <button class="btn btn-sm btn-soft" x-show="sel?.status !== 'active'" :disabled="selBusy" @click="setStatus('active')">تفعيل الحساب</button>
+        <button class="btn btn-sm btn-ghost" x-show="sel?.status !== 'suspended'" :disabled="selBusy" @click="setStatus('suspended')">إيقاف مؤقت</button>
+        <button class="btn btn-sm btn-danger" x-show="sel?.status !== 'banned' && sel?.role !== 'admin'" :disabled="selBusy" @click="setStatus('banned')">حظر</button>
+      </div>
+    </aside>
+
+    <!-- Trip -->
+    <aside class="drawer" x-show="drawer==='trip'" x-cloak @keydown.escape.window="drawer=null">
+      <div class="drawer-head">
+        <h3 class="card-title grow">تفاصيل الرحلة</h3>
+        <button class="icon-btn" @click="drawer=null" x-html="svg('close')"></button>
+      </div>
+      <div class="drawer-body">
+        <template x-if="sel && drawer==='trip'">
+          <div>
+            <div style="font-size:20px;font-weight:800" x-text="sel.originCity + ' ← ' + sel.destinationCity"></div>
+            <div class="row wrap" style="gap:6px;margin:6px 0 16px">
+              <span class="pill" :class="tone('tripStatus', sel.status)" x-text="label('tripStatus', sel.status)"></span>
+              <span class="pill tone-pink" x-show="sel.womenOnly">نسائية</span>
+              <span class="muted" x-text="fmt.date(sel.departureTime)"></span>
+            </div>
+            <dl class="dl">
+              <dt>من</dt><dd x-text="sel.originAddress || sel.originCity"></dd>
+              <dt>إلى</dt><dd x-text="sel.destinationAddress || sel.destinationCity"></dd>
+              <dt>السعر</dt><dd x-text="fmt.money(sel.pricePerSeat) + ' / مقعد'"></dd>
+              <dt>المقاعد</dt><dd x-text="(sel.totalSeats - sel.availableSeats) + ' محجوز من ' + sel.totalSeats"></dd>
+              <dt>آخر موقع</dt><dd><template x-if="sel.currentLat"><a target="_blank" rel="noopener" :href="`https://maps.google.com/?q=${sel.currentLat},${sel.currentLng}`" x-text="'على الخريطة · ' + fmt.ago(sel.trackingUpdatedAt)"></a></template><span x-show="!sel.currentLat">—</span></dd>
+              <dt>سبب الإلغاء</dt><dd x-text="sel.cancellationReason || '—'"></dd>
+            </dl>
+            <div class="section-title">السائق</div>
+            <div class="list-item" style="padding:0 0 12px;cursor:pointer" @click="openUser(sel.driverId)">
+              <div class="avatar" x-text="fmt.initial(sel.driver?.fullName)"></div>
+              <div class="grow"><strong x-text="sel.driver?.fullName"></strong><div class="subtle ltr" x-text="sel.driver?.phoneNumber"></div></div>
+              <span class="subtle" x-text="[sel.driver?.vehicleMake, sel.driver?.vehicleModel, sel.driver?.vehiclePlate].filter(Boolean).join(' · ')"></span>
+            </div>
+            <div class="section-title" x-text="'الحجوزات (' + (sel.bookings?.length || 0) + ')'"></div>
+            <template x-for="b in sel.bookings || []" :key="b.id">
+              <div class="card card-pad" style="box-shadow:none;margin-bottom:8px">
+                <div class="row">
+                  <div class="grow" style="cursor:pointer" @click="openUser(b.passengerId)"><strong x-text="b.passenger?.fullName || '—'"></strong><div class="subtle ltr" x-text="b.passenger?.phoneNumber"></div></div>
+                  <span class="pill" :class="tone('bookingStatus', b.status)" x-text="label('bookingStatus', b.status)"></span>
+                </div>
+                <div class="row wrap subtle" style="margin-top:8px;gap:14px">
+                  <span x-text="b.seatsCount + ' مقعد'"></span>
+                  <span x-text="fmt.money(b.totalAmount)"></span>
+                  <span x-text="b.paymentMethod === 'cash' ? 'كاش' : 'بطاقة'"></span>
+                  <span x-show="b.payment" class="pill" :class="tone('paymentStatus', b.payment?.status)" x-text="label('paymentStatus', b.payment?.status)"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </aside>
+
+    <!-- Dispute -->
+    <aside class="drawer" x-show="drawer==='dispute'" x-cloak @keydown.escape.window="drawer=null">
+      <div class="drawer-head">
+        <h3 class="card-title grow">النزاع</h3>
+        <button class="icon-btn" @click="drawer=null" x-html="svg('close')"></button>
+      </div>
+      <div class="drawer-body">
+        <template x-if="sel && drawer==='dispute'">
+          <div>
+            <div class="row wrap" style="gap:6px">
+              <strong style="font-size:18px" x-text="LABELS.disputeReason[sel.dispute.reason] || sel.dispute.reason"></strong>
+              <span class="pill" :class="tone('disputeStatus', sel.dispute.status)" x-text="label('disputeStatus', sel.dispute.status)"></span>
+            </div>
+            <div class="subtle" style="margin:4px 0 14px" x-text="'فُتح ' + fmt.date(sel.dispute.createdAt) + (sel.dispute.slaDeadline ? ' · مهلة الرد ' + fmt.date(sel.dispute.slaDeadline) : '')"></div>
+
+            <dl class="dl">
+              <dt>الرحلة</dt><dd x-text="sel.booking ? (sel.booking.trip.originCity + ' ← ' + sel.booking.trip.destinationCity + ' · ' + fmt.date(sel.booking.trip.departureTime)) : '—'"></dd>
+              <dt>الراكب</dt><dd><a href="#" @click.prevent="openUser(sel.booking.passengerId)" x-text="sel.booking?.passenger?.fullName"></a></dd>
+              <dt>السائق</dt><dd><a href="#" @click.prevent="openUser(sel.booking.trip.driverId)" x-text="sel.booking?.trip?.driver?.fullName"></a></dd>
+              <dt>المبلغ</dt><dd x-text="fmt.money(sel.booking?.totalAmount) + ' · ' + (sel.booking?.paymentMethod === 'cash' ? 'كاش' : 'بطاقة')"></dd>
+              <dt>حالة الدفع</dt><dd><span class="pill" :class="tone('paymentStatus', sel.booking?.payment?.status)" x-text="label('paymentStatus', sel.booking?.payment?.status)"></span></dd>
+            </dl>
+
+            <div class="section-title" x-text="'رواية ' + (sel.dispute.openedByUserId === sel.booking?.passengerId ? 'الراكب' : 'السائق') + ' (مقدّم النزاع)'"></div>
+            <div class="quote" x-text="sel.dispute.description"></div>
+            <div class="docs" style="margin-top:10px" x-show="sel.dispute.evidenceUrls?.length">
+              <template x-for="(u, i) in sel.dispute.evidenceUrls" :key="i"><div class="doc"><img :src="u" alt="دليل" @click="lightbox=u"></div></template>
+            </div>
+
+            <div class="section-title">رد الطرف الآخر</div>
+            <div class="quote" x-show="sel.dispute.otherPartyResponse" x-text="sel.dispute.otherPartyResponse"></div>
+            <div class="subtle" x-show="!sel.dispute.otherPartyResponse">لم يرد بعد.</div>
+            <div class="docs" style="margin-top:10px" x-show="sel.dispute.otherPartyEvidenceUrls?.length">
+              <template x-for="(u, i) in sel.dispute.otherPartyEvidenceUrls" :key="i"><div class="doc"><img :src="u" alt="دليل" @click="lightbox=u"></div></template>
+            </div>
+
+            <template x-if="['open','under_review'].includes(sel.dispute.status)">
+              <div>
+                <div class="section-title">القرار</div>
+                <button class="btn btn-sm btn-soft" x-show="sel.dispute.status==='open'" :disabled="selBusy" @click="assignDispute()" style="margin-bottom:12px">استلام النزاع للمراجعة</button>
+                <div class="stack">
+                  <div class="tabs">
+                    <button class="tab" :class="resolve.resolution==='resolved_refund' && 'active'" @click="resolve.resolution='resolved_refund'">استرداد كامل للراكب</button>
+                    <button class="tab" :class="resolve.resolution==='resolved_release' && 'active'" @click="resolve.resolution='resolved_release'">صرف المبلغ للسائق</button>
+                    <button class="tab" :class="resolve.resolution==='resolved_split' && 'active'" @click="resolve.resolution='resolved_split'">تقسيم</button>
+                  </div>
+                  <div class="field" x-show="resolve.resolution==='resolved_split'">
+                    <label>المبلغ المسترد للراكب</label>
+                    <div class="unit"><input class="input ltr" style="text-align:left" type="number" step="0.01" x-model="resolve.refundAmount" /><span x-text="'من ' + fmt.money(sel.booking?.totalAmount)"></span></div>
+                  </div>
+                  <div class="field"><label>سبب القرار (يُرسل للطرفين ويُسجَّل)</label><textarea class="textarea" x-model="resolve.resolutionNotes"></textarea></div>
+                  <div class="row wrap">
+                    <select class="select" style="width:auto" x-model="resolve.blockUserId">
+                      <option value="">بدون إجراء على الحساب</option>
+                      <option :value="sel.booking?.passengerId" x-text="'إجراء على الراكب: ' + (sel.booking?.passenger?.fullName || '')"></option>
+                      <option :value="sel.booking?.trip?.driverId" x-text="'إجراء على السائق: ' + (sel.booking?.trip?.driver?.fullName || '')"></option>
+                    </select>
+                    <select class="select" style="width:auto" x-show="resolve.blockUserId" x-model="resolve.blockStatus">
+                      <option value="">اختر</option><option value="suspended">إيقاف</option><option value="banned">حظر</option>
+                    </select>
+                  </div>
+                  <button class="btn" :disabled="selBusy" @click="submitResolution()">تنفيذ القرار</button>
+                </div>
+              </div>
+            </template>
+            <template x-if="!['open','under_review'].includes(sel.dispute.status)">
+              <div><div class="section-title">القرار</div><div class="quote" x-text="(sel.dispute.resolutionNotes || '—') + (sel.dispute.refundAmount ? '\nالمبلغ المسترد: ' + fmt.money(sel.dispute.refundAmount) : '')"></div></div>
+            </template>
+
+            <div class="section-title">رسالة لأطراف النزاع</div>
+            <div class="row wrap">
+              <select class="select" style="width:auto" x-model="notify.target"><option value="both">الطرفان</option><option value="opener">مقدّم النزاع</option><option value="other_party">الطرف الآخر</option></select>
+            </div>
+            <textarea class="textarea" style="margin-top:8px" placeholder="مثال: نحتاج صورة من المحادثة لتأكيد…" x-model="notify.message"></textarea>
+            <button class="btn btn-sm btn-ghost" style="margin-top:8px" :disabled="selBusy || notify.message.trim().length < 5" @click="sendNotify()">إرسال إشعار</button>
+          </div>
+        </template>
+      </div>
+    </aside>
+
+    <div class="lightbox" x-show="lightbox" x-cloak @click="lightbox=null" @keydown.escape.window="lightbox=null"><img :src="lightbox" alt=""></div>
+  </div>
+</template>
+
+<div class="toasts">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast" :class="!t.ok && 'err'"><span x-html="svg(t.ok ? 'check' : 'alert')" style="display:inline-flex"></span><span x-text="t.msg"></span></div>
+  </template>
 </div>
-
-<script>
-// Same origin as the server that serves this panel — a hardcoded localhost URL only
-// ever worked on the developer's own machine.
-const API = window.location.origin + '/api/v1';
-
-function app() {
-  return {
-    authenticated: false,
-    phone: '', otpCode: '', otpSent: false, authErr: '', authBusy: false,
-    token: null, me: null,
-    page: 'dashboard',
-    analytics: null,
-    users: [], usersTotal: 0,
-    uq: { search: '', status: '', idVerified: '', page: 1, limit: 25 },
-    trips: [], tq: { status: '' },
-    disputes: [], dq: { status: '' },
-    config: {},
-    loading: false,
-    toast: { msg: '', ok: true },
-    _timer: null,
-
-    get pageTitle() {
-      return { dashboard: 'لوحة البيانات', users: 'المستخدمون', trips: 'الرحلات', disputes: 'النزاعات', config: 'إعدادات المنصة' }[this.page] || '';
-    },
-
-    get statCards() {
-      const a = this.analytics;
-      if (!a) return [];
-      return [
-        { icon: '👥', label: 'إجمالي المستخدمين',       value: a.users ? a.users.total : 0,                              target: 'users' },
-        { icon: '✅', label: 'مستخدمون نشطون',           value: a.users ? a.users.active : 0,                             target: 'users' },
-        { icon: '🚗', label: 'إجمالي الرحلات',            value: a.trips ? a.trips.total : 0,                              target: 'trips' },
-        { icon: '💰', label: 'الإيرادات (ج.م)',            value: a.revenue ? (+a.revenue.totalEgp || 0).toFixed(2) : '0.00', target: null },
-        { icon: '⏳', label: 'انتظار تحقق الهوية',         value: a.users ? a.users.pendingIdVerifications : 0,             target: 'users' },
-        { icon: '🚙', label: 'انتظار تحقق السائق',         value: a.users ? a.users.pendingDriverVerifications : 0,          target: 'users' },
-        { icon: '⚖️', label: 'نزاعات مفتوحة',              value: a.disputes ? a.disputes.open : 0,                         target: 'disputes' },
-        { icon: '⚠️', label: 'حسابات مُبلَّغ عنها',         value: a.users ? a.users.trustFlagged : 0,                       target: 'users' },
-      ];
-    },
-
-    async init() {
-      const t = localStorage.getItem('ya_admin_token');
-      if (t) {
-        this.token = t;
-        try {
-          await this.fetchMe();
-          this.authenticated = true;
-          this.fetchAnalytics();
-        } catch(e) {
-          // Only wipe the saved token on auth rejection, not on network errors
-          if (e.message && (e.message.includes('401') || e.message.includes('403') || e.message.includes('صلاحيات'))) {
-            this.token = null;
-            localStorage.removeItem('ya_admin_token');
-          }
-          // If network is just down, keep the token — next refresh will retry
-        }
-      }
-    },
-
-    async fetchMe() {
-      const res = await this.api('GET', '/users/me');
-      if (res.role !== 'admin') throw new Error('ليس لديك صلاحيات الإدارة');
-      this.me = res;
-    },
-
-    async sendOtp() {
-      this.authErr = ''; this.authBusy = true;
-      try {
-        await this.api('POST', '/auth/otp/send', { phoneNumber: this.phone });
-        this.otpSent = true;
-      } catch(e) { this.authErr = e.message; }
-      finally { this.authBusy = false; }
-    },
-
-    async verifyOtp() {
-      this.authErr = ''; this.authBusy = true;
-      try {
-        const res = await this.api('POST', '/auth/otp/verify', { phoneNumber: this.phone, code: this.otpCode });
-        this.token = res.accessToken;
-        localStorage.setItem('ya_admin_token', this.token);
-        localStorage.setItem('ya_admin_refresh', res.refreshToken);
-        await this.fetchMe();
-        this.authenticated = true;
-        this.fetchAnalytics();
-      } catch(e) {
-        this.authErr = e.message;
-        this.token = null;
-        localStorage.removeItem('ya_admin_token');
-      }
-      finally { this.authBusy = false; }
-    },
-
-    logout() {
-      const refreshToken = localStorage.getItem('ya_admin_refresh');
-      if (refreshToken) {
-        fetch(API + '/auth/logout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
-        }).catch(() => {});
-      }
-      this.token = null; this.me = null;
-      this.authenticated = false;
-      localStorage.removeItem('ya_admin_token');
-      localStorage.removeItem('ya_admin_refresh');
-    },
-
-    // Access tokens are short-lived; renew once with the refresh token before giving up
-    async refreshSession() {
-      const refreshToken = localStorage.getItem('ya_admin_refresh');
-      if (!refreshToken) return false;
-      try {
-        const res = await fetch(API + '/auth/refresh', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
-        });
-        if (!res.ok) return false;
-        const data = await res.json();
-        this.token = data.accessToken;
-        localStorage.setItem('ya_admin_token', data.accessToken);
-        localStorage.setItem('ya_admin_refresh', data.refreshToken);
-        return true;
-      } catch (e) {
-        return false;
-      }
-    },
-
-    go(p) {
-      this.page = p;
-      this.loading = false;
-      if (p === 'dashboard') this.fetchAnalytics();
-      else if (p === 'users') this.loadUsers(true);
-      else if (p === 'trips') this.loadTrips();
-      else if (p === 'disputes') this.loadDisputes();
-      else if (p === 'config') this.loadConfig();
-    },
-
-    async fetchAnalytics() {
-      try { this.analytics = await this.api('GET', '/admin/analytics'); } catch(e) { console.error(e); }
-    },
-
-    async loadUsers(reset) {
-      if (reset) this.uq.page = 1;
-      this.loading = true;
-      try {
-        const q = new URLSearchParams({ page: this.uq.page, limit: this.uq.limit });
-        if (this.uq.search) q.set('search', this.uq.search);
-        if (this.uq.status) q.set('status', this.uq.status);
-        if (this.uq.idVerified !== '') q.set('idVerified', this.uq.idVerified);
-        const r = await this.api('GET', '/admin/users?' + q);
-        this.users = r.data; this.usersTotal = r.total;
-      } catch(e) { this.notify(e.message, false); }
-      finally { this.loading = false; }
-    },
-
-    async approveId(id) {
-      try {
-        await this.api('POST', '/admin/users/' + id + '/verify-id/approve');
-        this.notify('تم التحقق من الهوية ✓');
-        this.loadUsers(); this.fetchAnalytics();
-      } catch(e) { this.notify(e.message, false); }
-    },
-
-    async approveDriver(id) {
-      try {
-        await this.api('POST', '/admin/users/' + id + '/verify-driver/approve');
-        this.notify('تم التحقق من السائق ✓');
-        this.loadUsers(); this.fetchAnalytics();
-      } catch(e) { this.notify(e.message, false); }
-    },
-
-    async setStatus(id, status) {
-      try {
-        await this.api('PATCH', '/admin/users/' + id + '/status', { status });
-        this.notify('تم تحديث الحالة');
-        this.loadUsers();
-      } catch(e) { this.notify(e.message, false); }
-    },
-
-    async loadTrips() {
-      this.loading = true;
-      try {
-        const q = new URLSearchParams();
-        if (this.tq.status) q.set('status', this.tq.status);
-        const r = await this.api('GET', '/admin/trips?' + q);
-        this.trips = r.data;
-      } catch(e) { this.notify(e.message, false); }
-      finally { this.loading = false; }
-    },
-
-    async loadDisputes() {
-      this.loading = true;
-      try {
-        const q = new URLSearchParams();
-        if (this.dq.status) q.set('status', this.dq.status);
-        const r = await this.api('GET', '/admin/disputes?' + q);
-        this.disputes = r.data;
-      } catch(e) { this.notify(e.message, false); }
-      finally { this.loading = false; }
-    },
-
-    async resolveDispute(id, resolution) {
-      try {
-        await this.api('POST', '/admin/disputes/' + id + '/resolve', { resolution, resolutionNotes: 'Admin resolved: ' + resolution });
-        this.notify('تم حل النزاع ✓');
-        this.loadDisputes(); this.fetchAnalytics();
-      } catch(e) { this.notify(e.message, false); }
-    },
-
-    async loadConfig() {
-      this.loading = true;
-      try { this.config = await this.api('GET', '/admin/config'); }
-      catch(e) { this.notify(e.message, false); }
-      finally { this.loading = false; }
-    },
-
-    async saveConfig() {
-      const keyMap = { commission_rate: 'commissionRate', auto_confirm_hours: 'autoConfirmHours', dispute_window_hours: 'disputeWindowHours', rating_reveal_days: 'ratingRevealDays' };
-      const dto = {};
-      for (const [k, v] of Object.entries(this.config)) {
-        if (keyMap[k]) dto[keyMap[k]] = parseFloat(v);
-      }
-      try {
-        this.config = await this.api('PATCH', '/admin/config', dto);
-        this.notify('تم حفظ الإعدادات ✓');
-      } catch(e) { this.notify(e.message, false); }
-    },
-
-    roleLabel(r) { return { passenger: 'راكب', driver: 'سائق', both: 'راكب/سائق', admin: 'مشرف' }[r] || r; },
-    statusLabel(s) { return { pending_verification: 'في الانتظار', active: 'نشط', suspended: 'موقوف', banned: 'محظور' }[s] || s; },
-    statusClass(s) { return { pending_verification: 'bg-yellow-50 text-yellow-700', active: 'bg-green-50 text-green-700', suspended: 'bg-orange-50 text-orange-700', banned: 'bg-red-50 text-red-700' }[s] || 'bg-gray-50 text-gray-600'; },
-    tripStatusLabel(s) { return { scheduled: 'مجدولة', active: 'نشطة', completed: 'مكتملة', cancelled: 'ملغية' }[s] || s; },
-    tripStatusClass(s) { return { scheduled: 'bg-blue-50 text-blue-700', active: 'bg-green-50 text-green-700', completed: 'bg-gray-50 text-gray-600', cancelled: 'bg-red-50 text-red-700' }[s] || 'bg-gray-50 text-gray-600'; },
-    disputeStatusLabel(s) { return { open: 'مفتوح', under_review: 'قيد المراجعة', resolved_refund: 'استرداد', resolved_release: 'دفع للسائق', resolved_split: 'تقسيم', closed: 'مغلق' }[s] || s; },
-    disputeStatusClass(s) { if (s === 'open') return 'bg-red-50 text-red-700'; if (s === 'under_review') return 'bg-yellow-50 text-yellow-700'; if (s && s.startsWith('resolved')) return 'bg-green-50 text-green-700'; return 'bg-gray-50 text-gray-600'; },
-    configLabel(k) { return { commission_rate: 'نسبة العمولة', auto_confirm_hours: 'ساعات التأكيد التلقائي', dispute_window_hours: 'نافذة فتح النزاعات (ساعة)', rating_reveal_days: 'أيام كشف التقييمات', low_rating_threshold: 'حد التقييم المنخفض', min_ratings_for_flag: 'الحد الأدنى للتقييمات للإشارة' }[k] || k; },
-    configHint(k) { return { commission_rate: 'قيمة بين 0 و 0.5 (مثال: 0.07 = 7٪)', auto_confirm_hours: 'عدد ساعات بعد الوصول لتأكيد اكتمال الرحلة تلقائياً', dispute_window_hours: 'عدد ساعات بعد الرحلة يمكن خلالها فتح نزاع', rating_reveal_days: 'عدد أيام قبل كشف التقييم', low_rating_threshold: 'متوسط التقييم الذي يؤدي لوضع علامة على الحساب', min_ratings_for_flag: 'الحد الأدنى من التقييمات قبل تطبيق فحص العلامة' }[k] || ''; },
-
-    fmtDate(dt) {
-      if (!dt) return '—';
-      return new Date(dt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    },
-
-    notify(msg, ok) {
-      if (ok === undefined) ok = true;
-      clearTimeout(this._timer);
-      this.toast = { msg: msg, ok: ok };
-      this._timer = setTimeout(() => { this.toast = { msg: '', ok: true }; }, 4000);
-    },
-
-    async api(method, path, body, retried) {
-      const headers = { 'Content-Type': 'application/json' };
-      if (this.token) headers['Authorization'] = 'Bearer ' + this.token;
-      const res = await fetch(API + path, {
-        method: method,
-        headers: headers,
-        body: body != null ? JSON.stringify(body) : undefined,
-      });
-      if (res.status === 401 && !retried && !path.startsWith('/auth/') && await this.refreshSession()) {
-        return this.api(method, path, body, true);
-      }
-      let data;
-      try { data = await res.json(); } catch(e) { data = {}; }
-      if (!res.ok) {
-        const msg = Array.isArray(data.message) ? data.message.join('، ') : (data.message || 'خطأ ' + res.status);
-        throw new Error(msg);
-      }
-      return data;
-    },
-  };
-}
-</script>
 </body>
 </html>

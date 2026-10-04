@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { CreateLedgerEntryDto } from './dto/create-ledger-entry.dto';
 import { Audit } from '../audit/audit.decorator';
+import { WithdrawalStatus } from '../../database/entities/withdrawal-request.entity';
 import { EarningsService } from './earnings.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
@@ -84,8 +85,11 @@ export class EarningsController {
 
   @Get('admin/withdrawals')
   @UseGuards(AdminGuard)
-  getPendingWithdrawals() {
-    return this.earningsService.getPendingWithdrawals();
+  getPendingWithdrawals(@Query('status') status?: string) {
+    const valid = Object.values(WithdrawalStatus) as string[];
+    return this.earningsService.getPendingWithdrawals(
+      status && valid.includes(status) ? (status as WithdrawalStatus) : WithdrawalStatus.PENDING,
+    );
   }
 
   @Get('admin/earnings/commission')

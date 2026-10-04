@@ -152,6 +152,11 @@ export class AdminService implements OnModuleInit {
     if (query.trustFlagged !== undefined) {
       qb.andWhere('u.trust_flagged = :trustFlagged', { trustFlagged: query.trustFlagged === 'true' });
     }
+    if (query.pendingVerification === 'id') {
+      qb.andWhere("u.national_id_number IS NOT NULL AND u.national_id_number <> '' AND u.id_verified = false");
+    } else if (query.pendingVerification === 'driver') {
+      qb.andWhere("u.vehicle_plate IS NOT NULL AND u.vehicle_plate <> '' AND u.driver_verified = false");
+    }
     if (query.search) {
       qb.andWhere('(u.full_name ILIKE :search OR u.phone_number ILIKE :search)', {
         search: `%${query.search}%`,
@@ -813,6 +818,52 @@ export class AdminService implements OnModuleInit {
       },
       topRoutes,
     };
+  }
+
+  /**
+   * Daily series for the dashboard charts, bucketed by Cairo calendar day: sign-ups,
+   * bookings made, trips completed, gross booking value and commission of completed
+   * bookings.
+   */
+  async getTimeseries(days = 30) {
+    const span = Math.min(Math.max(Math.round(days), 7), 180);
+    const rows: Array<Record<string, string>> = await this.dataSource.query(
+      `
+      WITH d AS (
+        SELECT generate_series(
+          (now() AT TIME ZONE 'Africa/Cairo')::date - ($1::int - 1),
+          (now() AT TIME ZONE 'Africa/Cairo')::date,
+          interval '1 day'
+        )::date AS day
+      )
+      SELECT
+        to_char(d.day, 'YYYY-MM-DD') AS day,
+        (SELECT count(*) FROM users u
+          WHERE (u.created_at AT TIME ZONE 'Africa/Cairo')::date = d.day) AS "newUsers",
+        (SELECT count(*) FROM bookings b
+          WHERE (b.created_at AT TIME ZONE 'Africa/Cairo')::date = d.day) AS "bookings",
+        (SELECT count(*) FROM trips t
+          WHERE t.status = 'completed'
+            AND (t.completed_at AT TIME ZONE 'Africa/Cairo')::date = d.day) AS "tripsCompleted",
+        (SELECT coalesce(sum(b.total_amount), 0) FROM bookings b
+          WHERE b.status = 'trip_completed'
+            AND (b.completed_at AT TIME ZONE 'Africa/Cairo')::date = d.day) AS "gmv",
+        (SELECT coalesce(sum(b.commission_amount), 0) FROM bookings b
+          WHERE b.status = 'trip_completed'
+            AND (b.completed_at AT TIME ZONE 'Africa/Cairo')::date = d.day) AS "commission"
+      FROM d
+      ORDER BY d.day
+      `,
+      [span],
+    );
+    return rows.map((r) => ({
+      day: r.day,
+      newUsers: Number(r.newUsers),
+      bookings: Number(r.bookings),
+      tripsCompleted: Number(r.tripsCompleted),
+      gmv: Number(r.gmv),
+      commission: Number(r.commission),
+    }));
   }
 
   // ── Search ─────────────────────────────────────────────────────────────────

@@ -307,11 +307,13 @@ export class EarningsService {
 
   // ── Admin ────────────────────────────────────────────────────────────────────
 
-  async getPendingWithdrawals() {
+  async getPendingWithdrawals(status: WithdrawalStatus = WithdrawalStatus.PENDING) {
     return this.withdrawalRepo.find({
-      where: { status: WithdrawalStatus.PENDING },
+      where: { status },
       relations: { driver: true },
-      order: { createdAt: 'ASC' },
+      // Pending: oldest first (a queue). History: newest first.
+      order: { createdAt: status === WithdrawalStatus.PENDING ? 'ASC' : 'DESC' },
+      take: 200,
     });
   }
 

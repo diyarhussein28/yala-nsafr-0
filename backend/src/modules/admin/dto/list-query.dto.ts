@@ -29,6 +29,11 @@ export class ListUsersQueryDto {
   @IsString()
   trustFlagged?: string;
 
+  /** Verification queue: users who submitted documents that await review */
+  @IsOptional()
+  @IsEnum(['id', 'driver'])
+  pendingVerification?: 'id' | 'driver';
+
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
