@@ -74,40 +74,49 @@ class MainShell extends ConsumerWidget {
           Expanded(child: child),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: (i) {
-          switch (i) {
-            case 0:
-              context.go('/search');
-            case 1:
-              context.go('/my-bookings');
-            case 2:
-              context.go('/my-trips');
-            case 3:
-              context.go('/profile');
-          }
-        },
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.search_rounded),
-            label: 'بحث',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.book_online_rounded),
-            label: 'حجوزاتي',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.directions_car_rounded),
-            label: 'رحلاتي',
-          ),
-          BottomNavigationBarItem(
-            icon: user?.idVerified == false
-                ? const VerifiedBadge(child: Icon(Icons.person_rounded))
-                : const Icon(Icons.person_rounded),
-            label: 'حسابي',
-          ),
-        ],
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+        ),
+        child: NavigationBar(
+          selectedIndex: currentIndex,
+          onDestinationSelected: (i) {
+            switch (i) {
+              case 0:
+                context.go('/search');
+              case 1:
+                context.go('/my-bookings');
+              case 2:
+                context.go('/my-trips');
+              case 3:
+                context.go('/profile');
+            }
+          },
+          destinations: [
+            const NavigationDestination(
+              icon: Icon(Icons.search_rounded),
+              selectedIcon: Icon(Icons.travel_explore_rounded),
+              label: 'بحث',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.confirmation_number_outlined),
+              selectedIcon: Icon(Icons.confirmation_number_rounded),
+              label: 'حجوزاتي',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.directions_car_outlined),
+              selectedIcon: Icon(Icons.directions_car_rounded),
+              label: 'رحلاتي',
+            ),
+            NavigationDestination(
+              icon: user?.idVerified == false
+                  ? const VerifiedBadge(child: Icon(Icons.person_outline_rounded))
+                  : const Icon(Icons.person_outline_rounded),
+              selectedIcon: const Icon(Icons.person_rounded),
+              label: 'حسابي',
+            ),
+          ],
+        ),
       ),
     );
   }

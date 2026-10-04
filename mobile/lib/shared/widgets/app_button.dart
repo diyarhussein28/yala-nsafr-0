@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// The app's primary full-width button. `outlined` gives the secondary style.
 class AppButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -20,29 +21,40 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = loading
-        ? const SizedBox(
-            height: 20,
-            width: 20,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-          )
-        : icon != null
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [icon!, const SizedBox(width: 8), Text(label)],
-              )
-            : Text(label);
+    final fg = outlined ? Theme.of(context).colorScheme.primary : Colors.white;
+    final child = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      child: loading
+          ? SizedBox(
+              key: const ValueKey('loading'),
+              height: 22,
+              width: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.4, color: fg),
+            )
+          : Row(
+              key: const ValueKey('label'),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[icon!, const SizedBox(width: 8)],
+                Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
+              ],
+            ),
+    );
 
     if (outlined) {
       return OutlinedButton(onPressed: loading ? null : onPressed, child: child);
     }
 
-    return ElevatedButton(
-      onPressed: loading ? null : onPressed,
-      style: backgroundColor != null
-          ? ElevatedButton.styleFrom(backgroundColor: backgroundColor)
-          : null,
-      child: child,
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(
+        onPressed: loading ? null : onPressed,
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(double.infinity, 54),
+          backgroundColor: backgroundColor,
+        ),
+        child: child,
+      ),
     );
   }
 }

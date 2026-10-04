@@ -5,6 +5,7 @@ import 'package:intl_phone_field/intl_phone_field.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../providers/auth_provider.dart';
+import '../widgets/auth_scaffold.dart';
 
 class PhoneScreen extends ConsumerStatefulWidget {
   const PhoneScreen({super.key});
@@ -36,54 +37,66 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    final muted = context.textMuted;
+    return AuthScaffold(
+      title: 'أهلاً بك في يلا نسافر',
+      subtitle: 'رحلات بين المحافظات بأمان وبسعر أقل',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('رقم الموبايل', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            'هنبعتلك رمز تحقق في رسالة نصية',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 20),
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: IntlPhoneField(
+              initialCountryCode: 'EG',
+              disableLengthCheck: false,
+              decoration: const InputDecoration(hintText: '10X XXX XXXX', counterText: ''),
+              onChanged: (phone) {
+                setState(() {
+                  _completePhone = phone.completeNumber;
+                  _phoneValid = phone.isValidNumber();
+                });
+              },
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _send(),
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+          ],
+          const SizedBox(height: 20),
+          AppButton(
+            label: 'إرسال رمز التحقق',
+            loading: _loading,
+            onPressed: _phoneValid ? _send : null,
+          ),
+          const SizedBox(height: 28),
+          Row(
             children: [
-              const SizedBox(height: 60),
-              Text(
-                'يلا نسافر',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'أدخل رقم هاتفك للمتابعة',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 48),
-              IntlPhoneField(
-                initialCountryCode: 'EG',
-                decoration: const InputDecoration(labelText: 'رقم الهاتف'),
-                onChanged: (phone) {
-                  setState(() {
-                    _completePhone = phone.completeNumber;
-                    _phoneValid = phone.isValidNumber();
-                  });
-                },
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _send(),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
-              ],
-              const SizedBox(height: 24),
-              AppButton(
-                label: 'إرسال رمز التحقق',
-                loading: _loading,
-                onPressed: _phoneValid ? _send : null,
+              Icon(Icons.verified_user_rounded, size: 18, color: AppColors.primary.withValues(alpha: 0.8)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'سائقون موثّقون بالبطاقة والرخصة، ودفع آمن لا يُخصم إلا بعد انتهاء الرحلة.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: muted),
+                ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 20),
+          Text(
+            'بالمتابعة أنت توافق على شروط الاستخدام وسياسة الخصوصية',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ],
       ),
     );
   }

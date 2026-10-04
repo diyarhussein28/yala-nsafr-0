@@ -5,6 +5,7 @@ import 'package:pinput/pinput.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../providers/auth_provider.dart';
+import '../widgets/auth_scaffold.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
   final String phone;
@@ -39,57 +40,71 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final defaultPinTheme = PinTheme(
-      width: 52,
-      height: 56,
-      textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      width: 50,
+      height: 58,
+      textStyle: Theme.of(context).textTheme.headlineSmall,
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(10),
+        color: context.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
     );
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('التحقق من الهاتف')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 24),
-              Text(
-                'تم إرسال رمز التحقق إلى\n${widget.phone}',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 40),
-              Pinput(
-                length: 6,
-                defaultPinTheme: defaultPinTheme,
-                focusedPinTheme: defaultPinTheme.copyWith(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.primary, width: 2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+    return AuthScaffold(
+      showBack: true,
+      title: 'أدخل رمز التحقق',
+      subtitle: 'أرسلنا رمزاً من 6 أرقام إلى ${widget.phone}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: Pinput(
+              length: 6,
+              autofocus: true,
+              defaultPinTheme: defaultPinTheme,
+              focusedPinTheme: defaultPinTheme.copyWith(
+                decoration: defaultPinTheme.decoration!.copyWith(
+                  color: context.surfaceColor,
+                  border: Border.all(color: scheme.primary, width: 2),
                 ),
-                onChanged: (v) => _code = v,
-                onCompleted: (_) => _verify(),
               ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red, fontSize: 13)),
-              ],
-              const SizedBox(height: 32),
-              AppButton(
-                label: 'تأكيد',
-                loading: _loading,
-                onPressed: _code.length == 6 ? _verify : null,
+              submittedPinTheme: defaultPinTheme.copyWith(
+                decoration: defaultPinTheme.decoration!.copyWith(
+                  color: scheme.primaryContainer,
+                ),
               ),
-            ],
+              errorPinTheme: defaultPinTheme.copyWith(
+                decoration: defaultPinTheme.decoration!.copyWith(
+                  border: Border.all(color: AppColors.error),
+                ),
+              ),
+              forceErrorState: _error != null,
+              onChanged: (v) => setState(() {
+                _code = v;
+                _error = null;
+              }),
+              onCompleted: (_) => _verify(),
+            ),
           ),
-        ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.error, fontSize: 13)),
+          ],
+          const SizedBox(height: 28),
+          AppButton(
+            label: 'تأكيد والدخول',
+            loading: _loading,
+            onPressed: _code.length == 6 ? _verify : null,
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: _loading ? null : () => Navigator.of(context).maybePop(),
+            child: const Text('تغيير رقم الموبايل'),
+          ),
+        ],
       ),
     );
   }
