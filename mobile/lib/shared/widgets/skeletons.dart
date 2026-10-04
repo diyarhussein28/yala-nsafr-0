@@ -50,15 +50,15 @@ class TripResultSkeleton extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: _shimmerWrap(
           context,
-          Column(
+          const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Driver row
               Row(
                 children: [
-                  const _SBox(width: 44, height: 44, circle: true),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  _SBox(width: 44, height: 44, circle: true),
+                  SizedBox(width: 12),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -70,12 +70,12 @@ class TripResultSkeleton extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               // Info row
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -87,8 +87,8 @@ class TripResultSkeleton extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  const Column(
+                  SizedBox(width: 16),
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       _SBox(width: 64, height: 20),
@@ -118,28 +118,28 @@ class ListCardSkeleton extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: _shimmerWrap(
           context,
-          Column(
+          const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Title + status pill
               Row(
                 children: [
-                  const Expanded(child: _SBox(height: 14)),
-                  const SizedBox(width: 12),
-                  const _SBox(width: 56, height: 22, radius: 11),
+                  Expanded(child: _SBox(height: 14)),
+                  SizedBox(width: 12),
+                  _SBox(width: 56, height: 22, radius: 11),
                 ],
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               // Time + seats
-              const Row(
+              Row(
                 children: [
                   _SBox(width: 110, height: 10),
                   Spacer(),
                   _SBox(width: 80, height: 10),
                 ],
               ),
-              const SizedBox(height: 6),
-              const _SBox(width: 90, height: 10),
+              SizedBox(height: 6),
+              _SBox(width: 90, height: 10),
             ],
           ),
         ),
@@ -159,26 +159,26 @@ class NotifTileSkeleton extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: _shimmerWrap(
         context,
-        Row(
+        const Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _SBox(width: 40, height: 40, circle: true),
-            const SizedBox(width: 12),
+            _SBox(width: 40, height: 40, circle: true),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       Expanded(child: _SBox(height: 13)),
                       SizedBox(width: 16),
                       _SBox(width: 36, height: 10),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  const _SBox(height: 10),
-                  const SizedBox(height: 4),
-                  const _SBox(width: 160, height: 10),
+                  SizedBox(height: 6),
+                  _SBox(height: 10),
+                  SizedBox(height: 4),
+                  _SBox(width: 160, height: 10),
                 ],
               ),
             ),

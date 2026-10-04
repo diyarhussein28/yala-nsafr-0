@@ -30,7 +30,7 @@ class OnboardingScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.3),
+                        color: AppColors.primary.withValues(alpha: 0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -64,19 +64,19 @@ class OnboardingScreen extends ConsumerWidget {
               const SizedBox(height: 52),
 
               // Feature rows
-              _FeatureRow(
+              const _FeatureRow(
                 icon: Icons.search_rounded,
                 title: 'ابحث عن رحلة',
                 body: 'سافر بين المدن بتكلفة أقل مع سائق موثوق',
               ),
               const SizedBox(height: 28),
-              _FeatureRow(
+              const _FeatureRow(
                 icon: Icons.add_road_rounded,
                 title: 'انشر رحلتك',
                 body: 'شارك التكلفة مع مسافرين على طريقك واكسب من كل رحلة',
               ),
               const SizedBox(height: 28),
-              _FeatureRow(
+              const _FeatureRow(
                 icon: Icons.verified_user_rounded,
                 title: 'سافر بأمان',
                 body: 'سائقون موثوقون، تقييمات حقيقية، وزر طوارئ في كل رحلة',
@@ -131,7 +131,7 @@ class _FeatureRow extends StatelessWidget {
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Icon(icon, color: AppColors.primary, size: 26),

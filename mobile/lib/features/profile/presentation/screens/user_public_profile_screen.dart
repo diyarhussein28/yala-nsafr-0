@@ -189,7 +189,7 @@ class _ProfileBody extends ConsumerWidget {
               children: [
                 CircleAvatar(
                   radius: 48,
-                  backgroundColor: AppColors.primary.withOpacity(0.12),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.12),
                   child: Text(
                     name.isNotEmpty ? name[0].toUpperCase() : '?',
                     style: const TextStyle(
@@ -352,9 +352,9 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

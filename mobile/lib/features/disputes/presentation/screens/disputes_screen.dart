@@ -80,7 +80,7 @@ class _DisputeCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
-                      color: _statusColor.withOpacity(0.1),
+                      color: _statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: _statusColor),
                     ),

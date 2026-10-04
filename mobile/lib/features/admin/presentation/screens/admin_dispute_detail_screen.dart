@@ -259,7 +259,7 @@ class _StatusChip extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color),
         ),
@@ -344,7 +344,7 @@ class _PartyTile extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
-        backgroundColor: color.withOpacity(0.1),
+        backgroundColor: color.withValues(alpha: 0.1),
         child: Icon(icon, color: color, size: 20),
       ),
       title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -389,7 +389,7 @@ class _ComplaintCard extends StatelessWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.deepOrange.withOpacity(0.08),
+              color: Colors.deepOrange.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -660,7 +660,7 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),

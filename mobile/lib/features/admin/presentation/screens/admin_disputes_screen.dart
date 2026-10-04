@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../widgets/admin_scaffold.dart';
 
 final _adminDisputesProvider =
@@ -188,7 +187,7 @@ class _DisputeRow extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: color),
                 ),

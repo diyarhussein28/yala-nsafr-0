@@ -73,8 +73,6 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-
-    final canPost = _status?['canPost'] as bool? ?? false;
     final isFreeTrial = _status?['isFreeTrial'] as bool? ?? false;
     final trialDaysLeft = _status?['trialDaysLeft'] as int? ?? 0;
     // isActive comes from the server and accounts for the paid period ending. Checking
@@ -97,7 +95,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               child: Container(
                 width: 80, height: 80,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.workspace_premium_rounded, size: 44, color: AppColors.primary),
@@ -135,7 +133,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
+                  color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(children: [

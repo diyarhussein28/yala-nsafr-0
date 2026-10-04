@@ -78,7 +78,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   Widget _cityDropdown(String label, String? value, void Function(String?) onChanged) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(labelText: label),
       items: _cities.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
       onChanged: onChanged,
@@ -157,7 +157,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       value: _womenOnly,
                       onChanged: (v) => setState(() => _womenOnly = v),
                       title: const Text('رحلات نساء فقط'),
-                      activeColor: AppColors.womenOnly,
+                      activeThumbColor: AppColors.womenOnly,
                     ),
                   ],
                 ),

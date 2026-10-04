@@ -256,7 +256,7 @@ class _MessageBubble extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 4, bottom: 2),
                   child: CircleAvatar(
                     radius: 14,
-                    backgroundColor: AppColors.primary.withOpacity(0.12),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
                     child: Text(
                       msg.senderName.isNotEmpty ? msg.senderName[0] : '؟',
                       style: const TextStyle(

@@ -30,7 +30,7 @@ class _DisputeDetailScreenState extends ConsumerState<DisputeDetailScreen> {
         .read(respondDisputeProvider.notifier)
         .respond(disputeId, _responseCtrl.text.trim());
     if (ok && mounted) {
-      ref.refresh(disputeDetailProvider(disputeId));
+      ref.invalidate(disputeDetailProvider(disputeId));
       setState(() => _showReply = false);
       _responseCtrl.clear();
     }
@@ -97,7 +97,7 @@ class _Body extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
                 color: (dispute.isResolved ? Colors.grey : AppColors.primary)
-                    .withOpacity(0.1),
+                    .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                     color: dispute.isResolved ? Colors.grey : AppColors.primary),

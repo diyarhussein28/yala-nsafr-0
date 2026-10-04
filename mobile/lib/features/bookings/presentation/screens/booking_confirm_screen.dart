@@ -229,7 +229,7 @@ class _BookingConfirmScreenState extends ConsumerState<BookingConfirmScreen> {
                           ),
                           Switch(
                             value: _usePromo,
-                            activeColor: Colors.green.shade700,
+                            activeThumbColor: Colors.green.shade700,
                             onChanged: (v) => setState(() => _usePromo = v),
                           ),
                         ],

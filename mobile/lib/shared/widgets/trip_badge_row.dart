@@ -33,10 +33,10 @@ class TripBadgeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final specs = <_BadgeSpec>[];
     if (driverVerified) {
-      specs.add(_BadgeSpec(Icons.verified_rounded, 'موثق', AppColors.primary));
+      specs.add(const _BadgeSpec(Icons.verified_rounded, 'موثق', AppColors.primary));
     }
     if (womenOnly) {
-      specs.add(_BadgeSpec(Icons.female_rounded, 'نساء فقط', AppColors.womenOnly));
+      specs.add(const _BadgeSpec(Icons.female_rounded, 'نساء فقط', AppColors.womenOnly));
     }
     if (airConditioning) {
       specs.add(const _BadgeSpec(Icons.ac_unit_rounded, 'تكييف', Colors.lightBlue));
@@ -73,16 +73,16 @@ class _BadgeSpec {
 
 class _Pill extends StatelessWidget {
   final _BadgeSpec spec;
-  const _Pill({super.key, required this.spec});
+  const _Pill({required this.spec});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: spec.color.withOpacity(0.1),
+        color: spec.color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: spec.color.withOpacity(0.4)),
+        border: Border.all(color: spec.color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

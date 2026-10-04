@@ -331,7 +331,7 @@ class _EmptySearch extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08),
+                color: AppColors.primary.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -519,7 +519,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -557,7 +557,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                           color: selected ? AppColors.primary : null),
                       label: Text(e.$2),
                       selected: selected,
-                      selectedColor: AppColors.primary.withOpacity(0.12),
+                      selectedColor: AppColors.primary.withValues(alpha: 0.12),
                       checkmarkColor: AppColors.primary,
                       onSelected: (v) => setState(() {
                         if (v) {
@@ -582,7 +582,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                             ? AppColors.womenOnly
                             : Colors.grey),
                     value: _womenOnly,
-                    activeColor: AppColors.womenOnly,
+                    activeThumbColor: AppColors.womenOnly,
                     onChanged: (v) => setState(() => _womenOnly = v),
                   ),
                 SwitchListTile(
@@ -595,7 +595,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                           ? AppColors.primary
                           : Colors.grey),
                   value: _verifiedOnly,
-                  activeColor: AppColors.primary,
+                  activeThumbColor: AppColors.primary,
                   onChanged: (v) => setState(() => _verifiedOnly = v),
                 ),
                 const SizedBox(height: 8),

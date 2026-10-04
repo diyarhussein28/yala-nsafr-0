@@ -28,15 +28,15 @@ class TripPassengersScreen extends ConsumerWidget {
 
           // Deduplicate: one card per passenger, picking the most actionable
           // booking (pending_driver_approval > trip_completed > confirmed > other)
-          const _priority = ['pending_driver_approval', 'trip_completed', 'confirmed'];
+          const priority = ['pending_driver_approval', 'trip_completed', 'confirmed'];
           final seen = <String, Booking>{};
           for (final b in allBookings) {
             final existing = seen[b.passengerId];
             if (existing == null) {
               seen[b.passengerId] = b;
             } else {
-              final ei = _priority.indexOf(existing.status);
-              final bi = _priority.indexOf(b.status);
+              final ei = priority.indexOf(existing.status);
+              final bi = priority.indexOf(b.status);
               if (bi != -1 && (ei == -1 || bi < ei)) seen[b.passengerId] = b;
             }
           }
@@ -137,7 +137,7 @@ class _PassengerCard extends ConsumerWidget {
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                     child: Text(
                       name.isNotEmpty ? name[0] : '?',
                       style: const TextStyle(

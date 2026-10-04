@@ -76,7 +76,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 44,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   backgroundImage: user.profilePhotoUrl != null
                       ? CachedNetworkImageProvider(user.profilePhotoUrl!)
                       : null,
@@ -236,10 +236,10 @@ class _ReferralCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Card(
-      color: AppColors.primary.withOpacity(0.06),
+      color: AppColors.primary.withValues(alpha: 0.06),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppColors.primary.withOpacity(0.2)),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -281,10 +281,10 @@ class _ReferralCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                      color: AppColors.primary.withOpacity(0.3), width: 1.5),
+                      color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -361,7 +361,6 @@ class _SubscriptionTile extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (data) {
-        final canPost = data['canPost'] as bool? ?? true;
         final isFreeTrial = data['isFreeTrial'] as bool? ?? false;
         final trialDaysLeft = data['trialDaysLeft'] as int? ?? 0;
         final sub = data['subscription'] as Map<String, dynamic>?;
@@ -381,8 +380,8 @@ class _SubscriptionTile extends ConsumerWidget {
           title = 'الاشتراك المجاني';
           subtitle = 'متبقي $trialDaysLeft يوم من الفترة المجانية';
         } else if (isActive) {
-          bgColor = AppColors.primary.withOpacity(0.06);
-          borderColor = AppColors.primary.withOpacity(0.3);
+          bgColor = AppColors.primary.withValues(alpha: 0.06);
+          borderColor = AppColors.primary.withValues(alpha: 0.3);
           icon = Icons.workspace_premium_rounded;
           title = 'مشترك Pro';
           subtitle = 'اشتراك نشط — $price ج/شهر';

@@ -109,7 +109,7 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
               ),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
-                value: _reason,
+                initialValue: _reason,
                 decoration: const InputDecoration(
                   labelText: 'سبب النزاع',
                   prefixIcon: Icon(Icons.flag_outlined),

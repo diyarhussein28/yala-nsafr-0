@@ -96,10 +96,10 @@ class _DriverViewState extends ConsumerState<_DriverView> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border:
-                        Border.all(color: AppColors.primary.withOpacity(0.3)),
+                        Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -410,7 +410,7 @@ class _SosFabState extends ConsumerState<_SosFab>
                   value: _ctrl.value,
                   strokeWidth: 5,
                   color: Colors.red.shade300,
-                  backgroundColor: Colors.red.withOpacity(0.15),
+                  backgroundColor: Colors.red.withValues(alpha: 0.15),
                 ),
               ),
               Container(
@@ -421,7 +421,7 @@ class _SosFabState extends ConsumerState<_SosFab>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.red.withOpacity(0.45),
+                      color: Colors.red.withValues(alpha: 0.45),
                       blurRadius: 14,
                       spreadRadius: 2,
                     ),
@@ -584,7 +584,7 @@ class _SosButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: color.withOpacity(0.08),
+      color: color.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),

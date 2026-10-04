@@ -117,7 +117,7 @@ class _NotifTile extends StatelessWidget {
       onTap: onTap,
       child: ColoredBox(
         color: isUnread
-            ? theme.colorScheme.primaryContainer.withOpacity(0.15)
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.15)
             : Colors.transparent,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -128,7 +128,7 @@ class _NotifTile extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 20, color: color),

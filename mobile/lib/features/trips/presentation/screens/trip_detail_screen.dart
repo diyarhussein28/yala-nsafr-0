@@ -7,7 +7,6 @@ import '../../../../core/services/analytics_service.dart';
 import '../../../../shared/widgets/seat_urgency_label.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
-import '../../../../core/models/booking.dart';
 import '../../../../core/models/trip.dart';
 import '../../../../core/models/trip_comment.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -366,10 +365,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.07),
+                            color: AppColors.primary.withValues(alpha: 0.07),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: AppColors.primary.withOpacity(0.3)),
+                                color: AppColors.primary.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             children: [
@@ -661,7 +660,7 @@ class _CommentTile extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 17,
-            backgroundColor: AppColors.primary.withOpacity(0.1),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
             child: Text(
               name.isNotEmpty ? name[0] : '?',
               style: const TextStyle(fontSize: 13, color: AppColors.primary),
@@ -1092,7 +1091,7 @@ class _PassengerChip extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 26,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   child: Text(
                     firstName.isNotEmpty ? firstName[0] : '؟',
                     style: const TextStyle(

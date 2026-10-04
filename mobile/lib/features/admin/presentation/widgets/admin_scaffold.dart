@@ -105,7 +105,7 @@ class _NavTile extends StatelessWidget {
       title: Text(label),
       selected: _selected,
       selectedTileColor:
-          Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
+          Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4),
       onTap: () {
         Navigator.pop(context);
         if (!_selected) context.go(route);

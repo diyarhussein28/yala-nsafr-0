@@ -72,7 +72,7 @@ Future<bool> _checkSubscription(WidgetRef ref) async {
 
 class _VerificationSheet extends StatelessWidget {
   final User user;
-  const _VerificationSheet({super.key, required this.user});
+  const _VerificationSheet({required this.user});
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +97,7 @@ class _VerificationSheet extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(

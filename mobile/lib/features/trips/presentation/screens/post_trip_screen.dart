@@ -213,7 +213,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<String>(
-                value: _from,
+                initialValue: _from,
                 decoration: const InputDecoration(labelText: 'من'),
                 items: _cities.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                 onChanged: widget.isEditing
@@ -236,7 +236,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
               ],
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _to,
+                initialValue: _to,
                 decoration: const InputDecoration(labelText: 'إلى'),
                 items: _cities.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                 onChanged: widget.isEditing

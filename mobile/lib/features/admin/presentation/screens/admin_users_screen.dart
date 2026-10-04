@@ -289,7 +289,7 @@ class _UserCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: _statusColor.withOpacity(0.1),
+                    color: _statusColor.withValues(alpha: 0.1),
                     border: Border.all(color: _statusColor),
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -339,9 +339,9 @@ class _UserCard extends StatelessWidget {
                 spacing: 6,
                 children: [
                   if (user['idVerificationPending'] == true)
-                    _Pill(label: 'هوية معلقة', color: Colors.purple),
+                    const _Pill(label: 'هوية معلقة', color: Colors.purple),
                   if (user['driverVerificationPending'] == true)
-                    _Pill(label: 'سائق معلق', color: Colors.teal),
+                    const _Pill(label: 'سائق معلق', color: Colors.teal),
                 ],
               ),
             ],
@@ -362,7 +362,7 @@ class _Pill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(label,

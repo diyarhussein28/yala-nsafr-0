@@ -102,7 +102,7 @@ class _SummaryStrip extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -111,7 +111,7 @@ class _SummaryStrip extends StatelessWidget {
                 Text(
                   'الرصيد المتاح للسحب',
                   style: TextStyle(
-                      color: Colors.white.withOpacity(0.9), fontSize: 13),
+                      color: Colors.white.withValues(alpha: 0.9), fontSize: 13),
                 ),
                 Text(
                   '${summary.pendingBalance.toStringAsFixed(0)} ج',
@@ -131,12 +131,12 @@ class _SummaryStrip extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.schedule_rounded,
-                    size: 14, color: Colors.white.withOpacity(0.9)),
+                    size: 14, color: Colors.white.withValues(alpha: 0.9)),
                 const SizedBox(width: 6),
                 Text(
                   'قيد التحويل: ${summary.pendingWithdrawal.toStringAsFixed(0)} ج',
                   style: TextStyle(
-                      color: Colors.white.withOpacity(0.9), fontSize: 12),
+                      color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
                 ),
               ],
             ),
@@ -166,11 +166,11 @@ class _SummaryCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: highlight
-            ? Colors.white.withOpacity(0.2)
-            : Colors.white.withOpacity(0.1),
+            ? Colors.white.withValues(alpha: 0.2)
+            : Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
         border: highlight
-            ? Border.all(color: Colors.white.withOpacity(0.4), width: 1.5)
+            ? Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5)
             : null,
       ),
       child: Column(
@@ -189,7 +189,7 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(label,
               style: TextStyle(
-                  color: Colors.white.withOpacity(0.85), fontSize: 12)),
+                  color: Colors.white.withValues(alpha: 0.85), fontSize: 12)),
         ],
       ),
     );
@@ -376,7 +376,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
 
             // Method
             DropdownButtonFormField<String>(
-              value: _method,
+              initialValue: _method,
               decoration: const InputDecoration(
                 labelText: 'طريقة الاستلام',
                 prefixIcon: Icon(Icons.account_balance_wallet_outlined),
@@ -481,11 +481,11 @@ class _TripEarningCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: (isCash ? Colors.teal : Colors.blue).withOpacity(0.1),
+                    color: (isCash ? Colors.teal : Colors.blue).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                         color: (isCash ? Colors.teal : Colors.blue)
-                            .withOpacity(0.4)),
+                            .withValues(alpha: 0.4)),
                   ),
                   child: Text(isCash ? 'نقدي' : 'أونلاين',
                       style: TextStyle(

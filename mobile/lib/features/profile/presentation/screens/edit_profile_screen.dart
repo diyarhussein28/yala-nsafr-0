@@ -157,7 +157,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       CircleAvatar(
                         radius: 52,
                         backgroundColor:
-                            AppColors.primary.withOpacity(0.1),
+                            AppColors.primary.withValues(alpha: 0.1),
                         backgroundImage: _pickedFile != null
                             ? FileImage(File(_pickedFile!.path))
                             : (_photoUrl != null

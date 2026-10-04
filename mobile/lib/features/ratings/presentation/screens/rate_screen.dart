@@ -80,7 +80,7 @@ class _RateScreenState extends ConsumerState<RateScreen> {
                 children: [
                   CircleAvatar(
                     radius: 36,
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                     child: Text(
                       _rateeName.isNotEmpty ? _rateeName[0] : '?',
                       style: const TextStyle(
