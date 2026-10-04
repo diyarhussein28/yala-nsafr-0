@@ -6,6 +6,7 @@ import '../../../../core/models/app_notification.dart';
 import '../../providers/notifications_provider.dart';
 import '../../../../shared/widgets/skeletons.dart';
 import '../../../../core/i18n/tr.dart';
+import '../../../../shared/widgets/ui.dart';
 
 class NotificationsInboxScreen extends ConsumerStatefulWidget {
   const NotificationsInboxScreen({super.key});
@@ -54,21 +55,18 @@ class _NotificationsInboxScreenState
           count: 6,
           padding: EdgeInsets.zero,
         ),
-        error: (_, __) => Center(child: Text(tr('تعذّر تحميل الإشعارات'))),
+        error: (_, __) => EmptyState(
+          icon: Icons.cloud_off_rounded,
+          title: tr('تعذّر تحميل الإشعارات'),
+          actionLabel: tr('إعادة المحاولة'),
+          onAction: () => ref.invalidate(notificationsProvider),
+        ),
         data: (notifications) {
           if (notifications.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.notifications_off_rounded,
-                      size: 64, color: theme.colorScheme.outline),
-                  const SizedBox(height: 12),
-                  Text(tr('لا توجد إشعارات'),
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant)),
-                ],
-              ),
+            return EmptyState(
+              icon: Icons.notifications_none_rounded,
+              title: tr('لا توجد إشعارات'),
+              message: tr('ستظهر هنا تحديثات حجوزاتك ورحلاتك.'),
             );
           }
 

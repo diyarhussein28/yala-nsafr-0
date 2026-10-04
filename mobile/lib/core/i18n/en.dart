@@ -697,4 +697,7 @@ const Map<String, String> enStrings = {
   'الصفحة غير موجودة': 'Page not found',
   'ربما تم نقل هذه الصفحة أو أن الرابط غير صحيح.': 'This page may have moved, or the link is incorrect.',
   'العودة للرئيسية': 'Back to home',
+  'ستظهر هنا تحديثات حجوزاتك ورحلاتك.': 'Updates about your bookings and trips will appear here.',
+  'تعذّر تحميل النزاعات': 'Couldn\'t load disputes',
+  'إن واجهتك مشكلة في رحلة، يمكنك فتح نزاع من صفحة الحجز.': 'If something goes wrong on a trip, you can open a dispute from the booking.',
 };

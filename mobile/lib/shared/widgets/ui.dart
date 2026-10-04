@@ -66,12 +66,12 @@ class StatusPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 13, color: color),
+            Icon(icon, size: 13, color: context.readable(color)),
             const SizedBox(width: 4),
           ],
           Text(
             label,
-            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700, height: 1.4),
+            style: TextStyle(color: context.readable(color), fontSize: 12, fontWeight: FontWeight.w700, height: 1.4),
           ),
         ],
       ),
@@ -328,7 +328,7 @@ class IconBadge extends StatelessWidget {
         color: color.withValues(alpha: context.isDark ? 0.2 : 0.12),
         borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
-      child: Icon(icon, color: color, size: size * 0.5),
+      child: Icon(icon, color: context.readable(color), size: size * 0.5),
     );
   }
 }

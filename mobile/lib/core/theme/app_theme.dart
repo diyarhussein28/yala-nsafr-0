@@ -95,6 +95,9 @@ extension AppThemeContext on BuildContext {
   Color get surfaceColor => isDark ? AppColors.darkSurface : AppColors.surface;
   Color get surfaceMuted => isDark ? AppColors.darkSurfaceMuted : AppColors.surfaceMuted;
   Color get dividerColor => isDark ? AppColors.darkDivider : AppColors.divider;
+
+  /// A brand/status colour lifted enough to read as text or an icon on dark surfaces.
+  Color readable(Color c) => isDark ? Color.lerp(c, Colors.white, 0.35)! : c;
 }
 
 class AppTheme {

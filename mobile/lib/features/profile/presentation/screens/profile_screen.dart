@@ -426,12 +426,12 @@ class _ReferralCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.card_giftcard_rounded, color: AppColors.primary),
+                Icon(Icons.card_giftcard_rounded, color: context.readable(AppColors.primary)),
                 const SizedBox(width: 8),
                 Text(
                   tr('دعوة الأصدقاء'),
                   style: theme.textTheme.titleMedium?.copyWith(
-                      color: AppColors.primary, fontWeight: FontWeight.w700),
+                      color: context.readable(AppColors.primary), fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -470,14 +470,14 @@ class _ReferralCard extends StatelessWidget {
                     Text(
                       code,
                       style: theme.textTheme.titleLarge?.copyWith(
-                        color: AppColors.primary,
+                        color: context.readable(AppColors.primary),
                         fontWeight: FontWeight.w800,
                         letterSpacing: 4,
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Icon(Icons.copy_rounded,
-                        size: 18, color: AppColors.primary),
+                    Icon(Icons.copy_rounded,
+                        size: 18, color: context.readable(AppColors.primary)),
                   ],
                 ),
               ),
