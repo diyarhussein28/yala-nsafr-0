@@ -7,6 +7,7 @@ import { Payment } from '../database/entities/payment.entity';
 import { Rating } from '../database/entities/rating.entity';
 import { DriverLedgerEntry } from '../database/entities/driver-ledger-entry.entity';
 import { CommissionPayment } from '../database/entities/commission-payment.entity';
+import { AdminAuditLog } from '../database/entities/admin-audit-log.entity';
 import { Dispute } from '../database/entities/dispute.entity';
 import { Otp } from '../database/entities/otp.entity';
 import { PlatformConfig } from '../database/entities/platform-config.entity';
@@ -33,7 +34,7 @@ export default registerAs('database', (): TypeOrmModuleOptions => ({
     User, Trip, Booking, Payment, Rating, DriverLedgerEntry, Dispute, Otp,
     PlatformConfig, TripLocation, TripComment, TripMessage, WithdrawalRequest,
     AppNotification, ReferralReward, RefreshToken, Block, Subscription, SosAlert,
-    SubscriptionPayment, CommissionPayment,
+    SubscriptionPayment, CommissionPayment, AdminAuditLog,
   ],
   // Schema changes ship as migrations (src/database/migrations). synchronize stays on for
   // local development convenience only — it must never run against production data.

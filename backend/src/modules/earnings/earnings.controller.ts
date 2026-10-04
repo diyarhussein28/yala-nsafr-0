@@ -14,6 +14,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { CreateLedgerEntryDto } from './dto/create-ledger-entry.dto';
+import { Audit } from '../audit/audit.decorator';
 import { EarningsService } from './earnings.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
@@ -105,6 +106,7 @@ export class EarningsController {
 
   @Post('admin/drivers/:id/ledger')
   @UseGuards(AdminGuard)
+  @Audit('driver.ledger.add', 'user')
   addLedgerEntry(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() admin: User,
@@ -115,6 +117,7 @@ export class EarningsController {
 
   @Patch('admin/withdrawals/:id')
   @UseGuards(AdminGuard)
+  @Audit('withdrawal.settle', 'withdrawal')
   settleWithdrawal(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SettleWithdrawalDto,

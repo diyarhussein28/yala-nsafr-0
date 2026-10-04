@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv } from './config/validate-env';
 import databaseConfig from './config/database.config';
@@ -26,6 +26,8 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { SosModule } from './modules/sos/sos.module';
 import { HealthController } from './health.controller';
 import { SmsModule } from './modules/sms/sms.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { AuditInterceptor } from './modules/audit/audit.interceptor';
 
 @Module({
   imports: [
@@ -47,6 +49,7 @@ import { SmsModule } from './modules/sms/sms.module';
       useFactory: (config: ConfigService) => config.get('database')!,
     }),
     SmsModule,
+    AuditModule,
     AuthModule,
     UsersModule,
     TripsModule,
@@ -66,6 +69,9 @@ import { SmsModule } from './modules/sms/sms.module';
     SosModule,
   ],
   controllers: [HealthController],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+  ],
 })
 export class AppModule {}

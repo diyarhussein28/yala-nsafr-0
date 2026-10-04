@@ -76,6 +76,7 @@ describe('Security & integrity regressions', () => {
       }
       await dataSource.query('DELETE FROM notifications WHERE user_id = ANY($1)', [ids]);
       await dataSource.query('DELETE FROM driver_ledger WHERE driver_id = ANY($1)', [ids]);
+      await dataSource.query('DELETE FROM admin_audit_log WHERE admin_id = ANY($1)', [ids]);
       await dataSource.query('DELETE FROM commission_payments WHERE driver_id = ANY($1)', [ids]);
       await dataSource.query('DELETE FROM refresh_tokens WHERE user_id = ANY($1)', [ids]);
       await userRepo.delete({ id: In(ids) });
@@ -453,6 +454,31 @@ describe('Security & integrity regressions', () => {
   });
 
   // ── Admin ──────────────────────────────────────────────────────────────────
+
+  it('admin actions are written to the audit log, failed ones are not', async () => {
+    await request(app.getHttpServer())
+      .patch(`/api/v1/admin/users/${stranger.id}/status`)
+      .set('Authorization', token(admin))
+      .send({ status: 'suspended', reason: 'audit test' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/api/v1/admin/users/${stranger.id}/status`)
+      .set('Authorization', token(admin))
+      .send({ status: 'not-a-status' })
+      .expect(400);
+
+    const log = await request(app.getHttpServer())
+      .get(`/api/v1/admin/audit-log?targetId=${stranger.id}`)
+      .set('Authorization', token(admin))
+      .expect(200);
+    expect(log.body.total).toBe(1);
+    expect(log.body.data[0].action).toBe('user.status');
+    expect(log.body.data[0].details).toEqual({ status: 'suspended', reason: 'audit test' });
+    expect(log.body.data[0].admin.id).toBe(admin.id);
+
+    await userRepo.update(stranger.id, { status: UserStatus.ACTIVE });
+    await dataSource.query('DELETE FROM admin_audit_log WHERE admin_id = $1', [admin.id]);
+  });
 
   it('admin search by name or phone works (it used to crash on non-uuid input)', async () => {
     const result = await adminService.search('Sec 0');

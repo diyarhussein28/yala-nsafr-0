@@ -10,6 +10,8 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { Audit } from '../audit/audit.decorator';
+import { AuditService } from '../audit/audit.service';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { ResolveDisputeDto } from './dto/resolve-dispute.dto';
 import { NotifyPartyDto } from './dto/notify-party.dto';
@@ -23,7 +25,19 @@ import { User } from '../../database/entities/user.entity';
 @Controller('admin')
 @UseGuards(JwtAuthGuard, AdminGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly audit: AuditService,
+  ) {}
+
+  @Get('audit-log')
+  auditLog(
+    @Query('page') page?: string,
+    @Query('targetType') targetType?: string,
+    @Query('targetId') targetId?: string,
+  ) {
+    return this.audit.list({ page: page ? Number(page) : 1, targetType, targetId });
+  }
 
   // ── Config ─────────────────────────────────────────────────────────────────
   @Get('config')
@@ -32,6 +46,7 @@ export class AdminController {
   }
 
   @Patch('config')
+  @Audit('config.update', 'config')
   updateConfig(@Body() dto: UpdateConfigDto) {
     return this.adminService.updateConfig(dto);
   }
@@ -60,6 +75,7 @@ export class AdminController {
   }
 
   @Patch('users/:id/status')
+  @Audit('user.status', 'user')
   updateUserStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserStatusDto,
@@ -68,6 +84,7 @@ export class AdminController {
   }
 
   @Post('users/:id/verify-id/approve')
+  @Audit('user.verify_id.approve', 'user')
   approveId(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() admin: User,
@@ -76,11 +93,13 @@ export class AdminController {
   }
 
   @Post('users/:id/verify-id/reject')
+  @Audit('user.verify_id.reject', 'user')
   rejectId(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminService.rejectIdVerification(id);
   }
 
   @Post('users/:id/verify-driver/approve')
+  @Audit('user.verify_driver.approve', 'user')
   approveDriver(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() admin: User,
@@ -89,6 +108,7 @@ export class AdminController {
   }
 
   @Post('users/:id/verify-driver/reject')
+  @Audit('user.verify_driver.reject', 'user')
   rejectDriver(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminService.rejectDriverVerification(id);
   }
@@ -116,6 +136,7 @@ export class AdminController {
   }
 
   @Post('disputes/:id/assign')
+  @Audit('dispute.assign', 'dispute')
   assignDispute(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() admin: User,
@@ -124,6 +145,7 @@ export class AdminController {
   }
 
   @Post('disputes/:id/resolve')
+  @Audit('dispute.resolve', 'dispute')
   resolveDispute(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() admin: User,
@@ -133,6 +155,7 @@ export class AdminController {
   }
 
   @Post('disputes/:id/notify')
+  @Audit('dispute.notify', 'dispute')
   notifyParty(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() admin: User,
