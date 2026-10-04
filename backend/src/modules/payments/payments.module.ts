@@ -12,6 +12,9 @@ import { Subscription } from '../../database/entities/subscription.entity';
 import { SubscriptionPayment } from '../../database/entities/subscription-payment.entity';
 import { PlatformConfig } from '../../database/entities/platform-config.entity';
 import { SubscriptionBillingService } from './subscription-billing.service';
+import { CommissionBillingService } from './commission-billing.service';
+import { CommissionPayment } from '../../database/entities/commission-payment.entity';
+import { DriverLedgerEntry } from '../../database/entities/driver-ledger-entry.entity';
 
 // All payments go through Kashier: trip fares (authorize → capture escrow), driver
 // payouts, and driver subscriptions (SubscriptionBillingService). Stripe was removed —
@@ -23,11 +26,12 @@ import { SubscriptionBillingService } from './subscription-billing.service';
   imports: [
     TypeOrmModule.forFeature([
       Booking, Payment, Trip, WithdrawalRequest, Subscription, SubscriptionPayment, PlatformConfig,
+      CommissionPayment, DriverLedgerEntry,
     ]),
     NotificationsModule,
   ],
   controllers: [KashierController],
-  providers: [KashierService, PaymentSettlementService, SubscriptionBillingService],
-  exports: [KashierService, PaymentSettlementService, SubscriptionBillingService],
+  providers: [KashierService, PaymentSettlementService, SubscriptionBillingService, CommissionBillingService],
+  exports: [KashierService, PaymentSettlementService, SubscriptionBillingService, CommissionBillingService],
 })
 export class PaymentsModule {}

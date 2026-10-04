@@ -24,6 +24,7 @@ import { cairoDayBounds, formatCairoDate } from '../../common/time/cairo';
 import { creditPassengerCompletion, REFERRAL_REWARD_EGP, restorePromoCredit } from '../bookings/booking-side-effects';
 import { applyDriverCancellationStrike, LATE_DRIVER_CANCEL_HOURS } from './driver-strikes';
 import { UpdateTripDto } from './dto/update-trip.dto';
+import { DriverBalanceService } from '../earnings/driver-balance.service';
 
 // Matches the app's date picker. See assertDepartureTimeInRange — this needs to drop
 // inside Kashier's authorization hold window before online payments can be relied on.
@@ -49,6 +50,7 @@ export class TripsService {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly blocksService: BlocksService,
     private readonly kashier: KashierService,
+    private readonly balances: DriverBalanceService,
   ) {}
 
   async create(driver: User, dto: CreateTripDto): Promise<Trip> {
@@ -63,6 +65,16 @@ export class TripsService {
     if (driver.tripPostingBannedUntil && driver.tripPostingBannedUntil > new Date()) {
       const until = formatCairoDate(driver.tripPostingBannedUntil);
       throw new ForbiddenException(`تم تعليق حقك في نشر الرحلات حتى ${until} بسبب الإلغاء المتكرر`);
+    }
+
+    // A driver running only cash trips never passes money through the platform, so the
+    // commission they owe can only grow. Past the limit they settle before posting more.
+    const balance = await this.balances.getBalance(driver.id);
+    if (balance.cashCommissionOutstanding > balance.cashCommissionLimit) {
+      throw new ForbiddenException(
+        `عليك عمولة مستحقة ${balance.cashCommissionOutstanding} جنيه على رحلات الكاش. ` +
+          'سددها من شاشة الأرباح لتتمكن من نشر رحلات جديدة.',
+      );
     }
 
     const canPost = await this.subscriptionsService.canUserPostTrip(driver.id);

@@ -91,4 +91,11 @@ export class UpdateConfigDto {
   @Min(1)
   @Max(366)
   subscriptionPeriodDays?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  @Max(100000)
+  cashCommissionLimitEgp?: number;
 }

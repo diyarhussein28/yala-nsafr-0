@@ -10,6 +10,7 @@ import { WithdrawalRequest, WithdrawalStatus } from '../../database/entities/wit
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaymentSettlementService } from './payment-settlement.service';
 import { SubscriptionBillingService } from './subscription-billing.service';
+import { CommissionBillingService } from './commission-billing.service';
 import { restorePromoCredit } from '../bookings/booking-side-effects';
 
 @Controller('kashier')
@@ -21,6 +22,7 @@ export class KashierController {
     private readonly notifications: NotificationsService,
     private readonly settlement: PaymentSettlementService,
     private readonly subscriptionBilling: SubscriptionBillingService,
+    private readonly commissionBilling: CommissionBillingService,
     @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(Booking) private readonly bookingRepo: Repository<Booking>,
     @InjectRepository(Trip) private readonly tripRepo: Repository<Trip>,
@@ -40,6 +42,12 @@ export class KashierController {
         await this.subscriptionBilling.confirmByMerchantOrderId(merchantOrderId);
       } catch (e) {
         this.logger.error(`payment-done subscription confirm error: ${String(e)}`);
+      }
+    } else if (CommissionBillingService.isCommissionOrder(merchantOrderId)) {
+      try {
+        await this.commissionBilling.confirmByMerchantOrderId(merchantOrderId);
+      } catch (e) {
+        this.logger.error(`payment-done commission confirm error: ${String(e)}`);
       }
     } else if (merchantOrderId) {
       try {
@@ -160,6 +168,11 @@ h2{color:#16a34a;font-size:2rem;margin-bottom:12px}p{color:#555;font-size:1.1rem
           transactionId: transactionId || undefined,
         }),
       );
+      return;
+    }
+
+    if (CommissionBillingService.isCommissionOrder(merchantOrderId)) {
+      res.status(await this.commissionBilling.handleWebhook(merchantOrderId, event, status));
       return;
     }
 

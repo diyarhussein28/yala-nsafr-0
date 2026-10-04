@@ -67,6 +67,7 @@ export class AdminService implements OnModuleInit {
       { key: CONFIG_KEYS.DRIVER_COMPENSATION_PCT, value: '0.05', description: 'Driver compensation % from late-cancel fee (0–1)' },
       { key: CONFIG_KEYS.SUBSCRIPTION_PRICE_EGP, value: '200', description: 'Driver subscription price per period in EGP (0 = no subscription required)' },
       { key: CONFIG_KEYS.SUBSCRIPTION_PERIOD_DAYS, value: '30', description: 'Days of trip posting one subscription payment buys' },
+      { key: CONFIG_KEYS.CASH_COMMISSION_LIMIT_EGP, value: '500', description: 'Unpaid cash-trip commission (EGP) above which a driver cannot post trips' },
     ];
 
     for (const entry of defaults) {
@@ -110,6 +111,7 @@ export class AdminService implements OnModuleInit {
       [dto.minRatingsForFlag, CONFIG_KEYS.MIN_RATINGS_FOR_FLAG],
       [dto.subscriptionPriceEgp, CONFIG_KEYS.SUBSCRIPTION_PRICE_EGP],
       [dto.subscriptionPeriodDays, CONFIG_KEYS.SUBSCRIPTION_PERIOD_DAYS],
+      [dto.cashCommissionLimitEgp, CONFIG_KEYS.CASH_COMMISSION_LIMIT_EGP],
     ];
     for (const [value, key] of policy) {
       if (value !== undefined) updates.push({ key, value: String(value) });

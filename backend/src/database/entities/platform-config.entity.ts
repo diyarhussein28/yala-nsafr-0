@@ -39,4 +39,5 @@ export const CONFIG_KEYS = {
   DRIVER_COMPENSATION_PCT: 'driver_compensation_pct',
   SUBSCRIPTION_PRICE_EGP: 'subscription_price_egp',
   SUBSCRIPTION_PERIOD_DAYS: 'subscription_period_days',
+  CASH_COMMISSION_LIMIT_EGP: 'cash_commission_limit_egp',
 } as const;

@@ -43,6 +43,10 @@ import { TripComment } from '../src/database/entities/trip-comment.entity';
 // Wait for async operations inside setImmediate callbacks to complete.
 // setImmediate itself starts immediately, but the DB + Kashier calls inside are async.
 // 300ms is enough for local DB round-trips to finish.
+// Earnings become withdrawable once the trip's dispute window (48h by default) has
+// closed, so fixtures that represent spendable money complete the trip before that.
+const settledCompletion = () => new Date(Date.now() - 72 * 3_600_000);
+
 const waitForBackground = () => new Promise<void>(resolve => setTimeout(resolve, 300));
 
 const DRIVER_PHONE = '+201111100001';
@@ -993,7 +997,7 @@ describe('Features E2E', () => {
           commissionRate: 0.07,
           paymentMethod: PaymentMethod.CARD,
           status: BookingStatus.TRIP_COMPLETED,
-          completedAt: new Date(),
+          completedAt: settledCompletion(),
           confirmedAt: new Date(),
         }),
       );
@@ -2510,7 +2514,7 @@ describe('Features E2E', () => {
         bookingStatus: BookingStatus.TRIP_COMPLETED,
         paymentStatus,
       });
-      await bookingRepo.update(booking.id, { completedAt: new Date() });
+      await bookingRepo.update(booking.id, { completedAt: settledCompletion() });
       return { trip, booking, payment };
     }
 

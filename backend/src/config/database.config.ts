@@ -5,7 +5,8 @@ import { Trip } from '../database/entities/trip.entity';
 import { Booking } from '../database/entities/booking.entity';
 import { Payment } from '../database/entities/payment.entity';
 import { Rating } from '../database/entities/rating.entity';
-import { DriverWallet } from '../database/entities/driver-wallet.entity';
+import { DriverLedgerEntry } from '../database/entities/driver-ledger-entry.entity';
+import { CommissionPayment } from '../database/entities/commission-payment.entity';
 import { Dispute } from '../database/entities/dispute.entity';
 import { Otp } from '../database/entities/otp.entity';
 import { PlatformConfig } from '../database/entities/platform-config.entity';
@@ -29,10 +30,10 @@ export default registerAs('database', (): TypeOrmModuleOptions => ({
   username: process.env.DB_USER || 'yala_user',
   password: process.env.DB_PASS || 'yala_pass',
   entities: [
-    User, Trip, Booking, Payment, Rating, DriverWallet, Dispute, Otp,
+    User, Trip, Booking, Payment, Rating, DriverLedgerEntry, Dispute, Otp,
     PlatformConfig, TripLocation, TripComment, TripMessage, WithdrawalRequest,
     AppNotification, ReferralReward, RefreshToken, Block, Subscription, SosAlert,
-    SubscriptionPayment,
+    SubscriptionPayment, CommissionPayment,
   ],
   // Schema changes ship as migrations (src/database/migrations). synchronize stays on for
   // local development convenience only — it must never run against production data.

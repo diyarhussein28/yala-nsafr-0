@@ -18,8 +18,13 @@ import { User } from '../../database/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { KashierService } from '../payments/kashier.service';
 import { startOfCairoMonth } from '../../common/time/cairo';
+import { DriverBalanceService, MIN_WITHDRAWAL } from './driver-balance.service';
+import { CommissionBillingService } from '../payments/commission-billing.service';
+import {
+  DriverLedgerEntry,
+  LedgerEntryType,
+} from '../../database/entities/driver-ledger-entry.entity';
 
-const MIN_WITHDRAWAL = 200;
 
 // How long a delivered payout is re-checked for a bounce-back. Kashier reports
 // TRANSFERRED transfers as openForReturn indefinitely, so this bounds the watch
@@ -38,93 +43,56 @@ export class EarningsService {
     private readonly dataSource: DataSource,
     private readonly notifications: NotificationsService,
     private readonly kashier: KashierService,
+    private readonly balances: DriverBalanceService,
+    private readonly commissionBilling: CommissionBillingService,
+    @InjectRepository(DriverLedgerEntry)
+    private readonly ledgerRepo: Repository<DriverLedgerEntry>,
   ) {}
 
-  async getSummary(driverId: string) {
-    const bookings = await this.bookingRepo
-      .createQueryBuilder('b')
-      .innerJoin('b.trip', 't')
-      .leftJoinAndSelect('b.payment', 'p')
-      .where('t.driverId = :driverId', { driverId })
-      .andWhere('b.status = :status', { status: BookingStatus.TRIP_COMPLETED })
-      .getMany();
+  getSummary(driverId: string) {
+    return this.balances.getBalance(driverId);
+  }
 
-    // Month boundaries in Cairo time, not the server's
-    const startOfMonth = startOfCairoMonth();
-
-    let thisMonthOnline = 0, thisMonthCash = 0;
-    let allTimeOnline = 0,   allTimeCash = 0;
-    // Commission on cash trips: the driver collected the whole fare, so this is money
-    // they owe the platform. It was tracked per booking but never shown anywhere.
-    let cashCommissionOwed = 0;
-
-    for (const b of bookings) {
-      const isCash = b.paymentMethod === PaymentMethod.CASH;
-      const payout = Number(b.driverPayoutAmount ?? 0);
-      const total  = Number(b.totalAmount ?? 0);
-      const completionDate = b.completedAt ?? b.updatedAt;
-      const isThisMonth = completionDate && new Date(completionDate) >= startOfMonth;
-
-      if (isCash) {
-        // Cash is collected by the driver directly, so completion is enough — less
-        // anything a dispute ruling sent back to the passenger. There is no gateway to
-        // claw that through, so the driver hands it over themselves; counting the full
-        // fare would show them cash they have been told to return.
-        const kept = Math.max(0, +(total - Number(b.payment?.refundAmount ?? 0)).toFixed(2));
-        allTimeCash += kept;
-        if (isThisMonth) thisMonthCash += kept;
-        if (!b.payment?.refundAmount) cashCommissionOwed += Number(b.commissionAmount ?? 0);
-      } else if (b.payment?.status === PaymentStatus.CAPTURED) {
-        // Only credit online payouts once the money is actually captured. A completed
-        // trip whose capture failed or whose authorization lapsed collected nothing,
-        // and paying out against it would send money we never received.
-        allTimeOnline += payout;
-        if (isThisMonth) thisMonthOnline += payout;
-      } else if (b.payment?.status === PaymentStatus.PARTIALLY_REFUNDED) {
-        // A split dispute ruling captures the fare and returns an agreed slice to the
-        // passenger. The driver keeps the rest, so the payout is reduced by what went
-        // back rather than dropping to zero — which is what happened while this status
-        // was not counted at all.
-        const net = Math.max(0, +(payout - Number(b.payment.refundAmount ?? 0)).toFixed(2));
-        allTimeOnline += net;
-        if (isThisMonth) thisMonthOnline += net;
-      }
-    }
-
-    const withdrawals = await this.withdrawalRepo.find({
-      where: [
-        { driverId, status: WithdrawalStatus.PAID },
-        { driverId, status: WithdrawalStatus.PENDING },
-      ],
-      select: { amount: true, status: true },
+  async getLedger(driverId: string) {
+    return this.ledgerRepo.find({
+      where: { driverId },
+      order: { createdAt: 'DESC' },
+      take: 100,
     });
+  }
 
-    const sum = (status: WithdrawalStatus) =>
-      withdrawals
-        .filter((w) => w.status === status)
-        .reduce((s, w) => s + Number(w.amount ?? 0), 0);
+  /** Admin correction or a commission payment received outside Kashier (e.g. InstaPay). */
+  async addLedgerEntry(
+    driverId: string,
+    admin: User,
+    type: LedgerEntryType.ADJUSTMENT | LedgerEntryType.CASH_COMMISSION_PAYMENT,
+    amount: number,
+    note: string,
+  ) {
+    if (type === LedgerEntryType.CASH_COMMISSION_PAYMENT && amount <= 0) {
+      throw new BadRequestException('A commission payment must be positive');
+    }
+    const entry = await this.ledgerRepo.save(
+      this.ledgerRepo.create({ driverId, type, amount, note, createdByAdminId: admin.id }),
+    );
+    setImmediate(() => {
+      void this.notifications.sendToUser(driverId, {
+        title: 'تحديث على رصيدك',
+        body: `${amount > 0 ? 'تمت إضافة' : 'تم خصم'} ${Math.abs(amount)} جنيه: ${note}`,
+        data: { screen: 'earnings' },
+      });
+    });
+    return entry;
+  }
 
-    const totalWithdrawn = sum(WithdrawalStatus.PAID);
-    // A PENDING withdrawal is money already handed to Kashier and awaiting settlement.
-    // It is not spendable, so it must come off the available balance — otherwise the
-    // driver sees their full balance while a transfer of it is already in flight.
-    const pendingWithdrawal = sum(WithdrawalStatus.PENDING);
+  /** Opens a Kashier checkout for the cash-trip commission the driver still owes. */
+  async payOutstandingCommission(driver: User) {
+    const { cashCommissionOutstanding } = await this.balances.getBalance(driver.id);
+    return this.commissionBilling.createCheckout(driver, cashCommissionOutstanding);
+  }
 
-    const round = (n: number) => Math.round(n * 100) / 100;
-
-    return {
-      thisMonthOnline:   round(thisMonthOnline),
-      thisMonthCash:     round(thisMonthCash),
-      allTimeOnline:     round(allTimeOnline),
-      allTimeCash:       round(allTimeCash),
-      pendingBalance:    round(allTimeOnline - totalWithdrawn - pendingWithdrawal),
-      totalWithdrawn:    round(totalWithdrawn),
-      pendingWithdrawal: round(pendingWithdrawal),
-      // Informational for now — whether it is netted against payouts is a business
-      // decision that has not been made yet.
-      cashCommissionOwed: round(cashCommissionOwed),
-      minWithdrawal:     MIN_WITHDRAWAL,
-    };
+  confirmCommissionPayment(paymentId: string, driver: User) {
+    return this.commissionBilling.confirmForDriver(paymentId, driver);
   }
 
   async getTripBreakdown(driverId: string, page = 1) {
@@ -188,7 +156,7 @@ export class EarningsService {
         lock: { mode: 'pessimistic_write' },
       });
 
-      const summary = await this.getSummary(driver.id);
+      const summary = await this.balances.getBalance(driver.id);
       if (amount > summary.pendingBalance) {
         throw new BadRequestException('المبلغ المطلوب يتجاوز رصيدك المتاح');
       }

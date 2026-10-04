@@ -10,9 +10,10 @@ import { TripComment } from '../../database/entities/trip-comment.entity';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { BlocksModule } from '../blocks/blocks.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { EarningsModule } from '../earnings/earnings.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Trip, User, Booking, Payment, TripComment]), SubscriptionsModule, BlocksModule, PaymentsModule],
+  imports: [TypeOrmModule.forFeature([Trip, User, Booking, Payment, TripComment]), SubscriptionsModule, BlocksModule, PaymentsModule, EarningsModule],
   controllers: [TripsController],
   providers: [TripsService],
   exports: [TripsService],

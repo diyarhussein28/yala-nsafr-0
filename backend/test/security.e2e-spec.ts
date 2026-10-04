@@ -23,6 +23,10 @@ import { KashierService } from '../src/modules/payments/kashier.service';
 import { AdminService } from '../src/modules/admin/admin.service';
 import { LocationService, LOCATION_RETENTION_DAYS } from '../src/modules/location/location.service';
 import { TripLocation } from '../src/database/entities/trip-location.entity';
+import { DriverBalanceService } from '../src/modules/earnings/driver-balance.service';
+import { DriverLedgerEntry, LedgerEntryType } from '../src/database/entities/driver-ledger-entry.entity';
+import { CommissionBillingService } from '../src/modules/payments/commission-billing.service';
+import { CommissionPayment } from '../src/database/entities/commission-payment.entity';
 import { cairoDayBounds, formatCairoTime } from '../src/common/time/cairo';
 import { parseEgyptianNationalId } from '../src/common/validation/egyptian-national-id';
 
@@ -43,6 +47,8 @@ describe('Security & integrity regressions', () => {
   let kashier: KashierService;
   let adminService: AdminService;
   let locationService: LocationService;
+  let balances: DriverBalanceService;
+  let commissionBilling: CommissionBillingService;
 
   let driver: User;
   let passenger: User;
@@ -67,6 +73,8 @@ describe('Security & integrity regressions', () => {
         await tripRepo.delete({ id: In(tripIds) });
       }
       await dataSource.query('DELETE FROM notifications WHERE user_id = ANY($1)', [ids]);
+      await dataSource.query('DELETE FROM driver_ledger WHERE driver_id = ANY($1)', [ids]);
+      await dataSource.query('DELETE FROM commission_payments WHERE driver_id = ANY($1)', [ids]);
       await dataSource.query('DELETE FROM refresh_tokens WHERE user_id = ANY($1)', [ids]);
       await userRepo.delete({ id: In(ids) });
     }
@@ -153,6 +161,8 @@ describe('Security & integrity regressions', () => {
     kashier = moduleFixture.get(KashierService);
     adminService = moduleFixture.get(AdminService);
     locationService = moduleFixture.get(LocationService);
+    balances = moduleFixture.get(DriverBalanceService);
+    commissionBilling = moduleFixture.get(CommissionBillingService);
 
     await cleanup();
     driver = await makeUser('01', { role: UserRole.BOTH, driverVerified: true, gender: Gender.MALE });
@@ -431,6 +441,116 @@ describe('Security & integrity regressions', () => {
   it('admin analytics returns top routes', async () => {
     const analytics = await adminService.getAnalytics();
     expect(Array.isArray(analytics.topRoutes)).toBe(true);
+  });
+
+  describe('driver balance', () => {
+    const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000);
+
+    async function completed(method: PaymentMethod, completedAt: Date, total = 100) {
+      const trip = await makeTrip({ status: TripStatus.COMPLETED });
+      const online = method !== PaymentMethod.CASH;
+      return makeBooking(
+        trip.id,
+        {
+          status: BookingStatus.TRIP_COMPLETED,
+          paymentMethod: method,
+          totalAmount: total,
+          commissionAmount: total * 0.1,
+          driverPayoutAmount: total * 0.9,
+          completedAt,
+        },
+        { status: online ? PaymentStatus.CAPTURED : PaymentStatus.CAPTURED, isCash: !online },
+      );
+    }
+
+    // Earlier tests in this file complete trips for the same driver; start from zero
+    const resetDriverMoney = async () => {
+      const trips = await tripRepo.find({ where: { driverId: driver.id } });
+      const tripIds = trips.map((t) => t.id);
+      if (tripIds.length) {
+        const bookings = await bookingRepo.find({ where: { tripId: In(tripIds) } });
+        await paymentRepo.delete({ bookingId: In(bookings.map((b) => b.id)) });
+        await bookingRepo.delete({ id: In(bookings.map((b) => b.id)) });
+        await tripRepo.delete({ id: In(tripIds) });
+      }
+      await dataSource.query('DELETE FROM driver_ledger WHERE driver_id = $1', [driver.id]);
+      await dataSource.query('DELETE FROM commission_payments WHERE driver_id = $1', [driver.id]);
+    };
+    beforeEach(resetDriverMoney);
+    afterEach(resetDriverMoney);
+
+    it('holds online earnings until the dispute window has closed', async () => {
+      await completed(PaymentMethod.CARD, hoursAgo(72));
+      await completed(PaymentMethod.CARD, hoursAgo(1));
+      const b = await balances.getBalance(driver.id);
+      expect(b.allTimeOnline).toBe(180);
+      expect(b.pendingBalance).toBe(90);
+      expect(b.heldBalance).toBe(90);
+      expect(b.nextReleaseAt).not.toBeNull();
+    });
+
+    it('nets cash-trip commission against online earnings', async () => {
+      await completed(PaymentMethod.CARD, hoursAgo(72), 200); // driver earns 180
+      await completed(PaymentMethod.CASH, hoursAgo(72), 300); // owes 30
+      const b = await balances.getBalance(driver.id);
+      expect(b.cashCommissionOwed).toBe(30);
+      expect(b.pendingBalance).toBe(150);
+      expect(b.cashCommissionOutstanding).toBe(0);
+    });
+
+    it('a cash-only driver accumulates outstanding commission and can pay it through Kashier', async () => {
+      await completed(PaymentMethod.CASH, hoursAgo(72), 400); // owes 40
+      let b = await balances.getBalance(driver.id);
+      expect(b.pendingBalance).toBe(0);
+      expect(b.cashCommissionOutstanding).toBe(40);
+
+      jest.spyOn(kashier, 'createCheckoutSession').mockResolvedValue({
+        sessionUrl: 'https://payments.kashier.io/session/c1', orderId: 'x', sessionId: 'c1',
+      });
+      const { paymentId } = await commissionBilling.createCheckout(driver, b.cashCommissionOutstanding);
+      jest.spyOn(kashier, 'getPaymentStatus').mockResolvedValue('CAPTURED');
+      expect((await commissionBilling.confirmForDriver(paymentId, driver)).status).toBe('paid');
+      // Confirming twice must not credit twice
+      await commissionBilling.confirmForDriver(paymentId, driver);
+
+      b = await balances.getBalance(driver.id);
+      expect(b.cashCommissionOutstanding).toBe(0);
+      expect(await dataSource.getRepository(DriverLedgerEntry).countBy({ driverId: driver.id })).toBe(1);
+      expect((await dataSource.getRepository(CommissionPayment).findOneByOrFail({ id: paymentId })).status).toBe('paid');
+    });
+
+    it('blocks trip posting once unpaid cash commission exceeds the limit', async () => {
+      await completed(PaymentMethod.CASH, hoursAgo(72), 6000); // owes 600 > 500
+      await expect(
+        tripsService.create(driver, {
+          originCity: 'القاهرة',
+          destinationCity: 'طنطا',
+          departureTime: new Date(Date.now() + 86_400_000).toISOString(),
+          totalSeats: 3,
+          pricePerSeat: 100,
+        }),
+      ).rejects.toThrow('عمولة مستحقة');
+    });
+
+    it('credits late-cancellation compensation only once the fee was captured', async () => {
+      const trip = await makeTrip({ departureTime: new Date(Date.now() + 10 * 3_600_000) });
+      const { booking, payment } = await makeBooking(
+        trip.id,
+        { paymentMethod: PaymentMethod.CARD, totalAmount: 200, confirmedAt: new Date() },
+        { status: PaymentStatus.PENDING, isCash: false },
+      );
+      jest.spyOn(kashier, 'capturePayment').mockRejectedValue(new Error('Kashier down'));
+      await bookingsService.cancelByPassenger(booking.id, passenger, 'late');
+
+      const entry = await dataSource.getRepository(DriverLedgerEntry).findOneByOrFail({ bookingId: booking.id });
+      expect(entry.type).toBe(LedgerEntryType.CANCELLATION_COMPENSATION);
+      expect(Number(entry.amount)).toBe(10); // 5% of 200
+      expect((await balances.getBalance(driver.id)).ledgerCredits).toBe(0);
+
+      await paymentRepo.update(payment.id, { status: PaymentStatus.PARTIALLY_REFUNDED });
+      expect((await balances.getBalance(driver.id)).ledgerCredits).toBe(10);
+      await userRepo.update(passenger.id, { cancellationStrikes: 0 });
+    });
   });
 
   describe('location trail', () => {

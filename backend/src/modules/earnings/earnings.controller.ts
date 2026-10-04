@@ -10,7 +10,10 @@ import {
   ParseUUIDPipe,
   ParseIntPipe,
   DefaultValuePipe,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
+import { CreateLedgerEntryDto } from './dto/create-ledger-entry.dto';
 import { EarningsService } from './earnings.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
@@ -37,6 +40,23 @@ export class EarningsController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
   ) {
     return this.earningsService.getTripBreakdown(user.id, page);
+  }
+
+  @Get('drivers/earnings/ledger')
+  getLedger(@CurrentUser() user: User) {
+    return this.earningsService.getLedger(user.id);
+  }
+
+  /** Kashier checkout for the commission owed on cash trips → { paymentId, sessionUrl } */
+  @Post('drivers/earnings/commission/checkout')
+  payCommission(@CurrentUser() user: User) {
+    return this.earningsService.payOutstandingCommission(user);
+  }
+
+  @Post('drivers/earnings/commission/payments/:id/confirm')
+  @HttpCode(HttpStatus.OK)
+  confirmCommission(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+    return this.earningsService.confirmCommissionPayment(id, user);
   }
 
   @Get('drivers/withdrawals')
@@ -71,6 +91,26 @@ export class EarningsController {
   @UseGuards(AdminGuard)
   getAdminCommissionSummary() {
     return this.earningsService.getAdminCommissionSummary();
+  }
+
+  @Get('admin/drivers/:id/ledger')
+  @UseGuards(AdminGuard)
+  async getDriverLedger(@Param('id', ParseUUIDPipe) id: string) {
+    const [entries, balance] = await Promise.all([
+      this.earningsService.getLedger(id),
+      this.earningsService.getSummary(id),
+    ]);
+    return { entries, balance };
+  }
+
+  @Post('admin/drivers/:id/ledger')
+  @UseGuards(AdminGuard)
+  addLedgerEntry(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() admin: User,
+    @Body() dto: CreateLedgerEntryDto,
+  ) {
+    return this.earningsService.addLedgerEntry(id, admin, dto.type, dto.amount, dto.note);
   }
 
   @Patch('admin/withdrawals/:id')

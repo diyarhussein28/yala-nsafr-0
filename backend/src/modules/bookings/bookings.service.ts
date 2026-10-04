@@ -28,6 +28,10 @@ import {
   PaymentSettlement,
 } from '../payments/payment-settlement.service';
 import { BlocksService } from '../blocks/blocks.service';
+import {
+  DriverLedgerEntry,
+  LedgerEntryType,
+} from '../../database/entities/driver-ledger-entry.entity';
 import { toBookedDriver, toPublicUser } from '../../common/serializers/public-user';
 import {
   creditPassengerCompletion,
@@ -822,6 +826,22 @@ export class BookingsService {
       // Restore promo discount to passenger's balance on free cancellation
       if (policy === 'free_cancel' && Number(booking.promoDiscountAmount) > 0) {
         await manager.increment(User, { id: passenger.id }, 'promoBalance', Number(booking.promoDiscountAmount));
+      }
+
+      // The driver was told they would receive this share of the late-cancellation fee,
+      // but nothing ever credited it. It is recorded now and counts toward their balance
+      // once the fee has actually been captured.
+      if (driverBonus > 0 && !isCash) {
+        await manager.save(
+          DriverLedgerEntry,
+          manager.create(DriverLedgerEntry, {
+            driverId: booking.trip.driverId,
+            type: LedgerEntryType.CANCELLATION_COMPENSATION,
+            amount: driverBonus,
+            bookingId: booking.id,
+            note: 'تعويض إلغاء متأخر من الراكب',
+          }),
+        );
       }
 
       booking.status =

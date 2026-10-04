@@ -10,7 +10,6 @@ import {
 import { Trip } from './trip.entity';
 import { Booking } from './booking.entity';
 import { Rating } from './rating.entity';
-import { DriverWallet } from './driver-wallet.entity';
 
 export enum UserRole {
   PASSENGER = 'passenger',
@@ -182,7 +181,4 @@ export class User {
 
   @OneToMany(() => Rating, (rating) => rating.ratee)
   ratingsReceived: Rating[];
-
-  @OneToMany(() => DriverWallet, (wallet) => wallet.driver)
-  wallet: DriverWallet;
 }
