@@ -21,6 +21,8 @@ import { BookingsService, PENDING_PAYMENT_TTL_MINUTES } from '../src/modules/boo
 import { TripsService } from '../src/modules/trips/trips.service';
 import { KashierService } from '../src/modules/payments/kashier.service';
 import { AdminService } from '../src/modules/admin/admin.service';
+import { LocationService, LOCATION_RETENTION_DAYS } from '../src/modules/location/location.service';
+import { TripLocation } from '../src/database/entities/trip-location.entity';
 import { cairoDayBounds, formatCairoTime } from '../src/common/time/cairo';
 import { parseEgyptianNationalId } from '../src/common/validation/egyptian-national-id';
 
@@ -40,6 +42,7 @@ describe('Security & integrity regressions', () => {
   let tripsService: TripsService;
   let kashier: KashierService;
   let adminService: AdminService;
+  let locationService: LocationService;
 
   let driver: User;
   let passenger: User;
@@ -149,6 +152,7 @@ describe('Security & integrity regressions', () => {
     tripsService = moduleFixture.get(TripsService);
     kashier = moduleFixture.get(KashierService);
     adminService = moduleFixture.get(AdminService);
+    locationService = moduleFixture.get(LocationService);
 
     await cleanup();
     driver = await makeUser('01', { role: UserRole.BOTH, driverVerified: true, gender: Gender.MALE });
@@ -427,6 +431,27 @@ describe('Security & integrity regressions', () => {
   it('admin analytics returns top routes', async () => {
     const analytics = await adminService.getAnalytics();
     expect(Array.isArray(analytics.topRoutes)).toBe(true);
+  });
+
+  describe('location trail', () => {
+    it('recording a position updates the trip, and old trails of finished trips are purged', async () => {
+      const trip = await makeTrip({ status: TripStatus.ACTIVE });
+      await locationService.recordLocation(trip.id, driver.id, { latitude: 30.05, longitude: 31.24 });
+      const tracked = await tripRepo.findOneByOrFail({ id: trip.id });
+      expect(Number(tracked.currentLat)).toBeCloseTo(30.05);
+
+      const locRepo = dataSource.getRepository(TripLocation);
+      const old = new Date(Date.now() - (LOCATION_RETENTION_DAYS + 1) * 24 * 3_600_000);
+      await locRepo.query('UPDATE trip_locations SET recorded_at = $1 WHERE trip_id = $2', [old, trip.id]);
+
+      // Still active → kept
+      await locationService.purgeOldLocations();
+      expect(await locRepo.countBy({ tripId: trip.id })).toBe(1);
+
+      await tripRepo.update(trip.id, { status: TripStatus.COMPLETED });
+      await locationService.purgeOldLocations();
+      expect(await locRepo.countBy({ tripId: trip.id })).toBe(0);
+    });
   });
 
   // ── Pure helpers ───────────────────────────────────────────────────────────
