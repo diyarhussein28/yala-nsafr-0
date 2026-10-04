@@ -1,31 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import '../../../../core/api/api_client.dart';
-import '../../../../core/api/api_endpoints.dart';
+import '../../core/api/api_client.dart';
 
-/// Kashier hosted checkout for one subscription period.
+/// Kashier hosted checkout for an immediate charge (a subscription period, or the
+/// commission a driver owes on cash trips).
 ///
 /// Pops with `true` once the server has confirmed the payment with Kashier, `false`
 /// otherwise. The redirect's own query string is never trusted — it only tells us the
 /// checkout finished, and the server then asks Kashier what actually happened.
-class SubscriptionPaymentScreen extends ConsumerStatefulWidget {
-  final String paymentId;
+class KashierCheckoutScreen extends ConsumerStatefulWidget {
   final String sessionUrl;
+  /// Endpoint the server checks with Kashier and applies the payment on
+  final String confirmEndpoint;
 
-  const SubscriptionPaymentScreen({
+  const KashierCheckoutScreen({
     super.key,
-    required this.paymentId,
     required this.sessionUrl,
+    required this.confirmEndpoint,
   });
 
   @override
-  ConsumerState<SubscriptionPaymentScreen> createState() =>
-      _SubscriptionPaymentScreenState();
+  ConsumerState<KashierCheckoutScreen> createState() =>
+      _KashierCheckoutScreenState();
 }
 
-class _SubscriptionPaymentScreenState
-    extends ConsumerState<SubscriptionPaymentScreen> {
+class _KashierCheckoutScreenState
+    extends ConsumerState<KashierCheckoutScreen> {
   WebViewController? _controller;
   bool _confirming = false;
   bool _loadError = false;
@@ -34,7 +35,7 @@ class _SubscriptionPaymentScreenState
   void initState() {
     super.initState();
     // PAYMENT_MOCK on the server returns a mock:// URL — there is no page to show, the
-    // confirm call alone activates the subscription in development.
+    // confirm call alone applies the payment in development.
     if (widget.sessionUrl.startsWith('mock://')) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _confirm());
       return;
@@ -67,7 +68,7 @@ class _SubscriptionPaymentScreenState
       try {
         final res = await ref
             .read(dioProvider)
-            .post(Endpoints.subscriptionConfirm(widget.paymentId));
+            .post(widget.confirmEndpoint);
         paid = (res.data as Map<String, dynamic>)['status'] == 'paid';
       } catch (_) {
         // Retried below; the server-side reconciliation is the backstop

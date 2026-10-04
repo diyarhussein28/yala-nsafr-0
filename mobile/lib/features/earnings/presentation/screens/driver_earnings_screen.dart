@@ -4,6 +4,10 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/models/earnings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../providers/earnings_provider.dart';
+import '../../../../core/api/api_endpoints.dart';
+import '../../../../core/utils/format.dart';
+import '../../../../shared/widgets/kashier_checkout_screen.dart';
+import '../../../../shared/widgets/ui.dart';
 
 class DriverEarningsScreen extends ConsumerWidget {
   const DriverEarningsScreen({super.key});
@@ -14,10 +18,22 @@ class DriverEarningsScreen extends ConsumerWidget {
     final tripsAsync = ref.watch(earningsTripsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('أرباحي')),
+      appBar: AppBar(
+        title: const Text('أرباحي', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: summaryAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => EmptyState(
+          icon: Icons.cloud_off_rounded,
+          title: 'تعذّر تحميل الأرباح',
+          message: '$e',
+          color: AppColors.error,
+          actionLabel: 'إعادة المحاولة',
+          onAction: () => ref.invalidate(earningsSummaryProvider),
+        ),
         data: (summary) => Column(
           children: [
             _SummaryStrip(summary: summary),
@@ -28,17 +44,10 @@ class DriverEarningsScreen extends ConsumerWidget {
                 error: (e, _) => Center(child: Text('$e')),
                 data: (trips) {
                   if (trips.isEmpty) {
-                    return const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.directions_car_outlined,
-                              size: 56, color: Colors.grey),
-                          SizedBox(height: 12),
-                          Text('لا توجد رحلات مكتملة بعد',
-                              style: TextStyle(color: Colors.grey)),
-                        ],
-                      ),
+                    return const EmptyState(
+                      icon: Icons.directions_car_outlined,
+                      title: 'لا توجد رحلات مكتملة بعد',
+                      message: 'ستظهر أرباح كل رحلة هنا فور إنهائها.',
                     );
                   }
                   return RefreshIndicator(
@@ -49,7 +58,7 @@ class DriverEarningsScreen extends ConsumerWidget {
                     child: ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: trips.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (_, i) => _TripEarningCard(trip: trips[i]),
                     ),
                   );
@@ -66,79 +75,124 @@ class DriverEarningsScreen extends ConsumerWidget {
 
 // ── Summary strip ─────────────────────────────────────────────────────────────
 
-class _SummaryStrip extends StatelessWidget {
+class _SummaryStrip extends ConsumerStatefulWidget {
   final EarningsSummary summary;
   const _SummaryStrip({required this.summary});
 
   @override
+  ConsumerState<_SummaryStrip> createState() => _SummaryStripState();
+}
+
+class _SummaryStripState extends ConsumerState<_SummaryStrip> {
+  bool _paying = false;
+
+  // Cash fares never pass through the platform, so the commission on them is paid here
+  Future<void> _payCommission() async {
+    setState(() => _paying = true);
+    try {
+      final res = await ref.read(dioProvider).post(Endpoints.commissionCheckout);
+      final data = res.data as Map<String, dynamic>;
+      if (!mounted) return;
+      final paid = await Navigator.of(context).push<bool>(MaterialPageRoute(
+        builder: (_) => KashierCheckoutScreen(
+          sessionUrl: data['sessionUrl'] as String,
+          confirmEndpoint: Endpoints.commissionConfirm(data['paymentId'] as String),
+        ),
+      ));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(paid == true ? 'تم سداد العمولة، شكراً لك ✅' : 'لم يكتمل الدفع'),
+      ));
+      ref.invalidate(earningsSummaryProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _paying = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final summary = widget.summary;
+    final t = Theme.of(context).textTheme;
+    final white70 = Colors.white.withValues(alpha: 0.8);
+
     return Container(
-      color: AppColors.primary,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.primary, AppColors.primaryDark],
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Text('متاح للسحب', textAlign: TextAlign.center, style: t.labelMedium?.copyWith(color: white70)),
+          Text(
+            Fmt.money(summary.pendingBalance),
+            textAlign: TextAlign.center,
+            style: t.displaySmall?.copyWith(color: Colors.white),
+          ),
+          const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(
-                child: _SummaryCard(
-                  label: 'هذا الشهر',
-                  value: summary.thisMonthTotal,
-                  icon: Icons.calendar_month_rounded,
-                  highlight: true,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _SummaryCard(
-                  label: 'إجمالي الأرباح',
-                  value: summary.allTimeTotal,
-                  icon: Icons.account_balance_wallet_rounded,
-                ),
-              ),
+              Expanded(child: _HeroStat(label: 'هذا الشهر', value: Fmt.money(summary.thisMonthTotal))),
+              const SizedBox(width: 8),
+              Expanded(child: _HeroStat(label: 'إجمالي الأرباح', value: Fmt.money(summary.allTimeTotal))),
+              const SizedBox(width: 8),
+              Expanded(child: _HeroStat(label: 'تم سحبه', value: Fmt.money(summary.totalWithdrawn))),
             ],
           ),
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+          if (summary.heldBalance > 0) ...[
+            const SizedBox(height: 10),
+            _HeroNote(
+              icon: Icons.lock_clock_rounded,
+              text: 'معلّق ${Fmt.money(summary.heldBalance)} حتى انتهاء مهلة النزاع'
+                  '${summary.nextReleaseAt != null ? ' — يتاح ${Fmt.relativeDay(summary.nextReleaseAt!)} ${Fmt.time(summary.nextReleaseAt!)}' : ''}',
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'الرصيد المتاح للسحب',
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9), fontSize: 13),
-                ),
-                Text(
-                  '${summary.pendingBalance.toStringAsFixed(0)} ج',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18),
-                ),
-              ],
-            ),
-          ),
-          // Without this the balance appears to have shrunk for no reason while a
-          // transfer is settling
+          ],
           if (summary.pendingWithdrawal > 0) ...[
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.schedule_rounded,
-                    size: 14, color: Colors.white.withValues(alpha: 0.9)),
-                const SizedBox(width: 6),
-                Text(
-                  'قيد التحويل: ${summary.pendingWithdrawal.toStringAsFixed(0)} ج',
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
-                ),
-              ],
+            _HeroNote(icon: Icons.schedule_rounded, text: 'قيد التحويل: ${Fmt.money(summary.pendingWithdrawal)}'),
+          ],
+          if (summary.cashCommissionOutstanding > 0) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+              decoration: BoxDecoration(
+                color: AppColors.secondary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.secondary.withValues(alpha: 0.6)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.receipt_long_rounded, color: AppColors.secondary, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'عمولة مستحقة على رحلات الكاش: ${Fmt.money(summary.cashCommissionOutstanding)}'
+                      '${summary.cashCommissionOutstanding > summary.cashCommissionLimit ? '\nسدّدها لتتمكن من نشر رحلات جديدة' : ''}',
+                      style: t.bodySmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.secondary,
+                      foregroundColor: const Color(0xFF3B2A00),
+                      minimumSize: const Size(0, 38),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                    ),
+                    onPressed: _paying ? null : _payCommission,
+                    child: _paying
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('سدّد الآن'),
+                  ),
+                ],
+              ),
             ),
           ],
         ],
@@ -147,51 +201,46 @@ class _SummaryStrip extends StatelessWidget {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
+class _HeroStat extends StatelessWidget {
   final String label;
-  final double value;
-  final IconData icon;
-  final bool highlight;
-
-  const _SummaryCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    this.highlight = false,
-  });
+  final String value;
+  const _HeroStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
       decoration: BoxDecoration(
-        color: highlight
-            ? Colors.white.withValues(alpha: 0.2)
-            : Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-        border: highlight
-            ? Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5)
-            : null,
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(height: 8),
-          Text(
-            '${value.toStringAsFixed(0)} ج',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(label,
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.85), fontSize: 12)),
+          FittedBox(child: Text(value, style: t.titleSmall?.copyWith(color: Colors.white))),
+          Text(label, style: t.labelSmall?.copyWith(color: Colors.white.withValues(alpha: 0.8))),
         ],
       ),
+    );
+  }
+}
+
+class _HeroNote extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _HeroNote({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.white.withValues(alpha: 0.9)),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(text,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white.withValues(alpha: 0.9))),
+        ),
+      ],
     );
   }
 }
@@ -461,80 +510,44 @@ class _TripEarningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
     final isCash = trip.isCash;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    final amount = isCash ? trip.totalAmount : trip.driverPayoutAmount;
+    return AppCard(
+      child: Row(
+        children: [
+          IconBadge(
+            icon: isCash ? Icons.payments_rounded : Icons.credit_card_rounded,
+            color: isCash ? AppColors.secondary : AppColors.primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    '${trip.originCity} ← ${trip.destinationCity}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: (isCash ? Colors.teal : Colors.blue).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: (isCash ? Colors.teal : Colors.blue)
-                            .withValues(alpha: 0.4)),
-                  ),
-                  child: Text(isCash ? 'نقدي' : 'أونلاين',
-                      style: TextStyle(
-                          color: isCash ? Colors.teal : Colors.blue,
-                          fontSize: 11)),
+                Text('${trip.originCity} ← ${trip.destinationCity}', style: t.titleSmall),
+                const SizedBox(height: 2),
+                Text(
+                  '${Fmt.dayShort(trip.departureTime)} · ${Fmt.time(trip.departureTime)}'
+                  '${trip.seatsCount > 1 ? ' · ${trip.seatsCount} مقاعد' : ''}',
+                  style: t.bodySmall,
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              _fmtDate(trip.departureTime),
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-            const Divider(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(isCash ? 'محصّل نقداً' : 'صافي الربح',
-                          style: TextStyle(
-                              color: Colors.grey[600], fontSize: 11)),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${(isCash ? trip.totalAmount : trip.driverPayoutAmount).toStringAsFixed(0)} ج',
-                        style: TextStyle(
-                            color: isCash ? Colors.teal : Colors.blue,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18),
-                      ),
-                    ],
-                  ),
-                ),
-                if (trip.seatsCount > 1)
-                  Text(
-                    '${trip.seatsCount} مقاعد',
-                    style:
-                        TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
-              ],
-            ),
-          ],
-        ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(Fmt.money(amount),
+                  style: t.titleMedium?.copyWith(
+                    color: isCash ? AppColors.warning : Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w800,
+                  )),
+              Text(isCash ? 'محصّل نقداً' : 'صافي بعد العمولة', style: t.labelSmall),
+            ],
+          ),
+        ],
       ),
     );
   }
-
-  String _fmtDate(DateTime dt) =>
-      '${dt.day}/${dt.month}/${dt.year}  '
-      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 }

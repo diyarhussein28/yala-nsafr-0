@@ -60,6 +60,9 @@ class Endpoints {
   static String tripCoPassengers(String id) => '/trips/$id/co-passengers';
   static const earningsSummary  = '/drivers/earnings/summary';
   static const earningsTrips    = '/drivers/earnings/trips';
+  static const commissionCheckout = '/drivers/earnings/commission/checkout';
+  static String commissionConfirm(String paymentId) =>
+      '/drivers/earnings/commission/payments/$paymentId/confirm';
   static const driverWithdrawals = '/drivers/withdrawals';
   static const adminWithdrawals  = '/admin/withdrawals';
   static String adminWithdrawalById(String id) => '/admin/withdrawals/$id';

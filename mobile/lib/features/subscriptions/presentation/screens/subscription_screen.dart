@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/theme/app_theme.dart';
-import 'subscription_payment_screen.dart';
+import '../../../../shared/widgets/kashier_checkout_screen.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -45,9 +45,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
       final paid = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
-          builder: (_) => SubscriptionPaymentScreen(
-            paymentId: paymentId,
+          builder: (_) => KashierCheckoutScreen(
             sessionUrl: sessionUrl,
+            confirmEndpoint: Endpoints.subscriptionConfirm(paymentId),
           ),
         ),
       );

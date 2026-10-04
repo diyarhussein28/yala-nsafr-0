@@ -8,6 +8,14 @@ class EarningsSummary {
   /// Already handed to Kashier and awaiting settlement — excluded from pendingBalance
   final double pendingWithdrawal;
   final double minWithdrawal;
+  /// Online earnings still inside their trip's dispute window
+  final double heldBalance;
+  final DateTime? nextReleaseAt;
+  /// Platform commission on cash trips not yet paid or netted
+  final double cashCommissionOutstanding;
+  final double cashCommissionLimit;
+  /// Compensation and admin adjustments credited from the ledger
+  final double ledgerCredits;
 
   const EarningsSummary({
     required this.thisMonthOnline,
@@ -18,6 +26,11 @@ class EarningsSummary {
     required this.totalWithdrawn,
     this.pendingWithdrawal = 0,
     required this.minWithdrawal,
+    this.heldBalance = 0,
+    this.nextReleaseAt,
+    this.cashCommissionOutstanding = 0,
+    this.cashCommissionLimit = 500,
+    this.ledgerCredits = 0,
   });
 
   double get thisMonthTotal => thisMonthOnline + thisMonthCash;
@@ -32,6 +45,11 @@ class EarningsSummary {
         totalWithdrawn:  _d(j['totalWithdrawn']),
         pendingWithdrawal: _d(j['pendingWithdrawal']),
         minWithdrawal:   _d(j['minWithdrawal']),
+        heldBalance:     _d(j['heldBalance']),
+        nextReleaseAt:   DateTime.tryParse(j['nextReleaseAt'] as String? ?? '')?.toLocal(),
+        cashCommissionOutstanding: _d(j['cashCommissionOutstanding']),
+        cashCommissionLimit: j['cashCommissionLimit'] == null ? 500 : _d(j['cashCommissionLimit']),
+        ledgerCredits:   _d(j['ledgerCredits']),
       );
 
   static double _d(dynamic v) =>
