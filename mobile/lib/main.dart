@@ -27,9 +27,9 @@ void main() async {
     };
   }
   await AppSettings.load();
-  await FcmService.initialize();
 
   runApp(const ProviderScope(child: YalaApp()));
+  FcmService.initialize();
 }
 
 class YalaApp extends ConsumerStatefulWidget {

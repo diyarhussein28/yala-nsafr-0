@@ -27,8 +27,14 @@ class FcmService {
   // Holds the message that launched the app from terminated state.
   // Consumed once by handlePendingInitialMessage().
   static RemoteMessage? _pendingInitialMessage;
+  static Future<void>? _initialization;
 
-  static Future<void> initialize() async {
+  /// Runs after the first frame is on screen; nothing here may hold up startup.
+  static Future<void> initialize() => _initialization ??= _initialize().catchError((Object e) {
+        if (kDebugMode) debugPrint('FCM init failed: $e');
+      });
+
+  static Future<void> _initialize() async {
     FirebaseMessaging.onBackgroundMessage(_onBackgroundMessage);
 
     await _localNotifications
@@ -68,12 +74,16 @@ class FcmService {
     FirebaseMessaging.onMessageOpenedApp.listen((msg) => _handleData(msg.data));
 
     // Terminated → cold start via notification tap (stored, consumed later)
-    _pendingInitialMessage = await _messaging.getInitialMessage();
+    // Under the iOS UIScene lifecycle this future can never complete.
+    _pendingInitialMessage = await _messaging
+        .getInitialMessage()
+        .timeout(const Duration(seconds: 3), onTimeout: () => null);
   }
 
   /// Call this once from YalaApp.initState via addPostFrameCallback,
   /// after the router has been created and the first frame drawn.
-  static void handlePendingInitialMessage() {
+  static Future<void> handlePendingInitialMessage() async {
+    await initialize();
     final msg = _pendingInitialMessage;
     _pendingInitialMessage = null;
     if (msg != null) _handleData(msg.data);
