@@ -27,6 +27,8 @@ import { DriverBalanceService } from '../src/modules/earnings/driver-balance.ser
 import { DriverLedgerEntry, LedgerEntryType } from '../src/database/entities/driver-ledger-entry.entity';
 import { CommissionBillingService } from '../src/modules/payments/commission-billing.service';
 import { CommissionPayment } from '../src/database/entities/commission-payment.entity';
+import { SmsService } from '../src/modules/sms/sms.service';
+import { SosService } from '../src/modules/sos/sos.service';
 import { cairoDayBounds, formatCairoTime } from '../src/common/time/cairo';
 import { parseEgyptianNationalId } from '../src/common/validation/egyptian-national-id';
 
@@ -220,6 +222,25 @@ describe('Security & integrity regressions', () => {
         .set('Authorization', token(admin))
         .expect(200);
     });
+  });
+
+  it('an SOS texts the emergency contact with location and car details', async () => {
+    const sms = app.get(SmsService);
+    const sos = app.get(SosService);
+    await userRepo.update(driver.id, { vehiclePlate: 'ق ر ب 123' });
+    const trip = await makeTrip({ status: TripStatus.ACTIVE });
+    await makeBooking(trip.id, { status: BookingStatus.IN_PROGRESS });
+    const send = jest.spyOn(sms, 'send').mockResolvedValue(undefined);
+
+    await sos.trigger(passenger.id, trip.id, { lat: 30.0444, lng: 31.2357 });
+    await new Promise((r) => setTimeout(r, 300));
+
+    expect(send).toHaveBeenCalledTimes(1);
+    const [to, message] = send.mock.calls[0];
+    expect(to).toBe('+201000000000');
+    expect(message).toContain('maps.google.com/?q=30.0444,31.2357');
+    expect(message).toContain('ق ر ب 123');
+    await dataSource.query('DELETE FROM sos_alerts WHERE trip_id = $1', [trip.id]);
   });
 
   it('a banned user is rejected on every request, not just at login', async () => {

@@ -5,6 +5,7 @@ import { SosAlert } from '../../database/entities/sos-alert.entity';
 import { Trip } from '../../database/entities/trip.entity';
 import { User, UserRole } from '../../database/entities/user.entity';
 import { Booking, PARTICIPANT_BOOKING_STATUSES } from '../../database/entities/booking.entity';
+import { SmsService } from '../sms/sms.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateSosDto } from './dto/create-sos.dto';
 
@@ -22,6 +23,7 @@ export class SosService {
     @InjectRepository(Booking)
     private readonly bookingRepo: Repository<Booking>,
     private readonly notifications: NotificationsService,
+    private readonly sms: SmsService,
   ) {}
 
   async trigger(userId: string, tripId: string, dto: CreateSosDto): Promise<SosAlert> {
@@ -49,6 +51,10 @@ export class SosService {
 
     this.logger.warn(`SOS triggered by user ${userId} on trip ${tripId}`);
 
+    // Text the person's emergency contact. The number was collected at profile setup and
+    // shown as a safety feature, but nothing ever used it.
+    setImmediate(() => void this.alertEmergencyContact(userId, trip, dto));
+
     // Notify driver (non-blocking, skip if the triggerer is the driver)
     if (!isDriver) {
       setImmediate(() => {
@@ -74,6 +80,36 @@ export class SosService {
     });
 
     return alert;
+  }
+
+  private async alertEmergencyContact(userId: string, trip: Trip, dto: CreateSosDto): Promise<void> {
+    try {
+      const [user, driver] = await Promise.all([
+        this.userRepo.findOne({
+          where: { id: userId },
+          select: { id: true, fullName: true, phoneNumber: true, emergencyContactPhone: true },
+        }),
+        this.userRepo.findOne({
+          where: { id: trip.driverId },
+          select: { id: true, fullName: true, vehicleMake: true, vehicleModel: true, vehicleColor: true, vehiclePlate: true },
+        }),
+      ]);
+      if (!user?.emergencyContactPhone) return;
+
+      const location =
+        dto.lat != null && dto.lng != null ? `\nالموقع: https://maps.google.com/?q=${dto.lat},${dto.lng}` : '';
+      const car = driver?.vehiclePlate
+        ? `\nالسيارة: ${[driver.vehicleMake, driver.vehicleModel, driver.vehicleColor].filter(Boolean).join(' ')} — لوحة ${driver.vehiclePlate}`
+        : '';
+      await this.sms.send(
+        user.emergencyContactPhone,
+        `🚨 يلا نسافر: ${user.fullName || user.phoneNumber} أرسل طلب طوارئ أثناء رحلة ` +
+          `${trip.originCity} ← ${trip.destinationCity}.${location}${car}\n` +
+          `اتصل به على ${user.phoneNumber}. فريقنا تم إبلاغه.`,
+      );
+    } catch (err) {
+      this.logger.error(`Emergency-contact SMS failed for SOS by ${userId}: ${String(err)}`);
+    }
   }
 
   async resolve(alertId: string): Promise<SosAlert> {

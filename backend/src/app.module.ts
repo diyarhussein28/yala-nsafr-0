@@ -25,6 +25,7 @@ import { BlocksModule } from './modules/blocks/blocks.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { SosModule } from './modules/sos/sos.module';
 import { HealthController } from './health.controller';
+import { SmsModule } from './modules/sms/sms.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { HealthController } from './health.controller';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => config.get('database')!,
     }),
+    SmsModule,
     AuthModule,
     UsersModule,
     TripsModule,
