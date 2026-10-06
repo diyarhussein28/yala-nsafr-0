@@ -140,6 +140,7 @@ describe('Features E2E', () => {
         status: UserStatus.ACTIVE,
         role: UserRole.DRIVER,
         referralCode: 'E2E_DRV1',
+        idVerified: true,
       }),
     );
 
@@ -150,6 +151,7 @@ describe('Features E2E', () => {
         status: UserStatus.ACTIVE,
         role: UserRole.PASSENGER,
         referralCode: 'E2E_PSG1',
+        idVerified: true,
       }),
     );
   }, 30_000);
@@ -1515,6 +1517,37 @@ describe('Features E2E', () => {
 
   // ── 8. Promo balance in payment ───────────────────────────────────────────────
 
+  describe('BookingsService.create() — verified passengers', () => {
+    it('a verified-only trip refuses a passenger whose ID is not verified', async () => {
+      await userRepo.update(passengerUser.id, { idVerified: false });
+      const trip = await makeTrip({ status: TripStatus.SCHEDULED });
+
+      await expect(
+        bookingsService.create(passengerUser, { tripId: trip.id, seatsCount: 1, paymentMethod: PaymentMethod.CASH }),
+      ).rejects.toThrow('الموثّقين فقط');
+
+      await userRepo.update(passengerUser.id, { idVerified: true });
+      await tripRepo.delete(trip.id);
+    });
+
+    it('a trip open to everyone accepts an unverified passenger', async () => {
+      await userRepo.update(passengerUser.id, { idVerified: false });
+      const trip = await makeTrip({ status: TripStatus.SCHEDULED, requireVerifiedPassengers: false });
+
+      const booking = await bookingsService.create(passengerUser, {
+        tripId: trip.id,
+        seatsCount: 1,
+        paymentMethod: PaymentMethod.CASH,
+      });
+      expect(booking.id).toBeDefined();
+
+      await userRepo.update(passengerUser.id, { idVerified: true });
+      await paymentRepo.delete({ bookingId: booking.id });
+      await bookingRepo.delete(booking.id);
+      await tripRepo.delete(trip.id);
+    });
+  });
+
   describe('Promo balance — BookingsService.create()', () => {
     async function setPromoBalance(userId: string, amount: number) {
       await userRepo.update(userId, { promoBalance: amount });
@@ -1845,7 +1878,7 @@ describe('Features E2E', () => {
 
   describe('Notification data — deep link routing', () => {
     it('startTrip notification carries screen=trip_detail and tripId', async () => {
-      const trip = await makeTrip({ status: TripStatus.SCHEDULED });
+      const trip = await makeTrip({ status: TripStatus.SCHEDULED, departureTime: new Date(Date.now() + 30 * 60_000) });
       const { booking, payment } = await makeBookingWithPayment(trip.id, {
         bookingStatus: BookingStatus.CONFIRMED,
         paymentStatus: PaymentStatus.PENDING,
@@ -1886,8 +1919,17 @@ describe('Features E2E', () => {
   // ── 12. Booking status — IN_PROGRESS on startTrip ────────────────────────────
 
   describe('TripsService.startTrip — IN_PROGRESS booking status', () => {
+    it('refuses to start a trip more than an hour before departure', async () => {
+      const trip = await makeTrip({ status: TripStatus.SCHEDULED, departureTime: new Date(Date.now() + 3 * 3_600_000) });
+
+      await expect(tripsService.startTrip(trip.id, driverUser)).rejects.toThrow('قبل موعدها');
+      expect((await tripRepo.findOneBy({ id: trip.id }))?.status).toBe(TripStatus.SCHEDULED);
+
+      await tripRepo.delete(trip.id);
+    });
+
     it('transitions confirmed bookings to IN_PROGRESS when trip starts', async () => {
-      const trip = await makeTrip({ status: TripStatus.SCHEDULED });
+      const trip = await makeTrip({ status: TripStatus.SCHEDULED, departureTime: new Date(Date.now() + 30 * 60_000) });
       const { booking, payment } = await makeBookingWithPayment(trip.id, {
         bookingStatus: BookingStatus.CONFIRMED,
         paymentStatus: PaymentStatus.PENDING,
@@ -2358,6 +2400,32 @@ describe('Features E2E', () => {
       ).rejects.toThrow('تم تعليق حقك في نشر الرحلات');
 
       await userRepo.update(driverUser.id, { tripPostingBannedUntil: null as any, driverVerified: false });
+    });
+
+    it('an approved driver whose ID is back under review cannot post', async () => {
+      await userRepo.update(driverUser.id, { driverVerified: true, idVerified: false });
+      const driver = await userRepo.findOneBy({ id: driverUser.id });
+
+      await expect(
+        tripsService.create(driver!, {
+          originCity: 'Cairo',
+          destinationCity: 'Alex',
+          departureTime: new Date(Date.now() + 2 * 3_600_000).toISOString(),
+          totalSeats: 3,
+          pricePerSeat: 100,
+        } as any),
+      ).rejects.toThrow('أكمل توثيق هويتك');
+
+      await userRepo.update(driverUser.id, { driverVerified: false, idVerified: true });
+    });
+
+    it('a driver cannot be approved without a selfie to compare with the ID', async () => {
+      await userRepo.update(driverUser.id, {
+        vehicleMake: 'Kia', vehiclePlate: 'ABC 123', idVerified: true, selfiePhotoUrl: null,
+      });
+      await expect(adminService.approveDriverVerification(driverUser.id, driverUser.id)).rejects.toThrow('selfie');
+
+      await userRepo.update(driverUser.id, { vehicleMake: null as any, vehiclePlate: null as any });
     });
   });
 
@@ -3053,6 +3121,9 @@ describe('Features E2E', () => {
     it('admin assigns then resolves in the passenger favour', async () => {
       const { trip, booking, payment } = await disputableBooking();
       const gw = spyOnGateway();
+      // The fare was partly paid with promo credit, which a full refund must give back.
+      await bookingRepo.update(booking.id, { promoDiscountAmount: 20 });
+      await userRepo.update(passengerUser.id, { promoBalance: 0 });
 
       const dispute = await bookingsService.openDispute(passengerUser, {
         bookingId: booking.id,
@@ -3079,7 +3150,9 @@ describe('Features E2E', () => {
       expect(gw.refund).toHaveBeenCalledWith(payment.gatewayTransactionId, 150, undefined);
       const settled = await paymentRepo.findOneBy({ id: payment.id });
       expect(settled?.status).toBe(PaymentStatus.REFUNDED);
+      expect(Number((await userRepo.findOneBy({ id: passengerUser.id }))?.promoBalance)).toBeCloseTo(20, 2);
 
+      await userRepo.update(passengerUser.id, { promoBalance: 0 });
       await cleanup(trip.id, booking.id, payment.id);
     });
 

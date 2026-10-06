@@ -30,6 +30,7 @@ class _DriverVerificationScreenState
   bool _submitted = false;
   String? _licenceRef;
   String? _carPhotoRef;
+  String? _selfieRef;
 
   @override
   void initState() {
@@ -60,6 +61,10 @@ class _DriverVerificationScreenState
       setState(() => _error = tr('ارفع صورة رخصة القيادة'));
       return;
     }
+    if (_selfieRef == null) {
+      setState(() => _error = tr('التقط صورة شخصية لوجهك'));
+      return;
+    }
     setState(() { _loading = true; _error = null; });
     try {
       final dio = ref.read(dioProvider);
@@ -71,6 +76,7 @@ class _DriverVerificationScreenState
         'vehiclePlate': _plateCtrl.text.trim().toUpperCase(),
         'drivingLicencePhotoUrl': _licenceRef,
         if (_carPhotoRef != null) 'vehiclePhotoUrl': _carPhotoRef,
+        'selfiePhotoUrl': _selfieRef,
       });
       await ref.read(authProvider.notifier).refreshUser();
       setState(() => _submitted = true);
@@ -125,6 +131,12 @@ class _DriverVerificationScreenState
                 tr('أدخل بيانات سيارتك ليتمكن الفريق من التحقق منها'),
                 style: const TextStyle(fontSize: 15),
               ),
+              if (!(ref.watch(authProvider).user?.idVerified ?? false)) ...[
+                const SizedBox(height: 14),
+                _IdFirstNotice(
+                  pending: ref.watch(authProvider).user?.idVerificationPending ?? false,
+                ),
+              ],
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -197,6 +209,14 @@ class _DriverVerificationScreenState
               ),
               const SizedBox(height: 12),
               DocumentUploadTile(
+                label: tr('صورتك الشخصية'),
+                hint: tr('التقط صورة واضحة لوجهك الآن — تقارنها الإدارة بصورة بطاقتك'),
+                icon: Icons.face_retouching_natural_rounded,
+                selfie: true,
+                onUploaded: (r) => setState(() => _selfieRef = r),
+              ),
+              const SizedBox(height: 12),
+              DocumentUploadTile(
                 label: tr('صورة السيارة (اختياري)'),
                 hint: tr('تظهر للركاب ليتعرّفوا على السيارة'),
                 icon: Icons.directions_car_rounded,
@@ -217,6 +237,43 @@ class _DriverVerificationScreenState
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// Drivers are approved only after their ID is: say so up front, with the way to do it.
+class _IdFirstNotice extends StatelessWidget {
+  final bool pending;
+  const _IdFirstNotice({required this.pending});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.info.withValues(alpha: context.isDark ? 0.18 : 0.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.badge_rounded, color: context.readable(AppColors.info)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              pending
+                  ? tr('توثيق هويتك قيد المراجعة. تُراجع بيانات السائق بعد قبول الهوية.')
+                  : tr('يجب توثيق هويتك أولاً — لن تتمكن من نشر رحلات قبل قبول الهوية وبيانات السائق.'),
+              style: const TextStyle(height: 1.4),
+            ),
+          ),
+          if (!pending)
+            TextButton(
+              onPressed: () => context.push('/profile/id-verification'),
+              child: Text(tr('وثّق الآن')),
+            ),
+        ],
       ),
     );
   }

@@ -81,6 +81,10 @@ export class Trip {
   status: TripStatus;
 
   // Egypt-specific
+  // Off lets passengers who have not had their ID verified book this trip.
+  @Column({ name: 'require_verified_passengers', default: true })
+  requireVerifiedPassengers: boolean;
+
   @Column({ name: 'women_only', default: false })
   womenOnly: boolean;
 

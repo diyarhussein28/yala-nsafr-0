@@ -39,6 +39,9 @@ import { Exclusive } from '../../common/jobs/exclusive';
 // inside Kashier's authorization hold window before online payments can be relied on.
 const MAX_TRIP_LEAD_DAYS = 90;
 
+/** How long before departure a driver may start the trip (and live tracking). */
+export const TRIP_START_WINDOW_MINUTES = 60;
+
 @Injectable()
 export class TripsService {
   private readonly logger = new Logger(TripsService.name);
@@ -64,8 +67,10 @@ export class TripsService {
 
   /** Everything that must hold before a driver may post any trip. */
   private async assertCanPost(driver: User): Promise<void> {
-    if (!driver.driverVerified) {
-      throw new ForbiddenException('Driver must complete vehicle verification before posting trips');
+    // driverVerified alone is not enough: resubmitting the ID clears idVerified but
+    // leaves the driver approval in place until an admin looks again.
+    if (!driver.driverVerified || !driver.idVerified) {
+      throw new ForbiddenException('أكمل توثيق هويتك وبيانات السائق وانتظر موافقة الإدارة قبل نشر الرحلات');
     }
 
     if (driver.status === UserStatus.SUSPENDED || driver.status === UserStatus.BANNED) {
@@ -115,6 +120,7 @@ export class TripsService {
       driverId: driver.id,
       availableSeats: dto.totalSeats,
       departureTime: departure,
+      requireVerifiedPassengers: dto.requireVerifiedPassengers ?? true,
       womenOnly: dto.womenOnly ?? false,
       smokingAllowed: dto.smokingAllowed ?? false,
       petsAllowed: dto.petsAllowed ?? false,
@@ -418,6 +424,14 @@ export class TripsService {
     if (trip.driverId !== driver.id) throw new ForbiddenException('Not your trip');
     if (trip.status !== TripStatus.SCHEDULED) {
       throw new BadRequestException('Only scheduled trips can be started');
+    }
+    // Starting a trip turns on live tracking and moves every booking to in-progress, so
+    // a trip days away must not be startable (or completable) yet.
+    const opensAt = new Date(trip.departureTime).getTime() - TRIP_START_WINDOW_MINUTES * 60_000;
+    if (Date.now() < opensAt) {
+      throw new BadRequestException(
+        `يمكن بدء الرحلة قبل موعدها بـ ${TRIP_START_WINDOW_MINUTES} دقيقة كحد أقصى`,
+      );
     }
 
     const confirmedBookings = await this.bookingRepo.find({

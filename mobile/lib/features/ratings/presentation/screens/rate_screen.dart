@@ -28,12 +28,11 @@ class _RateScreenState extends ConsumerState<RateScreen> {
 
   String get _rateeName {
     final myId = ref.read(authProvider).user?.id;
-    final trip = widget.booking.trip;
-    if (trip == null) return tr('الطرف الآخر');
-    // If I'm the passenger → I'm rating the driver
-    if (widget.booking.passengerId == myId) return trip.driver.fullName;
-    // If I'm the driver → I'm rating the passenger
-    return widget.booking.passenger?.fullName ?? tr('الراكب');
+    // The driver's passenger list carries no trip, so decide by who I am first.
+    if (widget.booking.passengerId != myId) {
+      return widget.booking.passenger?.fullName ?? tr('الراكب');
+    }
+    return widget.booking.trip?.driver.fullName ?? tr('الطرف الآخر');
   }
 
   Future<void> _submit() async {

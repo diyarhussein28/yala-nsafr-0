@@ -15,6 +15,8 @@ class DocumentUploadTile extends ConsumerStatefulWidget {
   final bool private;
   final String? initialPreviewUrl;
   final ValueChanged<String?> onUploaded;
+  /// A live photo of the user's face: front camera only, never the gallery.
+  final bool selfie;
 
   const DocumentUploadTile({
     super.key,
@@ -24,6 +26,7 @@ class DocumentUploadTile extends ConsumerStatefulWidget {
     this.icon = Icons.badge_rounded,
     this.private = true,
     this.initialPreviewUrl,
+    this.selfie = false,
   });
 
   @override
@@ -42,7 +45,7 @@ class _DocumentUploadTileState extends ConsumerState<DocumentUploadTile> {
   }
 
   Future<void> _pick() async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final source = widget.selfie ? ImageSource.camera : await showModalBottomSheet<ImageSource>(
       useRootNavigator: true,
       context: context,
       builder: (ctx) => SafeArea(
@@ -65,7 +68,12 @@ class _DocumentUploadTileState extends ConsumerState<DocumentUploadTile> {
       ),
     );
     if (source == null) return;
-    final file = await ImagePicker().pickImage(source: source, maxWidth: 1600, imageQuality: 85);
+    final file = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 1600,
+      imageQuality: 85,
+      preferredCameraDevice: widget.selfie ? CameraDevice.front : CameraDevice.rear,
+    );
     if (file == null || !mounted) return;
 
     setState(() {

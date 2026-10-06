@@ -181,7 +181,7 @@ export class BookingsService {
 
     const freshPassenger = await this.dataSource.manager.findOne(User, {
       where: { id: passenger.id },
-      select: { id: true, status: true, fullName: true, cashBookingRestrictedUntil: true },
+      select: { id: true, status: true, fullName: true, cashBookingRestrictedUntil: true, idVerified: true },
     });
 
     // A suspended or banned account, or one that never finished profile setup, must not
@@ -255,6 +255,9 @@ export class BookingsService {
       }
       if (trip.womenOnly && passenger.gender !== Gender.FEMALE) {
         throw new ForbiddenException('This trip is for women passengers only');
+      }
+      if (trip.requireVerifiedPassengers && !freshPassenger.idVerified) {
+        throw new ForbiddenException('هذه الرحلة للركاب الموثّقين فقط. وثّق هويتك من حسابك ثم احجز.');
       }
 
       // platform_config is what the admin screen edits, so it has to win. Reading only

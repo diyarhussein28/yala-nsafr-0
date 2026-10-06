@@ -16,7 +16,7 @@ final disputeDetailProvider =
     FutureProvider.autoDispose.family<Dispute, String>((ref, id) async {
   final dio = ref.read(dioProvider);
   final res = await dio.get(Endpoints.disputeById(id));
-  return Dispute.fromJson(res.data as Map<String, dynamic>);
+  return Dispute.fromJson((res.data as Map<String, dynamic>)['dispute'] as Map<String, dynamic>);
 });
 
 class OpenDisputeNotifier extends StateNotifier<AsyncValue<void>> {

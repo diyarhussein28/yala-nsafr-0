@@ -100,6 +100,10 @@ export class CreateTripDto {
 
   @IsOptional()
   @IsBoolean()
+  requireVerifiedPassengers?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   smokingAllowed?: boolean;
 
   @IsOptional()

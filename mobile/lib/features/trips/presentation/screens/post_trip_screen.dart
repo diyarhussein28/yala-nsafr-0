@@ -9,6 +9,9 @@ import '../../../../core/models/trip.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../providers/trips_provider.dart';
 import '../../../../core/i18n/tr.dart';
+import '../../../../core/models/user.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../auth/providers/auth_provider.dart';
 
 const _cities = [
   'القاهرة',
@@ -112,6 +115,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
   final _priceCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   late bool _womenOnly;
+  late bool _verifiedOnly;
   // Intermediate cities, in driving order
   final List<String> _stops = [];
   // Weekly repeat (new trips only); weekdays use the API's 0 = Sunday … 6 = Saturday
@@ -151,6 +155,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
     _priceCtrl.text = t != null ? t.pricePerSeat.toStringAsFixed(0) : '';
     _notesCtrl.text = t?.notes ?? '';
     _womenOnly = t?.womenOnly ?? false;
+    _verifiedOnly = t?.requireVerifiedPassengers ?? true;
     _smoking = t?.smokingAllowed ?? false;
     _pets = t?.petsAllowed ?? false;
     _ac = t?.airConditioning ?? false;
@@ -260,6 +265,7 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
       'totalSeats': _seats,
       'pricePerSeat': double.parse(_priceCtrl.text.trim()),
       'womenOnly': _womenOnly,
+      'requireVerifiedPassengers': _verifiedOnly,
       'smokingAllowed': _smoking,
       'petsAllowed': _pets,
       'airConditioning': _ac,
@@ -306,6 +312,10 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final me = ref.watch(authProvider).user;
+    if (!widget.isEditing && me != null && !(me.idVerified && me.driverVerified)) {
+      return _VerificationGate(user: me);
+    }
     final AsyncValue<void> actionState = widget.isEditing
         ? ref.watch(updateTripProvider)
         : ref.watch(postTripProvider);
@@ -572,6 +582,12 @@ class _PostTripScreenState extends ConsumerState<PostTripScreen> {
                         title: Text(tr('رحلة نساء فقط')),
                       ),
                       SwitchListTile(
+                        value: _verifiedOnly,
+                        onChanged: (v) => setState(() => _verifiedOnly = v),
+                        title: Text(tr('ركاب موثّقون فقط')),
+                        subtitle: Text(tr('اقبل الحجز فقط من الركاب الذين وثّقوا هويتهم')),
+                      ),
+                      SwitchListTile(
                         value: _smoking,
                         onChanged: (v) => setState(() => _smoking = v),
                         title: Text(tr('التدخين مسموح')),
@@ -707,6 +723,73 @@ class _SectionLabel extends StatelessWidget {
           Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 8),
           Text(text, style: Theme.of(context).textTheme.titleSmall),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// Posting needs a verified ID and an approved driver profile; show what is missing
+/// before the driver fills in a whole trip only to have it refused.
+class _VerificationGate extends StatelessWidget {
+  final User user;
+  const _VerificationGate({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget step({
+      required bool done,
+      required bool pending,
+      required String title,
+      required String route,
+    }) {
+      final color = done ? AppColors.success : pending ? AppColors.warning : context.textMuted;
+      return Card(
+        child: ListTile(
+          leading: Icon(
+            done ? Icons.check_circle_rounded : pending ? Icons.hourglass_top_rounded : Icons.radio_button_unchecked_rounded,
+            color: context.readable(color),
+          ),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(done ? tr('تم القبول') : pending ? tr('قيد المراجعة') : tr('لم يُرسل بعد')),
+          trailing: done || pending ? null : const Icon(Icons.chevron_left_rounded),
+          onTap: done || pending ? null : () => context.push(route),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: Text(tr('نشر رحلة'))),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Icon(Icons.verified_user_rounded, size: 64, color: context.readable(AppColors.primary)),
+          const SizedBox(height: 12),
+          Text(
+            tr('أكمل التوثيق لتنشر رحلاتك'),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            tr('حفاظاً على أمان الركاب، لا تُنشر الرحلات إلا بعد أن تراجع الإدارة هويتك وصورتك الشخصية وبيانات سيارتك.'),
+            textAlign: TextAlign.center,
+            style: TextStyle(color: context.textMuted, height: 1.5),
+          ),
+          const SizedBox(height: 24),
+          step(
+            done: user.idVerified,
+            pending: user.idVerificationPending,
+            title: tr('توثيق الهوية'),
+            route: '/profile/id-verification',
+          ),
+          step(
+            done: user.driverVerified,
+            pending: user.driverVerificationPending,
+            title: tr('بيانات السائق والصورة الشخصية'),
+            route: '/profile/driver-verification',
+          ),
         ],
       ),
     );

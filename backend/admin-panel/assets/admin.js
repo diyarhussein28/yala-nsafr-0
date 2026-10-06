@@ -435,6 +435,7 @@ function admin() {
     },
     docs(u) {
       return [
+        ['الصورة الشخصية', u.selfiePhotoUrl],
         ['البطاقة — أمامي', u.nationalIdPhotoUrl],
         ['البطاقة — خلفي', u.nationalIdBackPhotoUrl],
         ['رخصة القيادة', u.drivingLicencePhotoUrl],

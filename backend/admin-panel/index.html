@@ -516,6 +516,20 @@
               <dt>اللوحة / الرخصة</dt><dd x-text="[sel.vehiclePlate, sel.drivingLicenceNumber].filter(Boolean).join(' · ') || '—'"></dd>
               <dt>حالة السائق</dt><dd x-text="sel.driverVerified ? 'موثّق' : (sel.vehiclePlate ? 'بانتظار المراجعة' : '—')"></dd>
             </dl>
+            <template x-if="sel.selfiePhotoUrl || sel.vehiclePlate">
+              <div class="face-compare">
+                <div class="face-compare-title">مطابقة الوجه — قارن الصورة الشخصية بصورة البطاقة قبل قبول السائق</div>
+                <div class="face-compare-row">
+                  <template x-for="d in [['الصورة الشخصية', sel.selfiePhotoUrl], ['صورة البطاقة', sel.nationalIdPhotoUrl]]" :key="d[0]">
+                    <div class="face-compare-cell">
+                      <template x-if="d[1]"><img :src="d[1]" :alt="d[0]" @click="lightbox=d[1]"></template>
+                      <template x-if="!d[1]"><div class="face-missing">غير مرفوعة</div></template>
+                      <div class="doc-label" x-text="d[0]"></div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
             <div class="docs" style="margin-top:12px">
               <template x-for="d in docs(sel)" :key="d[0]">
                 <div>
@@ -533,7 +547,7 @@
               </template>
               <template x-if="sel.vehiclePlate && !sel.driverVerified">
                 <div class="row">
-                  <button class="btn btn-sm" :disabled="selBusy || !sel.idVerified" :title="!sel.idVerified ? 'وثّق الهوية أولاً' : ''" @click="userAction('/verify-driver/approve', 'تم توثيق السائق')">قبول السائق</button>
+                  <button class="btn btn-sm" :disabled="selBusy || !sel.idVerified || !sel.selfiePhotoUrl" :title="!sel.idVerified ? 'وثّق الهوية أولاً' : (!sel.selfiePhotoUrl ? 'لم يرفع السائق صورة شخصية' : '')" @click="userAction('/verify-driver/approve', 'تم توثيق السائق')">قبول السائق</button>
                   <button class="btn btn-sm btn-ghost" :disabled="selBusy" @click="confirm('رفض توثيق السائق؟') && userAction('/verify-driver/reject', 'تم رفض توثيق السائق')">رفض</button>
                 </div>
               </template>

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -41,6 +42,12 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   }
 
 
+  static const _startWindow = Duration(hours: 1);
+
+  DateTime _startOpensAt(Trip trip) => trip.departureTime.subtract(_startWindow);
+
+  bool _canStart(Trip trip) => !DateTime.now().isBefore(_startOpensAt(trip));
+
   Future<void> _startTrip(String tripId) async {
     setState(() => _startingTrip = true);
     try {
@@ -54,7 +61,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr('فشل بدء الرحلة: {0}', [e]))),
+          SnackBar(content: Text(tr('فشل بدء الرحلة: {0}', [e is DioException ? ApiException.fromDioError(e) : e]))),
         );
       }
     } finally {
@@ -161,8 +168,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       ref.invalidate(myTripsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr('تم إنهاء الرحلة بنجاح'))),
+          SnackBar(content: Text(tr('تم إنهاء الرحلة بنجاح. قيّم ركابك الآن'))),
         );
+        context.push('/trips/$tripId/passengers');
       }
     } catch (e) {
       if (mounted) {
@@ -310,7 +318,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                               context.push('/trips/${trip.id}/passengers'),
                         ),
                         const SizedBox(height: 8),
-                        if (trip.status == 'scheduled')
+                        if (trip.status == 'scheduled') ...[
                           FilledButton.icon(
                             icon: _startingTrip
                                 ? const SizedBox(
@@ -321,11 +329,20 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                   )
                                 : const Icon(Icons.play_arrow_rounded),
                             label: Text(tr('بدء الرحلة')),
-                            onPressed: _startingTrip
+                            onPressed: _startingTrip || !_canStart(trip)
                                 ? null
                                 : () => _startTrip(trip.id),
-                          )
-                        else if (trip.status == 'active' ||
+                          ),
+                          if (!_canStart(trip)) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              tr('يمكنك بدء الرحلة وتفعيل تتبع الموقع قبل موعدها بساعة ({0})',
+                                  ['${Fmt.relativeDay(_startOpensAt(trip))} ${Fmt.time(_startOpensAt(trip))}']),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, color: context.textMuted),
+                            ),
+                          ],
+                        ] else if (trip.status == 'active' ||
                             trip.status == 'ongoing') ...[
                           FilledButton.icon(
                             icon: const Icon(Icons.location_on_rounded),
@@ -475,6 +492,12 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                               const SizedBox(height: 16),
+                              if (trip.requireVerifiedPassengers &&
+                                  !(ref.watch(authProvider).user?.idVerified ?? false)) ...[
+                                _VerifyToBook(
+                                  pending: ref.watch(authProvider).user?.idVerificationPending ?? false,
+                                ),
+                              ] else
                               AppButton(
                                 label: tr('احجز الآن'),
                                 onPressed: trip.availableSeats >= _seats
@@ -962,6 +985,11 @@ class _PreferencesCard extends StatelessWidget {
                       icon: Icons.female_rounded,
                       label: tr('نساء فقط'),
                       allowed: true),
+                if (trip.requireVerifiedPassengers)
+                  _prefChip(
+                      icon: Icons.verified_user_rounded,
+                      label: tr('ركاب موثّقون فقط'),
+                      allowed: true),
                 _prefChip(
                     icon: Icons.smoke_free_rounded,
                     label:
@@ -1298,6 +1326,51 @@ class _TripClosedNotice extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// Shown instead of the booking button on a trip that only accepts ID-verified passengers.
+class _VerifyToBook extends StatelessWidget {
+  final bool pending;
+  const _VerifyToBook({required this.pending});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: context.isDark ? 0.18 : 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.verified_user_rounded, color: context.readable(AppColors.warning)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  pending
+                      ? tr('السائق يقبل الركاب الموثّقين فقط، وطلب توثيق هويتك قيد المراجعة. ستتمكن من الحجز فور الموافقة.')
+                      : tr('السائق يقبل الركاب الموثّقين فقط. وثّق هويتك لتتمكن من الحجز.'),
+                  style: const TextStyle(fontWeight: FontWeight.w600, height: 1.4),
+                ),
+              ),
+            ],
+          ),
+          if (!pending) ...[
+            const SizedBox(height: 12),
+            AppButton(
+              label: tr('وثّق هويتك'),
+              onPressed: () => context.push('/profile/id-verification'),
+            ),
+          ],
         ],
       ),
     );

@@ -43,4 +43,9 @@ export class SubmitDriverVerificationDto {
   @IsString()
   @MaxLength(500)
   vehiclePhotoUrl?: string;
+
+  // Required: the admin compares this face with the ID card before approving.
+  @IsString({ message: 'صورتك الشخصية مطلوبة لتوثيق السائق' })
+  @MaxLength(500)
+  selfiePhotoUrl: string;
 }

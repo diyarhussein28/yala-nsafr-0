@@ -93,6 +93,7 @@ describe('Security & integrity regressions', () => {
         nationalIdNumber: `2990101010${suffix.padStart(4, '0')}`.slice(0, 14),
         fcmToken: `fcm-secret-${suffix}`,
         emergencyContactPhone: '+201000000000',
+        idVerified: true,
         ...extra,
       }),
     );

@@ -28,6 +28,7 @@ import {
   PaymentSettlement,
 } from '../payments/payment-settlement.service';
 import { Exclusive } from '../../common/jobs/exclusive';
+import { restorePromoCredit } from '../bookings/booking-side-effects';
 
 @Injectable()
 export class AdminService implements OnModuleInit {
@@ -187,6 +188,7 @@ export class AdminService implements OnModuleInit {
       nationalIdPhotoUrl: (await this.storage.viewUrl(user.nationalIdPhotoUrl)) as string,
       nationalIdBackPhotoUrl: await this.storage.viewUrl(user.nationalIdBackPhotoUrl),
       drivingLicencePhotoUrl: (await this.storage.viewUrl(user.drivingLicencePhotoUrl)) as string,
+      selfiePhotoUrl: await this.storage.viewUrl(user.selfiePhotoUrl),
     };
   }
 
@@ -225,6 +227,9 @@ export class AdminService implements OnModuleInit {
     if (!user.idVerified) {
       throw new BadRequestException('ID must be verified before driver verification is approved');
     }
+    if (!user.selfiePhotoUrl) {
+      throw new BadRequestException('The driver has not submitted a selfie to compare with the ID');
+    }
     user.driverVerified = true;
     const saved = await this.userRepo.save(user);
     this.notifyUser(userId, 'تم توثيقك كسائق 🚗', 'يمكنك الآن نشر رحلاتك على يلا نسافر.', 'profile');
@@ -254,6 +259,7 @@ export class AdminService implements OnModuleInit {
     user.driverVerified = false;
     user.drivingLicenceNumber = null as unknown as string;
     user.vehiclePlate = null as unknown as string;
+    user.selfiePhotoUrl = null;
     const saved = await this.userRepo.save(user);
     this.notifyUser(
       userId,
@@ -514,6 +520,8 @@ export class AdminService implements OnModuleInit {
       switch (dto.resolution) {
         case DisputeStatus.RESOLVED_REFUND:
           booking.status = BookingStatus.REFUNDED;
+          // A full refund puts the passenger back where they started, credit included.
+          await restorePromoCredit(manager, booking);
           break;
         case DisputeStatus.RESOLVED_RELEASE:
         case DisputeStatus.RESOLVED_SPLIT:
@@ -657,6 +665,7 @@ export class AdminService implements OnModuleInit {
             resolution = DisputeStatus.RESOLVED_REFUND;
             outcomeText = 'تم استرداد المبلغ تلقائياً لعدم رد الطرف الآخر في الوقت المحدد.';
             booking.status = BookingStatus.REFUNDED;
+            await restorePromoCredit(manager, booking);
           } else if (autoReleaseReasons.includes(dispute.reason as DisputeReason)) {
             resolution = DisputeStatus.RESOLVED_RELEASE;
             outcomeText = 'تم صرف المبلغ للسائق تلقائياً لعدم رد الطرف الآخر.';

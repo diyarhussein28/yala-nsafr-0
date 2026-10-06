@@ -37,6 +37,10 @@ export class UpdateTripDto {
 
   @IsOptional()
   @IsBoolean()
+  requireVerifiedPassengers?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   smokingAllowed?: boolean;
 
   @IsOptional()

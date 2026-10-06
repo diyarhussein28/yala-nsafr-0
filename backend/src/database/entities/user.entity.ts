@@ -97,6 +97,11 @@ export class User {
   @Column({ name: 'vehicle_photo_url', nullable: true })
   vehiclePhotoUrl: string;
 
+  // Private storage reference: a live photo of the driver's face, compared by an admin
+  // against the ID card photo before the driver is approved.
+  @Column({ name: 'selfie_photo_url', type: 'varchar', nullable: true })
+  selfiePhotoUrl: string | null;
+
   @Column({ name: 'driver_verified', default: false })
   driverVerified: boolean;
 

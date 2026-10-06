@@ -64,6 +64,7 @@ class Trip {
   final double pricePerSeat;
   final String status;
   final bool womenOnly;
+  final bool requireVerifiedPassengers;
   final bool smokingAllowed;
   final bool petsAllowed;
   final bool airConditioning;
@@ -95,6 +96,7 @@ class Trip {
     required this.pricePerSeat,
     required this.status,
     required this.womenOnly,
+    this.requireVerifiedPassengers = true,
     required this.smokingAllowed,
     required this.petsAllowed,
     this.airConditioning = false,
@@ -150,6 +152,7 @@ class Trip {
       pricePerSeat: double.tryParse(json['pricePerSeat']?.toString() ?? '') ?? 0.0,
       status: json['status'] as String? ?? 'scheduled',
       womenOnly: json['womenOnly'] as bool? ?? false,
+      requireVerifiedPassengers: json['requireVerifiedPassengers'] as bool? ?? true,
       smokingAllowed: smokingAllowed,
       petsAllowed: petsAllowed,
       airConditioning: json['airConditioning'] as bool? ?? false,

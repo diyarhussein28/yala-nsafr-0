@@ -119,6 +119,8 @@ class _Body extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(dispute.reasonLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
                 Text(dispute.description),
                 if (dispute.evidenceUrls.isNotEmpty) ...[
                   const SizedBox(height: 12),

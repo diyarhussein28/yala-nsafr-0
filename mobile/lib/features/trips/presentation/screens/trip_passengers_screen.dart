@@ -8,6 +8,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/rating_stars.dart';
 import '../../providers/trips_provider.dart';
 import '../../../../core/i18n/tr.dart';
+import '../../../../core/utils/status_labels.dart';
+import '../../../../shared/widgets/ui.dart';
 
 class TripPassengersScreen extends ConsumerWidget {
   final String tripId;
@@ -196,7 +198,11 @@ class _PassengerCard extends ConsumerWidget {
                     Text(tr('تم التقييم'),
                         style: TextStyle(color: Colors.grey[600], fontSize: 12))
                   else
-                    const Icon(Icons.chevron_left_rounded, color: Colors.grey),
+                    // Only a completed, undisputed ride can be rated; say why this one can't.
+                    Builder(builder: (context) {
+                      final st = bookingStatusStyle(booking.status);
+                      return StatusPill(label: st.label, color: st.color, icon: st.icon);
+                    }),
                 ],
               ),
               if (booking.canDispute) ...[

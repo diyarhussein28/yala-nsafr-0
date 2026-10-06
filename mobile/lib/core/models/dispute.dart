@@ -50,6 +50,17 @@ class Dispute {
         _ => status,
       };
 
+  String get reasonLabel => switch (reason) {
+        'no_show_driver' => tr('السائق لم يحضر'),
+        'no_show_passenger' => tr('الراكب لم يحضر'),
+        'unsafe_driving' => tr('قيادة غير آمنة'),
+        'wrong_route' => tr('مسار خاطئ'),
+        'payment_mismatch' => tr('خلاف في المبلغ'),
+        'harassment' => tr('تحرش أو إزعاج'),
+        'other' => tr('أخرى'),
+        _ => reason,
+      };
+
   factory Dispute.fromJson(Map<String, dynamic> json) => Dispute(
         id: json['id'] as String,
         bookingId: json['bookingId'] as String? ?? '',
@@ -67,7 +78,7 @@ class Dispute {
         status: json['status'] as String? ?? 'open',
         assignedAdminId: json['assignedAdminId'] as String?,
         resolutionNotes: json['resolutionNotes'] as String?,
-        refundAmount: (json['refundAmount'] as num?)?.toDouble(),
+        refundAmount: num.tryParse('${json['refundAmount'] ?? ''}')?.toDouble(),
         resolvedAt: DateTime.tryParse(json['resolvedAt'] as String? ?? '')?.toLocal(),
         slaDeadline: DateTime.tryParse(json['slaDeadline'] as String? ?? '')?.toLocal(),
         createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ?? DateTime.now(),

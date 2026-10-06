@@ -25,6 +25,7 @@ export class UsersService {
       nationalIdPhotoUrl: await this.storage.viewUrl(user.nationalIdPhotoUrl),
       nationalIdBackPhotoUrl: await this.storage.viewUrl(user.nationalIdBackPhotoUrl),
       drivingLicencePhotoUrl: await this.storage.viewUrl(user.drivingLicencePhotoUrl),
+      selfiePhotoUrl: await this.storage.viewUrl(user.selfiePhotoUrl),
     };
   }
 
@@ -147,6 +148,7 @@ export class UsersService {
       this.storage.assertAcceptable(dto.drivingLicencePhotoUrl, user.id, { requirePrivate: true });
     }
     if (dto.vehiclePhotoUrl) this.storage.assertAcceptable(dto.vehiclePhotoUrl, user.id);
+    this.storage.assertAcceptable(dto.selfiePhotoUrl, user.id, { requirePrivate: true });
     // Same reasoning as the ID: changed licence or vehicle details must be re-reviewed,
     // otherwise a verified driver could switch to an unchecked car and plate.
     await this.userRepo.update(user.id, {

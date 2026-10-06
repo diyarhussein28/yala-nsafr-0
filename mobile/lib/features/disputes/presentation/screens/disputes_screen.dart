@@ -72,7 +72,7 @@ class _DisputeCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      _reasonLabel(dispute.reason),
+                      dispute.reasonLabel,
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 15),
                     ),
@@ -108,17 +108,6 @@ class _DisputeCard extends StatelessWidget {
       ),
     );
   }
-
-  String _reasonLabel(String reason) => switch (reason) {
-        'driver_no_show' => tr('السائق لم يحضر'),
-        'passenger_no_show' => tr('الراكب لم يحضر'),
-        'route_changed' => tr('تغيير المسار'),
-        'safety_concern' => tr('مشكلة أمان'),
-        'payment_issue' => tr('مشكلة دفع'),
-        'behavior_issue' => tr('مشكلة سلوكية'),
-        'other' => tr('أخرى'),
-        _ => reason,
-      };
 
   String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 }
